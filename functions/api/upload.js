@@ -19,7 +19,7 @@ async function uploadFileToR2(bucket, file, folder) {
       const { request, env } = context;
       
       // 检查绑定
-      if (!env.MY_D1_DB || !env.MY_R2_BUCKET) {
+      if (!env.D1_DB || !env.R2_BUCKET) {
         return new Response(JSON.stringify({ success: false, message: "服务器D1或R2未正确绑定" }), { status: 500 });
       }
       
@@ -40,19 +40,19 @@ async function uploadFileToR2(bucket, file, folder) {
       }
   
       // 上传主卡片
-      const cardFileKey = await uploadFileToR2(env.MY_R2_BUCKET, cardFile, "cards");
+      const cardFileKey = await uploadFileToR2(env.R2_BUCKET, cardFile, "cards");
       if (!cardFileKey) {
           return new Response(JSON.stringify({ success: false, message: "主卡片文件上传失败" }), { status: 400 });
       }
   
       // 上传主楼图片 (多图)
       const galleryFiles = formData.getAll("galleryImages");
-      const galleryUploadPromises = galleryFiles.map(file => uploadFileToR2(env.MY_R2_BUCKET, file, "gallery"));
+      const galleryUploadPromises = galleryFiles.map(file => uploadFileToR2(env.R2_BUCKET, file, "gallery"));
       const galleryImageKeys = (await Promise.all(galleryUploadPromises)).filter(Boolean); // 过滤掉 null
   
       // 上传其它附件 (多图)
       const attachmentFiles = formData.getAll("attachments");
-      const attachmentUploadPromises = attachmentFiles.map(file => uploadFileToR2(env.MY_R2_BUCKET, file, "attachments"));
+      const attachmentUploadPromises = attachmentFiles.map(file => uploadFileToR2(env.R2_BUCKET, file, "attachments"));
       const attachmentKeys = (await Promise.all(attachmentUploadPromises)).filter(Boolean);
   
       // 3. 处理数组/JSON 数据
@@ -61,7 +61,7 @@ async function uploadFileToR2(bucket, file, folder) {
       const tags = JSON.stringify(formData.getAll("tags"));
   
       // 4. 准备插入 D1 数据库 (使用新表 cards_v2)
-      const stmt = env.MY_D1_DB.prepare(
+      const stmt = env.D1_DB.prepare(
         `INSERT INTO cards_v2 (id, cardName, cardType, characters, category, authorName, isAnonymous, 
           orientation, background, tags, userLimit, warnings, description, secondaryWarning, 
           galleryImageKeys, cardFileKey, attachmentKeys)

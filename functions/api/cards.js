@@ -4,13 +4,13 @@ export async function onRequestGet(context) {
     try {
       const { env } = context;
   
-      if (!env.MY_D1_DB) {
+      if (!env.D1_DB) {
         return new Response(JSON.stringify({ success: false, message: "服务器D1未绑定" }), { status: 500 });
       }
   
       // 1. 从 D1 查询，按创建时间倒序排列
       // 我们只选择列表页需要的基础信息
-      const { results } = await env.MY_D1_DB.prepare(
+      const { results } = await env.D1_DB.prepare(
         "SELECT id, cardName, authorName, description, tags FROM cards_v2 ORDER BY createdAt DESC LIMIT 20"
       ).all();
   
