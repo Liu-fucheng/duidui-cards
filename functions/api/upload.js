@@ -29,6 +29,7 @@ async function uploadFileToR2(bucket, file, folder) {
       const authorType = formData.get("authorType"); // 'real' 或 'anonymous'
       let isAnonymous = authorType === "anonymous" ? 1 : 0;
       let authorName = formData.get("authorName") || "";
+      let authorId = formData.get("authorId") || ""; // Discord bot 传入的作者ID
       if (isAnonymous && authorName.trim() === "") {
         authorName = "匿名"; // 匿名且马甲为空，则默认为"匿名"
       }
@@ -59,13 +60,15 @@ async function uploadFileToR2(bucket, file, folder) {
       const characters = JSON.stringify(formData.getAll("characters").filter(c => c.trim() !== ""));
       const orientation = JSON.stringify(formData.getAll("orientation"));
       const tags = JSON.stringify(formData.getAll("tags"));
+      const backgrounds = JSON.stringify(formData.getAll("background"));
   
       // 4. 准备插入 D1 数据库 (使用新表 cards_v2)
+      // 注意：如果表中没有 authorId 字段，需要先执行 ALTER TABLE cards_v2 ADD COLUMN authorId TEXT;
       const stmt = env.D1_DB.prepare(
-        `INSERT INTO cards_v2 (id, cardName, cardType, characters, category, authorName, isAnonymous, 
+        `INSERT INTO cards_v2 (id, cardName, cardType, characters, category, authorName, authorId, isAnonymous, 
           orientation, background, tags, userLimit, warnings, description, secondaryWarning, 
           galleryImageKeys, cardFileKey, attachmentKeys)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).bind(
         crypto.randomUUID(),
         formData.get("cardName") || "未命名",
@@ -73,11 +76,12 @@ async function uploadFileToR2(bucket, file, folder) {
         characters, // JSON string
         formData.get("category"),
         authorName,
+        authorId, // Discord 用户ID
         isAnonymous,
         orientation, // JSON string
-        formData.get("background"),
+        backgrounds, // JSON string
         tags, // JSON string
-        formData.get("userLimit") || "none",
+        JSON.stringify(formData.getAll("userLimit").filter(v => v && v.trim() !== "")) || "[]",
         formData.get("warnings"),
         formData.get("description"),
         formData.get("secondaryWarning"), // 二次排雷

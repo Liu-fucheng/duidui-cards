@@ -4,160 +4,861 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>角色卡上传</title>
+  
+  <!-- Material UI CSS -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+  
   <style>
-    body { font-family: sans-serif; margin: 20px; max-width: 800px; margin-left: auto; margin-right: auto; }
+    :root {
+      --bg: #F3E9DD;        /* 淡米棕 */
+      --surface: #FAF4EC;   /* 浅面板 */
+      --text: #5C4033;      /* 深咖 */
+      --muted: #D9CBBE;     /* 浅分割 */
+      --accent: #8B5E3C;    /* 咖啡主色 */
+      --accent-2: #6D4C3D;  /* 按下更深色 */
+      --pill-bg: #EADFD2;   /* Tag 未选背景 */
+    }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, PingFang SC, Hiragino Sans GB, Microsoft YaHei, Helvetica Neue, Arial, Noto Sans, "Noto Sans CJK SC", sans-serif;
+    }
+
+    body {
+      margin: 24px;
+      max-width: 860px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
     .hidden { display: none; }
-    form div {
-      margin-bottom: 15px;
-      padding: 10px;
-      border-bottom: 1px solid #eee;
+
+    h1 {
+      font-size: 28px;
+      margin: 8px 0 20px;
+      letter-spacing: 0.5px;
     }
-    form label {
+
+    h2 {
+      font-size: 20px;
+      margin: 24px 0 12px;
+      letter-spacing: 0.2px;
+    }
+
+    /* 顶部导航/页脚 */
+    .app-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #F7EFE6;
+      border: 1px solid var(--muted);
+      border-radius: 12px;
+      padding: 10px 14px;
+      margin-bottom: 16px;
+    }
+    .brand { font-weight: 700; color: var(--accent-2); letter-spacing: 0.5px; }
+    .nav-actions { display: flex; gap: 10px; align-items: center; }
+    .link { color: var(--accent); text-decoration: none; padding: 6px 8px; border-radius: 8px; }
+    .link:hover { background: var(--pill-bg); }
+
+    .app-footer {
+      margin-top: 20px;
+      padding: 12px 0;
+      color: #9A8274;
+      font-size: 13px;
+      text-align: center;
+      border-top: 1px dashed var(--muted);
+    }
+
+    /* 步骤指示器 */
+    .steps {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      position: relative;
+    }
+    .steps::before {
+      content: "";
+      position: absolute;
+      top: 16px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--muted);
+      z-index: 0;
+    }
+    .step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      position: relative;
+      z-index: 1;
+      flex: 1;
+    }
+    .step-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--surface);
+      border: 2px solid var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      color: var(--text);
+      transition: all 0.2s ease;
+    }
+    .step.active .step-circle {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px rgba(139,94,60,0.12);
+    }
+    .step.completed .step-circle {
+      background: var(--accent-2);
+      border-color: var(--accent-2);
+      color: #fff;
+    }
+    .step-label {
+      font-size: 12px;
+      color: #9A8274;
+    }
+    .step.active .step-label {
+      color: var(--accent-2);
+      font-weight: 600;
+    }
+
+    form {
+      background: var(--surface);
+      border: 1px solid var(--muted);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+
+    .field {
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px dashed var(--muted);
+    }
+
+    .field:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+      margin-bottom: 0;
+    }
+
+    .field > label.group-label {
       display: block;
-      font-weight: bold;
-      margin-bottom: 5px;
+      font-weight: 600;
+      margin-bottom: 8px;
     }
+
+    /* 行内字段：标签与输入同一行，并限制输入宽度较短 */
+    .inline-field { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; }
+    .inline-field .group-label { margin: 0; display: inline-block; white-space: nowrap; }
+    .short-input { width: 220px; max-width: 60vw; }
+
+
     input[type="text"], textarea, select {
       width: 100%;
-      padding: 8px;
+      padding: 10px 12px;
       box-sizing: border-box;
+      color: var(--text);
+      background: #fff;
+      border: 1px solid var(--muted);
+      border-radius: 8px;
+      outline: none;
     }
-    button {
-      padding: 10px 15px;
-      font-size: 16px;
+    #tagsSearch {
+      padding: 10px 12px 10px 30px;
+    }
+    
+    input[type="text"]:focus, textarea:focus, select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(139,94,60,0.12);
+    }
+
+    textarea {
+      min-height: 100px;
+      max-height: calc(1.5em * 20 + 24px); /* 大约20行 + 内边距 */
+      overflow: auto;
+      resize: vertical;
+    }
+
+    /* 行内选项布局 - 使用系统控件 + 咖啡色 */
+    .inline-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      align-items: center;
+    }
+
+    /* 统一原生控件颜色为咖啡色，避免默认蓝色 */
+    .inline-options input[type="checkbox"],
+    .inline-options input[type="radio"] {
+      accent-color: var(--accent);
+      width: 22px;
+      height: 22px;
+    }
+    .inline-options label { display: inline-flex; align-items: center; gap: 6px; }
+
+    /* 兼容任意 UI 库类名（若存在） */
+    .MuiCheckbox-root, .MuiRadio-root { color: var(--accent) !important; }
+    .MuiCheckbox-root.Mui-checked, .MuiRadio-root.Mui-checked { color: var(--accent) !important; }
+    .MuiFormControlLabel-root { margin-right: 8px !important; }
+
+    /* Tag 胶囊按钮 */
+    .pill-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .pill {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 36px;
+      padding: 0 14px;
+      border-radius: 999px;
+      border: 1px solid var(--muted);
+      background: var(--pill-bg);
+      color: var(--text);
       cursor: pointer;
+      transition: background 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+      overflow: hidden;
+      user-select: none;
     }
+    .pill:hover { border-color: var(--accent); }
+    .pill:active { background: #E4D6C6; }
+    input[type="checkbox"].pill-input { position: absolute; opacity: 0; pointer-events: none; }
+    input[type="checkbox"].pill-input:checked + label.pill {
+      background: #DFCDBB;
+      border-color: var(--accent);
+      box-shadow: inset 0 0 0 2px rgba(139,94,60,0.18);
+    }
+
+    /* 提交按钮 */
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      font-size: 16px;
+      color: #fff;
+      background: var(--accent);
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.15s ease, box-shadow 0.15s ease;
+      overflow: hidden;
+    }
+    .btn-primary:hover { box-shadow: 0 2px 10px rgba(139,94,60,0.25); }
+    .btn-primary:active { background: var(--accent-2); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; box-shadow: none; }
+
     #uploadStatus {
-      font-weight: bold;
+      font-weight: 600;
       margin-top: 15px;
       padding: 10px;
+      color: var(--accent-2);
     }
+
+    /* 列表卡片 */
+    #cardList {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 14px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--muted);
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .card h3 { margin: 4px 0 6px; font-size: 18px; }
+    .card p { margin: 4px 0; line-height: 1.5; }
+
+    /* 简易 Material 风格 Ripple */
+    .ripple { position: relative; overflow: hidden; }
+    .ripple::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: radial-gradient(circle, rgba(255,255,255,0.35) 10%, rgba(255,255,255,0) 11%) center/0 0 no-repeat;
+      transition: background-size 0.45s ease, opacity 0.6s ease;
+      opacity: 0;
+    }
+    .ripple:active::after {
+      background-size: 3000% 3000%;
+      opacity: 1;
+      transition: 0s;
+    }
+
+    /* 两列行布局（卡片类型 + 卡名） */
+    .row-2 {
+      display: grid;
+      grid-template-columns: minmax(260px, 1fr) 1.2fr;
+      gap: 16px;
+      align-items: start;
+    }
+    @media (max-width: 640px) {
+      .row-2 { grid-template-columns: 1fr; }
+    }
+
+    /* 角色名胶囊（复用 tag pill 样式，可编辑可删除） */
+    .chip-list { 
+      display: flex; 
+      flex-wrap: wrap; 
+      gap: 10px; 
+    }
+    .chip-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .character-chip {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      height: 36px;
+      min-width: 100px;
+      border-radius: 999px;
+      border: 1px solid var(--muted);
+      background: linear-gradient(0deg, var(--pill-bg), var(--pill-bg)) padding-box, transparent border-box; /* 固定一致背景 */
+      overflow: hidden;
+    }
+    .character-chip input {
+      border: none;
+      background: transparent;
+      outline: none;
+      color: var(--text);
+      padding: 0 12px; /* 左右对称，显出开头文字 */
+      margin-right: 28px; /* 给删除按钮留出空间 */
+      height: 100%;
+      min-width: 80px; /* 默认更窄的最小宽 */
+      width: 80px; /* 初始宽度，后续用 JS 精确设置 */
+      font-size: 14px;
+      white-space: nowrap;
+      overflow: hidden;
+      box-shadow: none; /* 避免全局 input:focus 阴影在胶囊内形成浅棕分割 */
+    }
+    .character-chip input:focus { background: transparent; box-shadow: none !important; }
+    /* 去掉浅棕色分割效果，改为外圈边框高亮 */
+    .character-chip:focus-within { box-shadow: 0 0 0 0 rgba(0,0,0,0); border-color: var(--accent); }
+    .character-chip .delete-btn {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      line-height: 1;
+      opacity: 0.8;
+      transition: opacity 0.15s ease;
+      padding: 0;
+    }
+    .character-chip .delete-btn:hover { opacity: 1; background: var(--accent-2); }
+
+    .add-chip-btn {
+      width: 36px; height: 36px; border-radius: 50%; border: none; cursor: pointer; color: #fff;
+      background: var(--accent); display: inline-flex; align-items: center; justify-content: center;
+      font-size: 20px; line-height: 1; box-shadow: 0 2px 8px rgba(139,94,60,0.25);
+    }
+    .add-chip-btn:active { background: var(--accent-2); }
+
+    /* 文件上传区域 */
+    .upload-zone {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: flex-start;
+    }
+    .upload-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      height: 36px;
+      padding: 0 14px;
+      border-radius: 18px;
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.15s ease;
+    }
+    .upload-btn:hover { background: var(--accent-2); }
+    .upload-thumbnail {
+      position: relative;
+      width: 140px;
+      height: 140px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--muted);
+    }
+    .upload-thumbnail img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .upload-thumbnail .remove {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      opacity: 0.9;
+    }
+    .upload-thumbnail .remove:hover { opacity: 1; background: var(--accent-2); }
+    input[type="file"] { display: none; }
+
+    /* 预览区域使用 Grid，优先横排，空间不足再换行 */
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 16px;
+      align-items: start;
+      width: 100%;
+    }
+
+    /* Tags 分类和搜索 */
+    .tags-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: nowrap; gap: 12px; }
+    .tags-header .group-label { white-space: nowrap; margin: 0; }
+    .tags-search-wrapper {
+      position: relative;
+      width: 160px;
+      margin-left: auto;
+    }
+    .tags-search-icon {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #9A8274;
+      font-size: 18px;
+      pointer-events: none;
+    }
+    .tags-search { 
+      width: 100%;
+      padding: 8px 12px 8px 40px; 
+      border: 1px solid var(--muted); 
+      border-radius: 20px; 
+      outline: none;
+      font-size: 13px;
+      background: #fff;
+      transition: all 0.2s ease;
+    }
+    .tags-search:focus { 
+      border-color: var(--accent); 
+      box-shadow: 0 0 0 3px rgba(139,94,60,0.12); 
+    }
+    .tag-category { margin-bottom: 14px; }
+    .tag-category-title { 
+      font-size: 13px; 
+      color: #876; 
+      margin-bottom: 6px; 
+      font-weight: 500;
+    }
+    .tag-category .pill-group { margin-left: 8px; }
+    .tag-category.hidden { display: none; }
+
+    /* 锁定样式 */
+    .locked { 
+      background: #F0EAE3 !important; 
+      cursor: not-allowed !important;
+    }
+
+    /* 隐藏的 authorId 字段 */
+    #authorId { display: none; }
   </style>
 </head>
 <body>
 
-  <h1>上传你的角色卡</h1>
+  <header class="app-header">
+    <div class="brand">堆堆demo</div>
+    <nav class="nav-actions">
+      <a class="link" href="#upload" id="navUpload">上传</a>
+      <a class="link" href="#list" id="navList">列表</a>
+    </nav>
+  </header>
+
+  <!-- 步骤指示器 -->
+  <div class="steps">
+    <div class="step active" data-step="1" id="step1">
+      <div class="step-circle">1</div>
+      <div class="step-label">基础信息</div>
+    </div>
+    <div class="step" data-step="2" id="step2">
+      <div class="step-circle">2</div>
+      <div class="step-label">分类标签</div>
+    </div>
+    <div class="step" data-step="3" id="step3">
+      <div class="step-circle">3</div>
+      <div class="step-label">文件上传</div>
+    </div>
+  </div>
+
+  <h1 id="upload">上传你的角色卡</h1>
   <form id="uploadForm">
 
-    <div>
-      <label>卡片类型*:</label>
-      <input type="radio" id="cardTypeSingle" name="cardType" value="single" checked>
-      <label for="cardTypeSingle">单人卡</label>
-      <input type="radio" id="cardTypeMulti" name="cardType" value="multi">
-      <label for="cardTypeMulti">多人卡</label>
-    </div>
-
-    <div>
-      <label for="cardName">卡名*:</label>
-      <input type="text" id="cardName" name="cardName" required />
-    </div>
-    
-    <div id="characterContainer" class="hidden">
-      <label>角色名 (多人卡):</label>
-      <div id="characterList">
-        <input type="text" name="characters" placeholder="角色1" />
+    <div id="section-base" class="field">
+      <div class="inline-field">
+        <label class="group-label">卡片类型*:</label>
+        <div class="inline-options">
+          <label><input type="radio" name="cardType" value="single" checked class="mui-radio"> 单人卡</label>
+          <label><input type="radio" name="cardType" value="multi" class="mui-radio"> 多人卡</label>
+        </div>
       </div>
-      <button type="button" id="addCharacterBtn" style="margin-top:5px;">+ 增加角色</button>
+      <div class="inline-field" style="margin-top:10px;">
+        <label class="group-label" for="cardName">卡名:</label>
+        <input type="text" id="cardName" name="cardName" class="short-input" required />
+      </div>
+      <div class="inline-field" style="margin-top:10px;">
+        <label class="group-label" for="category">分区:</label>
+        <input type="text" id="category" name="category" class="short-input" />
+      </div>
+      <div class="inline-field" style="margin-top:10px;">
+        <label class="group-label" for="authorName">作者:</label>
+        <input type="text" id="authorName" name="authorName" class="short-input" />
+        <input type="hidden" id="authorId" name="authorId" />
+    </div>
     </div>
 
-    <div>
-      <label for="category">分区:</label>
-      <input type="text" id="category" name="category" />
-    </div>
-
-    <div>
-      <label>作者*:</label>
-      <input type="radio" id="authorTypeReal" name="authorType" value="real" checked>
-      <label for="authorTypeReal">实名</label>
-      <input type="radio" id="authorTypeAnonymous" name="authorType" value="anonymous">
-      <label for="authorTypeAnonymous">匿名</label>
-    </div>
-    <div id="authorNameContainer">
-      <label for="authorName" id="authorNameLabel">作者名:</label>
-      <input type="text" id="authorName" name="authorName" />
-    </div>
-
-    <div>
-      <label>性向* (可多选, 至少选一):</label>
-      <input type="checkbox" name="orientation" value="GB"><label>GB</label>
-      <input type="checkbox" name="orientation" value="BG"><label>BG</label>
-      <input type="checkbox" name="orientation" value="GL"><label>GL</label>
-      <input type="checkbox" name="orientation" value="BL"><label>BL</label>
-      <input type="checkbox" name="orientation" value="none"><label>无CP</label>
-    </div>
-
-    <div>
-      <label for="background">背景:</label>
-      <select id="background" name="background">
-        <option value="modern">现代</option>
-        <option value="ancient">古代</option>
-        <option value="future">未来</option>
-        <option value="fantasy">幻想</option>
-      </select>
+    <div id="characterContainer" class="field hidden">
+      <label class="group-label">角色名 (多人卡):</label>
+      <div class="chip-row">
+        <div id="characterList" class="chip-list"><!-- 动态生成胶囊输入 --></div>
+        <button type="button" id="addCharacterBtn" class="add-chip-btn" title="增加角色">+</button>
+      </div>
     </div>
     
-    <div>
-      <label>Tags (可多选):</label>
-      <input type="checkbox" name="tags" value="campus"><label>校园</label>
-      <input type="checkbox" name="tags" value="city"><label>都市</label>
-      <input type="checkbox" name="tags" value="older"><label>年上</label>
-      <input type="checkbox" name="tags" value="younger"><label>年下</label>
+    <div class="field">
+      <label class="group-label">作者类型*:</label>
+      <div class="inline-options">
+        <label><input type="radio" name="authorType" value="real" checked class="mui-radio"> 实名</label>
+        <label><input type="radio" name="authorType" value="anonymous" class="mui-radio"> 匿名</label>
+      </div>
     </div>
 
-    <div>
-      <label>限制:</label>
-      <input type="radio" name="userLimit" value="none" checked><label>无</label>
-      <input type="radio" name="userLimit" value="female"><label>限女User</label>
-      <input type="radio" name="userLimit" value="male"><label>限男User</label>
+    <div id="section-tags" class="field">
+      <label class="group-label">性向* (可多选, 至少选一):</label>
+      <div class="inline-options" id="orientationOptions">
+        <!-- 动态从配置加载 -->
+    </div>
     </div>
 
-    <div>
-      <label for="warnings">排雷:</label>
+    <div class="field">
+      <label class="group-label">背景 (可多选):</label>
+      <div class="inline-options" id="backgroundOptions">
+        <!-- 动态从配置加载 -->
+    </div>
+    </div>
+
+    <div class="field">
+      <div class="tags-header">
+        <label class="group-label">Tags</label>
+        <div class="tags-search-wrapper">
+          <span class="tags-search-icon material-icons">search</span>
+          <input type="text" class="tags-search" id="tagsSearch" placeholder="搜索...">
+        </div>
+      </div>
+      <div id="tagsOptions">
+        <!-- 动态从配置加载分类 -->
+    </div>
+    </div>
+    
+    <div class="field">
+      <label class="group-label">限制 (可多选):</label>
+      <div class="inline-options" id="limitOptions">
+        <!-- 动态从配置加载 -->
+    </div>
+    </div>
+
+    <div class="field">
+      <label class="group-label" for="warnings">排雷:</label>
       <textarea id="warnings" name="warnings"></textarea>
     </div>
 
-    <div>
-      <label for="description">简介:</label>
+    <div class="field">
+      <label class="group-label" for="description">简介:</label>
       <textarea id="description" name="description"></textarea>
     </div>
 
-    <div>
-      <label>下载前二次排雷:</label>
-      <input type="radio" id="secWarnNo" name="secondaryWarningToggle" value="no" checked>
-      <label for="secWarnNo">否</label>
-      <input type="radio" id="secWarnYes" name="secondaryWarningToggle" value="yes">
-      <label for="secWarnYes">是</label>
+    <div class="field">
+      <label class="group-label">下载前二次排雷:</label>
+      <div class="inline-options">
+        <label><input type="radio" name="secondaryWarningToggle" value="no" checked class="mui-radio"> 否</label>
+        <label><input type="radio" name="secondaryWarningToggle" value="yes" class="mui-radio"> 是</label>
+      </div>
     </div>
-    <div id="secondaryWarningContainer" class="hidden">
-      <label for="secondaryWarning">二次排雷内容:</label>
+    <div id="secondaryWarningContainer" class="field hidden">
+      <label class="group-label" for="secondaryWarning">二次排雷内容:</label>
       <textarea id="secondaryWarning" name="secondaryWarning"></textarea>
     </div>
 
-    <div>
-      <label for="galleryImages">主楼图片 (可多图):</label>
+    <div id="section-files" class="field">
+      <label class="group-label">主楼图片 (可多图):</label>
       <input type="file" id="galleryImages" name="galleryImages" multiple accept="image/*" />
+      <div class="upload-zone">
+        <button type="button" class="upload-btn" onclick="document.getElementById('galleryImages').click()">+ 添加图片</button>
+        <div id="galleryPreviews" class="preview-grid"></div>
+      </div>
     </div>
 
-    <div>
-      <label for="cardFile">角色卡* (.png / .json):</label>
+    <div class="field">
+      <label class="group-label">角色卡* (.png / .json):</label>
       <input type="file" id="cardFile" name="cardFile" required accept=".png,.json" />
+      <div class="upload-zone">
+        <button type="button" class="upload-btn" onclick="document.getElementById('cardFile').click()">+ 选择文件</button>
+        <div id="cardFilePreviews" class="preview-grid"></div>
+      </div>
     </div>
 
-    <div>
-      <label for="attachments">其它附件 (可多图):</label>
+    <div class="field">
+      <label class="group-label">其它附件 (可多图):</label>
       <input type="file" id="attachments" name="attachments" multiple />
+      <div class="upload-zone">
+        <button type="button" class="upload-btn" onclick="document.getElementById('attachments').click()">+ 添加附件</button>
+        <div id="attachmentPreviews" class="preview-grid"></div>
+      </div>
     </div>
 
-    <button type="submit" id="submitButton">上传</button>
+    <button type="submit" id="submitButton" class="btn-primary ripple">上传</button>
   </form>
 
   <div id="uploadStatus"></div>
 
-  <hr>
-  <h2>已上传的卡片</h2>
+  <hr style="margin: 32px 0; border: none; border-top: 1px dashed var(--muted);">
+  <h2 id="list">已上传的卡片</h2>
   <div id="cardList">正在加载...</div>
 
+  <footer class="app-footer">
+    © 2025 兑兑卡 DuiDui Cards · 用心分享每一张角色卡
+  </footer>
+
+<!-- Material UI JS (使用 CDN) -->
+<script src="https://unpkg.com/@mui/material@5.15.0/umd/material-ui.production.min.js"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
 <script>
+  // --- 全局配置（从服务端加载） ---
+  let CONFIG = {
+    orientations: [
+      { value: 'GB', label: 'GB' },
+      { value: 'BG', label: 'BG' },
+      { value: 'GL', label: 'GL' },
+      { value: 'BL', label: 'BL' },
+      { value: 'none', label: '无CP' }
+    ],
+    backgrounds: [
+      { value: 'modern', label: '现代' },
+      { value: 'ancient', label: '古代' },
+      { value: 'future', label: '未来' },
+      { value: 'fantasy', label: '幻想' }
+    ],
+    tagCategories: [
+      {
+        category: '场景',
+        tags: [
+          { value: 'campus', label: '校园' },
+          { value: 'city', label: '都市' }
+        ]
+      },
+      {
+        category: '关系',
+        tags: [
+          { value: 'older', label: '年上' },
+          { value: 'younger', label: '年下' }
+        ]
+      }
+    ],
+    limits: [
+      { value: 'none', label: '无' },
+      { value: 'female', label: '限女User' },
+      { value: 'male', label: '限男User' }
+    ]
+  };
+
+  // 尝试从服务端加载配置
+  async function loadConfig() {
+    try {
+      const response = await fetch('/api/config');
+      const data = await response.json();
+      if (data.success) {
+        CONFIG = data.config;
+      }
+    } catch (error) {
+      console.log('使用默认配置', error);
+    }
+    renderOptions();
+  }
+
+  // 渲染选项（使用简单的 checkbox，Material UI 样式会自动应用）
+  function renderOptions() {
+    // 性向
+    const orientationOptions = document.getElementById('orientationOptions');
+    orientationOptions.innerHTML = CONFIG.orientations.map((opt, i) => `
+      <label><input type="checkbox" id="ori${i}" name="orientation" value="${opt.value}"> ${opt.label}</label>
+    `).join('');
+
+    // 背景
+    const backgroundOptions = document.getElementById('backgroundOptions');
+    backgroundOptions.innerHTML = CONFIG.backgrounds.map((opt, i) => `
+      <label><input type="checkbox" id="bg${i}" name="background" value="${opt.value}"> ${opt.label}</label>
+    `).join('');
+
+    // Tags (分类胶囊样式)
+    const tagsOptions = document.getElementById('tagsOptions');
+    let tagIndex = 0;
+    tagsOptions.innerHTML = CONFIG.tagCategories.map((cat, catIdx) => {
+      const categoryHtml = cat.tags.map(opt => {
+        const id = `tag${tagIndex++}`;
+        return `<input class="pill-input" type="checkbox" id="${id}" name="tags" value="${opt.value}">
+        <label class="pill ripple" for="${id}">${opt.label}</label>`;
+      }).join('');
+      return `<div class="tag-category" data-category="${cat.category}">
+        <div class="tag-category-title">${cat.category}</div>
+        <div class="pill-group">${categoryHtml}</div>
+      </div>`;
+    }).join('');
+
+    // Tags 搜索功能
+    const tagsSearch = document.getElementById('tagsSearch');
+    tagsSearch.addEventListener('input', (e) => {
+      const query = e.target.value.toLowerCase().trim();
+      document.querySelectorAll('.tag-category').forEach(cat => {
+        const pills = cat.querySelectorAll('.pill');
+        let hasVisible = false;
+        pills.forEach(pill => {
+          const match = pill.textContent.toLowerCase().includes(query);
+          pill.style.display = match || !query ? '' : 'none';
+          if (match || !query) hasVisible = true;
+        });
+        cat.classList.toggle('hidden', !hasVisible);
+      });
+    });
+
+    // 限制
+    const limitOptions = document.getElementById('limitOptions');
+    limitOptions.innerHTML = CONFIG.limits.map((opt, i) => `
+      <label><input type="checkbox" id="limit${i}" name="userLimit" value="${opt.value}" ${opt.value === 'none' ? 'checked' : ''}> ${opt.label}</label>
+    `).join('');
+
+    // 绑定限制互斥逻辑
+    bindLimitLogic();
+  }
+
+  function bindLimitLogic() {
+    const limitNone = document.querySelector('input[name="userLimit"][value="none"]');
+    const limitOthers = Array.from(document.querySelectorAll('input[name="userLimit"]')).filter(el => el.value !== 'none');
+    if (limitNone) {
+      limitNone.addEventListener('change', () => {
+        if (limitNone.checked) {
+          limitOthers.forEach(el => { el.checked = false; });
+        }
+      });
+      limitOthers.forEach(el => el.addEventListener('change', () => {
+        if (el.checked) limitNone.checked = false;
+      }));
+    }
+  }
+
+  // --- 角色名胶囊管理 ---
+  const characterList = document.getElementById('characterList');
+
+  function createCharacterChip(placeholder) {
+    const chip = document.createElement('div');
+    chip.className = 'character-chip';
+    
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.name = 'characters';
+    input.placeholder = placeholder;
+    
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'delete-btn';
+    deleteBtn.textContent = '×';
+    deleteBtn.title = '删除';
+    
+    chip.appendChild(input);
+    chip.appendChild(deleteBtn);
+    
+    // 自适应宽度（像素测量，避免中文等宽不准）
+    const measure = document.createElement('span');
+    measure.style.position = 'absolute';
+    measure.style.visibility = 'hidden';
+    measure.style.whiteSpace = 'pre';
+    measure.style.fontSize = getComputedStyle(input).fontSize;
+    measure.style.fontFamily = getComputedStyle(input).fontFamily;
+    chip.appendChild(measure);
+
+    const autoSize = () => {
+      const text = input.value || input.placeholder || '';
+      measure.textContent = text;
+      const textWidth = measure.getBoundingClientRect().width;
+      const minWidth = 80; // 与 CSS 对齐的最小宽
+      const maxWidth = 280; // 上限，避免过长
+      const styles = getComputedStyle(input);
+      const padLeft = parseFloat(styles.paddingLeft) || 0;
+      const padRight = parseFloat(styles.paddingRight) || 0;
+      const currentWidth = parseFloat(styles.width) || minWidth;
+      const currentContentCap = currentWidth - padLeft - padRight;
+      // 只有当文本真正填满当前宽度时才增长
+      if (textWidth <= currentContentCap - 1) return;
+      const target = Math.max(minWidth, Math.min(textWidth + padLeft + padRight, maxWidth));
+      input.style.width = target + 'px';
+    };
+    autoSize();
+    input.addEventListener('input', autoSize);
+    
+    // 删除按钮
+    deleteBtn.addEventListener('click', () => {
+      const allChips = characterList.querySelectorAll('.character-chip');
+      if (allChips.length > 1) {
+        chip.remove();
+      } else {
+        input.value = '';
+        autoSize();
+      }
+    });
+    
+    return chip;
+  }
+
+  function initCharacterList() {
+    characterList.innerHTML = '';
+    characterList.appendChild(createCharacterChip('角色1'));
+  }
+
+  document.getElementById('addCharacterBtn').addEventListener('click', () => {
+    const count = characterList.querySelectorAll('.character-chip').length + 1;
+    characterList.appendChild(createCharacterChip(`角色${count}`));
+  });
+
   // --- 动态表单逻辑 ---
 
   // 1. 单人/多人卡 逻辑
@@ -172,32 +873,19 @@
     });
   });
 
-  // 2. 增加角色 按钮
-  const characterList = document.getElementById('characterList');
-  document.getElementById('addCharacterBtn').addEventListener('click', () => {
-    const newInput = document.createElement('input');
-    newInput.type = 'text';
-    newInput.name = 'characters'; // 后端用 getAll("characters") 来接收
-    newInput.placeholder = `角色${characterList.children.length + 1}`;
-    characterList.appendChild(newInput);
-  });
-
-  // 3. 作者 逻辑
-  const authorNameLabel = document.getElementById('authorNameLabel');
+  // 2. 作者 逻辑
   const authorNameInput = document.getElementById('authorName');
   document.querySelectorAll('input[name="authorType"]').forEach(radio => {
     radio.addEventListener('change', (e) => {
       if (e.target.value === 'anonymous') {
-        authorNameLabel.textContent = '马甲 (不填则默认为"匿名"):';
-        authorNameInput.placeholder = '你的马甲';
+        authorNameInput.placeholder = '你的马甲 (不填默认匿名)';
       } else {
-        authorNameLabel.textContent = '作者名:';
         authorNameInput.placeholder = '你的实名';
       }
     });
   });
 
-  // 4. 二次排雷 逻辑
+  // 3. 二次排雷 逻辑
   const secondaryWarningContainer = document.getElementById('secondaryWarningContainer');
   document.querySelectorAll('input[name="secondaryWarningToggle"]').forEach(radio => {
     radio.addEventListener('change', (e) => {
@@ -205,7 +893,7 @@
         secondaryWarningContainer.classList.remove('hidden');
       } else {
         secondaryWarningContainer.classList.add('hidden');
-        document.getElementById('secondaryWarning').value = ''; // 隐藏时清空
+        document.getElementById('secondaryWarning').value = '';
       }
     });
   });
@@ -216,7 +904,7 @@
   const uploadStatus = document.getElementById("uploadStatus");
 
   uploadForm.addEventListener("submit", async function (event) {
-    event.preventDefault(); // 阻止默认提交
+    event.preventDefault();
 
     // 验证性向
     const orientationChecked = document.querySelector('input[name="orientation"]:checked');
@@ -258,10 +946,18 @@
         uploadStatus.textContent = result.message;
         uploadForm.reset();
         // 手动重置所有动态表单
-        document.getElementById('cardTypeSingle').dispatchEvent(new Event('change'));
-        document.getElementById('authorTypeReal').dispatchEvent(new Event('change'));
-        document.getElementById('secWarnNo').dispatchEvent(new Event('change'));
-        characterList.innerHTML = '<input type="text" name="characters" placeholder="角色1" />';
+        document.querySelector('input[name="cardType"][value="single"]').dispatchEvent(new Event('change'));
+        document.querySelector('input[name="authorType"][value="real"]').dispatchEvent(new Event('change'));
+        document.querySelector('input[name="secondaryWarningToggle"][value="no"]').dispatchEvent(new Event('change'));
+        initCharacterList();
+        
+        // 清空文件存储和预览
+        fileStorage['galleryImages'] = [];
+        fileStorage['cardFile'] = [];
+        fileStorage['attachments'] = [];
+        document.getElementById('galleryPreviews').innerHTML = '';
+        document.getElementById('cardFilePreviews').innerHTML = '';
+        document.getElementById('attachmentPreviews').innerHTML = '';
         
         // 上传成功后，重新加载列表
         loadCards(); 
@@ -286,15 +982,17 @@
       const data = await response.json();
 
       if (data.success && data.cards.length > 0) {
-        cardListContainer.innerHTML = ""; // 清空
+        cardListContainer.innerHTML = "";
         data.cards.forEach(card => {
           const cardElement = document.createElement("div");
-          cardElement.style = "border: 1px solid #ccc; padding: 10px; margin-bottom: 10px;";
+          cardElement.className = "card";
+          let tags = [];
+          try { tags = JSON.parse(card.tags || '[]'); } catch (_) {}
           cardElement.innerHTML = `
             <h3>${card.cardName}</h3>
             <p><strong>作者:</strong> ${card.authorName}</p>
             <p><strong>简介:</strong> ${card.description || '无'}</p>
-            <p><strong>Tags:</strong> ${JSON.parse(card.tags).join(', ') || '无'}</p>
+            <p><strong>Tags:</strong> ${tags.length ? tags.join(', ') : '无'}</p>
           `;
           cardListContainer.appendChild(cardElement);
         });
@@ -306,8 +1004,203 @@
     }
   }
   
-  // 页面加载时自动运行
-  document.addEventListener('DOMContentLoaded', loadCards);
+  // --- 文件上传预览功能 ---
+  const fileStorage = {}; // 存储每个input的文件列表
+
+  function setupFilePreview(inputId, previewId, isImage = false, multiple = false) {
+    const input = document.getElementById(inputId);
+    const preview = document.getElementById(previewId);
+    
+    // 初始化存储
+    if (!fileStorage[inputId]) {
+      fileStorage[inputId] = [];
+    }
+    
+    input.addEventListener('change', (e) => {
+      const newFiles = Array.from(e.target.files || []);
+      
+      if (multiple) {
+        // 多文件模式：累积文件
+        fileStorage[inputId] = [...fileStorage[inputId], ...newFiles];
+      } else {
+        // 单文件模式：替换
+        fileStorage[inputId] = newFiles;
+      }
+      
+      // 更新 input.files
+      const dt = new DataTransfer();
+      fileStorage[inputId].forEach(f => dt.items.add(f));
+      input.files = dt.files;
+      
+      // 重新渲染预览
+      renderPreviews(inputId, previewId, isImage);
+    });
+  }
+
+  function renderPreviews(inputId, previewId, isImage) {
+    const preview = document.getElementById(previewId);
+    preview.innerHTML = '';
+    const files = fileStorage[inputId] || [];
+    
+    files.forEach((file, idx) => {
+      if ((isImage && file.type.startsWith('image/')) || (inputId === 'cardFile' && file.type === 'image/png')) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const div = document.createElement('div');
+          div.className = 'upload-thumbnail';
+          div.innerHTML = `
+            <img src="${ev.target.result}" alt="${file.name}">
+            <button class="remove" type="button" onclick="removeFile('${inputId}', ${idx})">×</button>
+          `;
+          preview.appendChild(div);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        const div = document.createElement('div');
+        div.className = 'upload-thumbnail';
+        div.innerHTML = `
+          <div style="display:flex;align-items:center;justify-content:center;height:100%;background:#f5f5f5;font-size:12px;text-align:center;padding:4px;">${file.name}</div>
+          <button class="remove" type="button" onclick="removeFile('${inputId}', ${idx})">×</button>
+        `;
+        preview.appendChild(div);
+      }
+    });
+  }
+
+  window.removeFile = function(inputId, index) {
+    // 从存储中删除
+    fileStorage[inputId].splice(index, 1);
+    
+    // 更新 input.files
+    const input = document.getElementById(inputId);
+    const dt = new DataTransfer();
+    fileStorage[inputId].forEach(f => dt.items.add(f));
+    input.files = dt.files;
+    
+    // 重新渲染
+    const previewId = inputId === 'galleryImages' ? 'galleryPreviews' : 
+                      inputId === 'cardFile' ? 'cardFilePreviews' : 'attachmentPreviews';
+    const isImage = inputId === 'galleryImages';
+    renderPreviews(inputId, previewId, isImage);
+  };
+
+  // 页面加载时初始化
+  document.addEventListener('DOMContentLoaded', async () => {
+    await loadConfig();
+    loadCards();
+    initCharacterList();
+
+    // 文件预览（第4个参数表示是否支持多文件累积）
+    setupFilePreview('galleryImages', 'galleryPreviews', true, true);  // 图片，多选累积
+    setupFilePreview('cardFile', 'cardFilePreviews', false, false);    // 单文件，替换
+    setupFilePreview('attachments', 'attachmentPreviews', false, true); // 附件，多选累积
+
+    // 文本域自动高度
+    document.querySelectorAll('textarea').forEach(t => {
+      const resize = () => { 
+        t.style.height = 'auto'; 
+        t.style.height = (t.scrollHeight) + 'px'; 
+      };
+      t.addEventListener('input', resize);
+      resize();
+    });
+
+    // URL 参数预填与锁定
+    // 支持参数：category, authorName, authorId, lockCategory, lockAuthor
+    const params = new URLSearchParams(location.search);
+    
+    const category = params.get('category');
+    if (category) { 
+      const cat = document.getElementById('category'); 
+      cat.value = decodeURIComponent(category); 
+    }
+    
+    const authorName = params.get('authorName');
+    if (authorName) { 
+      const au = document.getElementById('authorName'); 
+      au.value = decodeURIComponent(authorName); 
+    }
+    
+    const authorId = params.get('authorId');
+    if (authorId) { 
+      const aid = document.getElementById('authorId'); 
+      aid.value = decodeURIComponent(authorId); 
+    }
+    
+    if (params.get('lockCategory') === '1') { 
+      const cat = document.getElementById('category'); 
+      cat.readOnly = true; 
+      cat.classList.add('locked'); 
+    }
+    
+    if (params.get('lockAuthor') === '1') { 
+      const au = document.getElementById('authorName'); 
+      au.readOnly = true; 
+      au.classList.add('locked'); 
+    }
+
+    // 顶部导航的平滑滚动
+    const navUpload = document.getElementById('navUpload');
+    const navList = document.getElementById('navList');
+    if (navUpload) navUpload.addEventListener('click', (e) => {
+      e.preventDefault();
+      document.getElementById('upload').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    if (navList) navList.addEventListener('click', (e) => {
+      e.preventDefault();
+      document.getElementById('list').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    // 步骤点击跳转
+    const stepMap = {
+      step1: document.getElementById('section-base'),
+      step2: document.getElementById('section-tags'),
+      step3: document.getElementById('section-files')
+    };
+    Object.keys(stepMap).forEach(id => {
+      const el = document.getElementById(id);
+      el.style.cursor = 'pointer';
+      el.addEventListener('click', () => {
+        stepMap[id].scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+
+    // 根据填写进度更新步骤状态
+    const steps = [
+      { id: 'step1', check: () => {
+          const nameFilled = (document.getElementById('cardName').value || '').trim().length > 0;
+          return nameFilled;
+        }
+      },
+      { id: 'step2', check: () => {
+          const anyOrientation = !!document.querySelector('input[name="orientation"]:checked');
+          return anyOrientation;
+        }
+      },
+      { id: 'step3', check: () => {
+          return document.getElementById('cardFile').files.length > 0;
+        }
+      }
+    ];
+
+    const updateSteps = () => {
+      let reachedIncomplete = false;
+      steps.forEach((s, idx) => {
+        const el = document.getElementById(s.id);
+        const ok = s.check();
+        el.classList.toggle('completed', ok);
+        el.classList.toggle('active', !reachedIncomplete);
+        if (!ok) reachedIncomplete = true; else if (idx < steps.length - 1) el.classList.remove('active');
+      });
+    };
+
+    document.getElementById('cardName').addEventListener('input', updateSteps);
+    document.getElementById('cardFile').addEventListener('change', updateSteps);
+    document.addEventListener('change', (e) => {
+      if (e.target && e.target.name === 'orientation') updateSteps();
+    });
+    updateSteps();
+  });
 </script>
 
 </body>
