@@ -702,9 +702,9 @@
           const inputType = sec.multiple === false ? 'radio' : 'checkbox';
           const items = (sec.items || []).map((it, i) => {
             const name = sec.multiple === false ? `custom_${title}` : `custom_${title}[]`;
-            const disabled = it.enableIf ? `data-enableif="${it.enableIf}"` : '';
+            const showIf = it.enableIf ? `data-showif="${it.enableIf}"` : '';
             const mutex = it.mutexWith && it.mutexWith.length ? `data-mutex="${it.mutexWith.join(',')}"` : '';
-            return `<label><input type="${inputType}" name="${name}" value="${it.value}" ${disabled} ${mutex}> ${it.label}</label>`;
+            return `<label class="option-item" ${showIf}><input type="${inputType}" name="${name}" value="${it.value}" ${mutex}> ${it.label}</label>`;
           }).join('');
           const fieldId = `section_${title.replace(/\s/g,'_')}`;
           const showIf = sec.showIf ? `data-showif="${sec.showIf}"` : '';
@@ -846,10 +846,10 @@
       field.style.display = checkCondition(cond, selected) ? '' : 'none';
     });
 
-    // 选项启用条件
-    document.querySelectorAll('input[data-enableif]').forEach(input => {
-      const cond = input.getAttribute('data-enableif');
-      input.disabled = !checkCondition(cond, selected);
+    // 选项显示条件（隐藏整个 label，而不是 disabled）
+    document.querySelectorAll('.option-item[data-showif]').forEach(label => {
+      const cond = label.getAttribute('data-showif');
+      label.style.display = checkCondition(cond, selected) ? '' : 'none';
     });
 
     // 互斥逻辑
