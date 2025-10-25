@@ -137,6 +137,7 @@
         if (k === 'class') el.className = v;
         else if (k === 'text') el.textContent = v;
         else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2), v);
+        else if (k === 'checked' || k === 'disabled' || k === 'selected') el[k] = v; // DOM 属性而非 attribute
         else el.setAttribute(k, v);
       });
       children.forEach(c => el.appendChild(typeof c === 'string' ? document.createTextNode(c) : c));
