@@ -759,7 +759,7 @@
         // 类可选：标题渲染为更大的胶囊，并在同一行加一个连字符，再接小类
         const id = `tag${tagIndex++}`;
         const label = cat.pillLabel || cat.category;
-        const value = cat.category;
+        const value = cat.pillValue || cat.category;
         const catPill = `<input class="pill-input" type="checkbox" id="${id}" name="tags" value="${value}" ${catMutex}>
           <label class="pill pill-lg ripple option-item" for="${id}" ${catShowIf}>${label}</label>`;
         headerHtml = `<div class="category-line">${catPill}<span class="category-sep">-</span>${subPills.join('')}</div>`;
@@ -815,20 +815,36 @@
       (arr || []).forEach(cat => {
         if (!cat || !cat.category) return;
         if (!byName.has(cat.category)) {
-          byName.set(cat.category, { category: cat.category, asPill: !!cat.asPill, pillLabel: cat.pillLabel, pillValue: cat.pillValue, tags: [] });
+          byName.set(cat.category, {
+            category: cat.category,
+            asPill: !!cat.asPill,
+            pillLabel: cat.pillLabel,
+            pillValue: cat.pillValue,
+            showIf: cat.showIf,            // 保留分类显示条件
+            mutexWith: cat.mutexWith,      // 保留分类互斥
+            tags: []
+          });
         }
         const entry = byName.get(cat.category);
-        // 合并 asPill 等设置（后者优先）
+        // 合并分类级属性（后者覆盖）
         if (cat.asPill) entry.asPill = true;
         if (cat.pillLabel) entry.pillLabel = cat.pillLabel;
         if (cat.pillValue) entry.pillValue = cat.pillValue;
-        // 合并并去重标签
-        const seen = new Set(entry.tags.map(t => t.value));
+        if (cat.showIf) entry.showIf = cat.showIf;
+        if (Array.isArray(cat.mutexWith) && cat.mutexWith.length) entry.mutexWith = cat.mutexWith;
+
+        // 合并并去重子标签（按 value 优先，其次 label）
+        const seen = new Set(entry.tags.map(t => t.value || t.label));
         (cat.tags || []).forEach(t => {
-          if (t && typeof t.value === 'string' && !seen.has(t.value)) {
-            entry.tags.push({ value: t.value, label: t.label });
-            seen.add(t.value);
-          }
+          const val = (t && (t.value || t.label));
+          if (!val || seen.has(val)) return;
+          entry.tags.push({
+            value: t.value || t.label,
+            label: t.label || t.value,
+            showIf: t.showIf,
+            mutexWith: Array.isArray(t.mutexWith) ? t.mutexWith : undefined
+          });
+          seen.add(val);
         });
       });
     };
