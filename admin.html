@@ -246,21 +246,33 @@
       h('div', {}, [ h('button', { class: 'btn danger small', onclick: () => { const idx = state.config.sections.indexOf('custom:'+sec.title); if (idx>=0) state.config.sections.splice(idx,1); const si = state.config.customSections.indexOf(sec); if (si>=0) state.config.customSections.splice(si,1); renderSections(); } }, ['删除板块']) ])
     ]);
     
-    const settingRow = h('div', { class: 'row', style: 'margin-top:8px; align-items:center; gap:10px;' }, [
+    const settingRow = h('div', { class: 'row', style: 'margin-top:8px; align-items:center; gap:10px; flex-wrap:wrap;' }, [
       h('label', {}, [
         h('input', { class: 'big-check', type: 'checkbox', checked: sec.multiple !== false, onchange: (e) => { sec.multiple = e.target.checked; } }),
         document.createTextNode(' 可多选')
-      ])
+      ]),
+      h('span', { text: '显示条件（可选）：', style: 'margin-left:16px; color:#876; font-size:13px;' }),
+      h('input', { type: 'text', value: sec.showIf || '', placeholder: '如 性向:GB', style: 'width:180px;', oninput: (e) => { sec.showIf = e.target.value.trim() || undefined; } })
     ]);
 
-    const table = h('table', { class: 'tags-table fixed' });
-    const thead = h('thead', {}, [ h('tr', {}, [ h('th', { class: 'col-handle', text: ' ' }), h('th', { class: 'col-name', text: '名称' }), h('th', { class: 'col-op', text: '操作' }) ]) ]);
+    const table = h('table', { class: 'tags-table' });
+    const thead = h('thead', {}, [ 
+      h('tr', {}, [ 
+        h('th', { class: 'col-handle', text: ' ' }), 
+        h('th', { text: '名称' }), 
+        h('th', { text: '启用条件', style: 'width:160px;' }), 
+        h('th', { text: '互斥项', style: 'width:140px;' }), 
+        h('th', { class: 'right', text: '操作', style: 'width:80px;' }) 
+      ]) 
+    ]);
     const tbody = h('tbody');
     (sec.items || []).forEach((item, idx) => {
       const tr = h('tr', { class: 'simple-row', draggable: 'true', 'data-key': 'section-'+sec.title }, [
         h('td', { class: 'col-handle' }, [ h('span', { class: 'drag-handle', title: '拖动排序', onmousedown: () => { dragState.allowed = true; dragState.simpleKey = 'section-'+sec.title; } }) ]),
-        h('td', { class: 'col-name' }, [ h('input', { type: 'text', value: item.label || '', placeholder: '名称', style: 'width:80%;', oninput: (e) => { item.label = e.target.value; item.value = e.target.value; } }) ]),
-        h('td', { class: 'col-op' }, [ h('button', { class: 'btn danger small', onclick: () => { sec.items.splice(idx,1); renderSections(); } }, ['删除']) ])
+        h('td', {}, [ h('input', { type: 'text', value: item.label || '', placeholder: '名称', style: 'width:100%;', oninput: (e) => { item.label = e.target.value; item.value = e.target.value; } }) ]),
+        h('td', {}, [ h('input', { type: 'text', value: item.enableIf || '', placeholder: '如 性向:GB', style: 'width:100%;', oninput: (e) => { item.enableIf = e.target.value.trim() || undefined; } }) ]),
+        h('td', {}, [ h('input', { type: 'text', value: (item.mutexWith || []).join(','), placeholder: '如 原创,同人', style: 'width:100%;', oninput: (e) => { const v = e.target.value.trim(); item.mutexWith = v ? v.split(',').map(x => x.trim()).filter(Boolean) : undefined; } }) ]),
+        h('td', { class: 'right' }, [ h('button', { class: 'btn danger small', onclick: () => { sec.items.splice(idx,1); renderSections(); } }, ['删除']) ])
       ]);
       tbody.appendChild(tr);
     });

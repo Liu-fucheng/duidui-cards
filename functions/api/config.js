@@ -111,9 +111,15 @@ function sanitizeConfig(input) {
       .map(s => ({
         title: s.title,
         multiple: s.multiple !== false,
+        showIf: typeof s.showIf === 'string' ? s.showIf : undefined,
         items: (Array.isArray(s.items) ? s.items : [])
           .filter(it => it && (typeof it.label === 'string' || typeof it.value === 'string'))
-          .map(it => ({ label: it.label || it.value, value: it.value || it.label }))
+          .map(it => ({ 
+            label: it.label || it.value, 
+            value: it.value || it.label,
+            enableIf: typeof it.enableIf === 'string' ? it.enableIf : undefined,
+            mutexWith: Array.isArray(it.mutexWith) ? it.mutexWith.filter(x => typeof x === 'string') : undefined
+          }))
       }));
   }
   // 板块顺序

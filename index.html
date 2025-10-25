@@ -702,12 +702,19 @@
           const inputType = sec.multiple === false ? 'radio' : 'checkbox';
           const items = (sec.items || []).map((it, i) => {
             const name = sec.multiple === false ? `custom_${title}` : `custom_${title}[]`;
-            return `<label><input type="${inputType}" name="${name}" value="${it.value}"> ${it.label}</label>`;
+            const disabled = it.enableIf ? `data-enableif="${it.enableIf}"` : '';
+            const mutex = it.mutexWith && it.mutexWith.length ? `data-mutex="${it.mutexWith.join(',')}"` : '';
+            return `<label><input type="${inputType}" name="${name}" value="${it.value}" ${disabled} ${mutex}> ${it.label}</label>`;
           }).join('');
-          htmls.push(`<div class="field"><label class="group-label">${sec.title}:</label><div class="inline-options">${items}</div></div>`);
+          const fieldId = `section_${title.replace(/\s/g,'_')}`;
+          const showIf = sec.showIf ? `data-showif="${sec.showIf}"` : '';
+          htmls.push(`<div class="field" id="${fieldId}" ${showIf}><label class="group-label">${sec.title}:</label><div class="inline-options">${items}</div></div>`);
         }
       });
       secHost.innerHTML = htmls.join('');
+      
+      // 绑定依赖与互斥逻辑
+      bindConditionalLogic();
     }
 
     // Tags 初次渲染
@@ -815,6 +822,57 @@
     add(base);
     add(extra);
     return Array.from(byName.values());
+  }
+
+  function bindConditionalLogic() {
+    // 监听所有 checkbox/radio 变化，动态显示/禁用板块和选项
+    document.querySelectorAll('input[type="checkbox"], input[type="radio"]').forEach(input => {
+      input.addEventListener('change', updateConditionalUI);
+    });
+    updateConditionalUI();
+  }
+
+  function updateConditionalUI() {
+    const formData = new FormData(document.getElementById('uploadForm'));
+    const selected = {};
+    for (const [k, v] of formData.entries()) {
+      if (!selected[k]) selected[k] = [];
+      selected[k].push(v);
+    }
+
+    // 板块显示条件
+    document.querySelectorAll('.field[data-showif]').forEach(field => {
+      const cond = field.getAttribute('data-showif');
+      field.style.display = checkCondition(cond, selected) ? '' : 'none';
+    });
+
+    // 选项启用条件
+    document.querySelectorAll('input[data-enableif]').forEach(input => {
+      const cond = input.getAttribute('data-enableif');
+      input.disabled = !checkCondition(cond, selected);
+    });
+
+    // 互斥逻辑
+    document.querySelectorAll('input[data-mutex]').forEach(input => {
+      if (!input.checked) return;
+      const mutexValues = (input.getAttribute('data-mutex') || '').split(',').map(x => x.trim()).filter(Boolean);
+      const name = input.name;
+      document.querySelectorAll(`input[name="${name}"]`).forEach(other => {
+        if (other === input) return;
+        if (mutexValues.includes(other.value)) {
+          other.checked = false;
+        }
+      });
+    });
+  }
+
+  function checkCondition(cond, selected) {
+    if (!cond) return true;
+    const parts = cond.split(':');
+    if (parts.length !== 2) return true;
+    const [field, value] = parts.map(x => x.trim());
+    const vals = selected[field] || selected[field+'[]'] || [];
+    return vals.includes(value);
   }
 
 
