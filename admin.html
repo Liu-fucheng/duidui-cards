@@ -274,7 +274,7 @@
       // 分类设置：是否作为整类可单独点选（胶囊）
       const pillRow = h('div', { class: 'row', style: 'margin-top:8px; align-items:center; gap:10px;' }, [
         h('label', {}, [
-          h('input', { type: 'checkbox', checked: !!cat.asPill, onchange: (e) => { cat.asPill = e.target.checked; renderCategories(); } }),
+          h('input', { type: 'checkbox', checked: !!cat.asPill, onchange: (e) => { cat.asPill = e.target.checked; } }),
           document.createTextNode(' 整类可点选（胶囊）')
         ]),
         h('span', { text: ' 标记值/文案：' }),

@@ -717,11 +717,14 @@
 
     // 监听分区变化，实时切换标签集合
     const categoryInput = document.getElementById('category');
-    if (categoryInput && !categoryInput.dataset.bound) {
+    if (categoryInput) {
       categoryInput.addEventListener('input', () => {
-        renderTagsByPartition();
-      });
-      categoryInput.dataset.bound = '1';
+        // 防抖：避免第三方脚本触发频繁渲染导致卡顿
+        clearTimeout(window.__renderTagsDebounce);
+        window.__renderTagsDebounce = setTimeout(() => {
+          renderTagsByPartition();
+        }, 120);
+      }, { passive: true });
     }
   }
 
