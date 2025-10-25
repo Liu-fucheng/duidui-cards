@@ -98,14 +98,20 @@
         <div class="category">
           <div class="category-head">
             <div class="row"><div style="font-weight:700;">分区专属 Tags</div></div>
-            <div class="muted">每个分区 = 公共 + 专属；支持分类设为“整类可单选胶囊”。</div>
+            <div class="muted">每个分区 = 公共 + 专属；支持分类设为"整类可单选胶囊"。</div>
           </div>
           <div class="space"></div>
           <div id="partitions"></div>
         </div>
       </div>
       <div class="space"></div>
-      <button class="btn" id="addCategory">+ 新增分类</button>
+      <div class="row" style="justify-content: space-between; align-items: center;">
+        <button class="btn" id="addCategory">+ 新增分类</button>
+        <div class="row">
+          <button class="btn" id="reloadConfig2">重新加载</button>
+          <button class="btn primary" id="saveConfig2">保存更改</button>
+        </div>
+      </div>
       <div id="status" class="status"></div>
     </div>
   </div>
@@ -462,7 +468,9 @@
     // UI wiring
     document.getElementById('addCategory').addEventListener('click', addCategory);
     document.getElementById('saveConfig').addEventListener('click', saveConfig);
+    document.getElementById('saveConfig2').addEventListener('click', saveConfig);
     document.getElementById('reloadConfig').addEventListener('click', () => loadConfig().then(() => setStatus('已重新加载')).catch(e => setStatus('加载失败：' + e.message, true)));
+    document.getElementById('reloadConfig2').addEventListener('click', () => loadConfig().then(() => setStatus('已重新加载')).catch(e => setStatus('加载失败：' + e.message, true)));
 
     document.getElementById('toggleToken').addEventListener('click', () => {
       const el = document.getElementById('adminToken');

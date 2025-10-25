@@ -695,6 +695,12 @@
 
   // 渲染选项（使用简单的 checkbox，Material UI 样式会自动应用）
   function renderOptions() {
+    // 兜底：确保 CONFIG 有必要的数组
+    if (!CONFIG.orientations) CONFIG.orientations = [];
+    if (!CONFIG.backgrounds) CONFIG.backgrounds = [];
+    if (!CONFIG.limits) CONFIG.limits = [];
+    if (!CONFIG.tagCategories) CONFIG.tagCategories = [];
+    
     // 性向
     const orientationOptions = document.getElementById('orientationOptions');
     orientationOptions.innerHTML = CONFIG.orientations.map((opt, i) => `
