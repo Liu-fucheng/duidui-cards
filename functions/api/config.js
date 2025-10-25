@@ -118,6 +118,12 @@ function sanitizeConfig(input) {
           .map(it => ({ label: it.label || it.value, value: it.value || it.label }))
       }));
   }
+  // 板块顺序（字符串数组，如：['partition','orientations','backgrounds','limits','custom:题材']）
+  if (input && Array.isArray(input.sections)) {
+    output.sections = (input.sections || [])
+      .filter(x => typeof x === 'string')
+      .slice(0, 100);
+  }
   if (input && input.tagPartitions && typeof input.tagPartitions === 'object') {
     const p = input.tagPartitions;
     output.tagPartitions = {

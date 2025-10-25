@@ -83,8 +83,8 @@
     <div class="card">
       <div class="row" style="justify-content: space-between;">
         <div>
-          <div style="font-weight:700;">Tag 分类</div>
-          <div class="muted">编辑分类、标签的显示名和提交值，保存后前台自动读取最新配置。</div>
+          <div style="font-weight:700;">板块管理</div>
+          <div class="muted">拖拽左侧把手可调整板块顺序；每个板块内可增删条目。</div>
         </div>
         <div class="row">
           <button class="btn" id="reloadConfig">重新加载</button>
@@ -92,34 +92,10 @@
         </div>
       </div>
       <div class="space"></div>
-      <div id="simpleSections" class="grid"></div>
-      <div class="space"></div>
-      <div id="categories" class="grid"></div>
-      <div class="space"></div>
-      <div class="card" style="padding:0;border:none;box-shadow:none;background:transparent;">
-        <div class="category">
-          <div class="category-head">
-            <div class="row"><div style="font-weight:700;">分区专属 Tags</div></div>
-            <div class="muted">非边限/边限/深渊的专属分类，前台会自动合并到"公共"（上方 Tag 分类）后显示。</div>
-          </div>
-          <div class="space"></div>
-          <div id="partitions"></div>
-        </div>
-      </div>
-      <div class="space"></div>
-      <div class="card" style="padding:0;border:none;box-shadow:none;background:transparent;">
-        <div class="category">
-          <div class="category-head">
-            <div class="row"><div style="font-weight:700;">自定义板块（与性向/背景/限制同级）</div></div>
-            <div class="row"><button class="btn" id="addSection">+ 新增板块</button></div>
-          </div>
-          <div class="space"></div>
-          <div id="customSections"></div>
-        </div>
-      </div>
+      <div id="sectionsHost" class="grid"></div>
       <div class="space"></div>
       <div class="row" style="justify-content: space-between; align-items: center;">
-        <button class="btn" id="addCategory">+ 新增分类</button>
+        <button class="btn" id="addSection">+ 新增板块</button>
         <div class="row">
           <button class="btn" id="reloadConfig2">重新加载</button>
           <button class="btn primary" id="saveConfig2">保存更改</button>
@@ -163,101 +139,178 @@
       const data = await res.json();
       if (!data.success) throw new Error(data.message || '加载失败');
       state.config = data.config || {};
-      renderSimpleSections();
-      renderCategories();
+      normalizeSections();
+      renderSections();
     }
 
-  function renderCategories() {
-      const container = document.getElementById('categories');
-      container.innerHTML = '';
-      const categories = Array.isArray(state.config.tagCategories) ? state.config.tagCategories : [];
-    categories.forEach((cat, idx) => container.appendChild(renderCategory(cat, idx, { scope: 'root' })));
+    function normalizeSections() {
+      // 生成统一的 sections 顺序
+      if (!Array.isArray(state.config.sections)) {
+        state.config.sections = ['partition', 'orientations', 'backgrounds', 'limits'];
+      }
+      // 确保已知内置板块存在
+      ['partition','orientations','backgrounds','limits'].forEach(k => {
+        if (!state.config.sections.includes(k)) state.config.sections.unshift(k);
+      });
     }
 
-  function renderSimpleSections() {
-    const container = document.getElementById('simpleSections');
-    container.innerHTML = '';
-    container.appendChild(createSimpleSection('orientations', '性向'));
-    container.appendChild(createSimpleSection('backgrounds', '背景'));
-    container.appendChild(createSimpleSection('limits', '限制'));
+    function renderSections() {
+      const host = document.getElementById('sectionsHost');
+      host.innerHTML = '';
+      const order = state.config.sections || [];
+      order.forEach((key, idx) => {
+        if (key === 'partition') host.appendChild(renderPartitionSection(idx));
+        else if (key === 'orientations') host.appendChild(createSimpleSection('orientations', '性向', idx, true));
+        else if (key === 'backgrounds') host.appendChild(createSimpleSection('backgrounds', '背景', idx, true));
+        else if (key === 'limits') host.appendChild(createSimpleSection('limits', '限制', idx, true));
+        else if (key.startsWith('custom:')) {
+          const title = key.slice(7);
+          host.appendChild(renderCustomSectionByTitle(title, idx));
+        }
+      });
+    }
+
+    function renderPartitionSection(sectionIndex) {
+      const wrap = h('div', { class: 'category', draggable: 'true' });
+      const head = h('div', { class: 'category-head' }, [
+        h('div', { class: 'row' }, [
+          h('span', { class: 'drag-handle', title: '拖动排序', onmousedown: () => { dragState.allowed = true; } }),
+          h('div', { text: '分区专属 Tags', style: 'font-weight:600;' })
+        ]),
+        h('div', {}, [ h('span', { class: 'muted', text: '包含 公共/非边限/边限/深渊' }) ])
+      ]);
+      const body = h('div', { id: 'partitions' });
       renderPartitions();
-    renderCustomSections();
-  }
+      wrap.appendChild(head);
+      wrap.appendChild(body);
+      // 拖拽排序支持
+      wrap.addEventListener('dragstart', (e) => { if (!dragState.allowed) { e.preventDefault(); return; } dragState.mode='section'; dragState.srcIndex = sectionIndex; wrap.classList.add('dragging'); setTimeout(()=>{dragState.allowed=false;},0); });
+      wrap.addEventListener('dragend', ()=> wrap.classList.remove('dragging'));
+      wrap.addEventListener('dragover', (e)=>{ if (dragState.mode==='section') { e.preventDefault(); wrap.classList.add('drag-over'); }});
+      wrap.addEventListener('dragleave', ()=> wrap.classList.remove('drag-over'));
+      wrap.addEventListener('drop', (e)=>{ e.preventDefault(); wrap.classList.remove('drag-over'); if (dragState.mode!=='section') return; const from=dragState.srcIndex; const to=sectionIndex; if (from===to) return; const arr=state.config.sections; const [m]=arr.splice(from,1); arr.splice(to,0,m); renderSections(); });
+      return wrap;
+    }
 
-  function createSimpleSection(key, title) {
-    if (!Array.isArray(state.config[key])) state.config[key] = [];
-    const wrap = h('div', { class: 'category' });
-    const head = h('div', { class: 'category-head' }, [
-      h('div', { class: 'row' }, [ h('div', { text: title, style: 'font-weight:600;' }) ]),
-      h('div', {}, [ h('button', { class: 'btn small', onclick: () => addSimple(key) }, ['+ 添加']) ])
-    ]);
+    function createSimpleSection(key, title, sectionIndex, isSection) {
+      if (!Array.isArray(state.config[key])) state.config[key] = [];
+      const wrap = h('div', { class: 'category', draggable: isSection ? 'true' : 'false' });
+      const head = h('div', { class: 'category-head' }, [
+        h('div', { class: 'row' }, [
+          isSection ? h('span', { class: 'drag-handle', title: '拖动排序', onmousedown: () => { dragState.allowed = true; } }) : document.createTextNode(''),
+          h('div', { text: title, style: 'font-weight:600;' })
+        ]),
+        h('div', {}, [ h('button', { class: 'btn small', onclick: () => addSimple(key) }, ['+ 添加']) ])
+      ]);
 
       const table = h('table', { class: 'tags-table fixed' });
-    const thead = h('thead', {}, [
-      h('tr', {}, [
+      const thead = h('thead', {}, [
+        h('tr', {}, [
           h('th', { class: 'col-handle', text: ' ' }),
           h('th', { class: 'col-name', text: '名称' }),
           h('th', { class: 'col-op', text: '操作' })
-      ])
-    ]);
-    const tbody = h('tbody');
-    state.config[key].forEach((item, idx) => {
-      const tr = h('tr', { class: 'simple-row', draggable: 'true', 'data-key': key }, [
-        h('td', { class: 'col-handle' }, [ h('span', { class: 'drag-handle', title: '拖动排序', onmousedown: () => { dragState.allowed = true; dragState.simpleKey = key; } }) ]),
-        h('td', { class: 'col-name' }, [ h('input', { type: 'text', value: item.label || '', placeholder: '名称', style: 'width:80%;', oninput: (e) => { item.label = e.target.value; item.value = e.target.value; } }) ]),
-        h('td', { class: 'col-op' }, [ h('button', { class: 'btn danger small', onclick: () => removeSimple(key, idx) }, ['删除']) ])
+        ])
       ]);
-      tbody.appendChild(tr);
-    });
-    table.appendChild(thead);
-    table.appendChild(tbody);
+      const tbody = h('tbody');
+      state.config[key].forEach((item, idx) => {
+        const tr = h('tr', { class: 'simple-row', draggable: 'true', 'data-key': key }, [
+          h('td', { class: 'col-handle' }, [ h('span', { class: 'drag-handle', title: '拖动排序', onmousedown: () => { dragState.allowed = true; dragState.simpleKey = key; } }) ]),
+          h('td', { class: 'col-name' }, [ h('input', { type: 'text', value: item.label || '', placeholder: '名称', style: 'width:80%;', oninput: (e) => { item.label = e.target.value; item.value = e.target.value; } }) ]),
+          h('td', { class: 'col-op' }, [ h('button', { class: 'btn danger small', onclick: () => removeSimple(key, idx) }, ['删除']) ])
+        ]);
+        tbody.appendChild(tr);
+      });
+      table.appendChild(thead);
+      table.appendChild(tbody);
 
-    wrap.appendChild(head);
-    wrap.appendChild(table);
-    return wrap;
-  }
+      wrap.appendChild(head);
+      wrap.appendChild(table);
 
-  function addSimple(key) {
-    if (!Array.isArray(state.config[key])) state.config[key] = [];
-    state.config[key].push({ label: '', value: '' });
-    renderSimpleSections();
-  }
+      if (isSection) {
+        wrap.addEventListener('dragstart', (e) => { if (!dragState.allowed) { e.preventDefault(); return; } dragState.mode='section'; dragState.srcIndex = sectionIndex; wrap.classList.add('dragging'); setTimeout(()=>{dragState.allowed=false;},0); });
+        wrap.addEventListener('dragend', ()=> wrap.classList.remove('dragging'));
+        wrap.addEventListener('dragover', (e)=>{ if (dragState.mode==='section') { e.preventDefault(); wrap.classList.add('drag-over'); }});
+        wrap.addEventListener('dragleave', ()=> wrap.classList.remove('drag-over'));
+        wrap.addEventListener('drop', (e)=>{ e.preventDefault(); wrap.classList.remove('drag-over'); if (dragState.mode!=='section') return; const from=dragState.srcIndex; const to=sectionIndex; if (from===to) return; const arr=state.config.sections; const [m]=arr.splice(from,1); arr.splice(to,0,m); renderSections(); });
+      }
+      return wrap;
+    }
 
-  function removeSimple(key, idx) {
-    state.config[key].splice(idx, 1);
-    renderSimpleSections();
-  }
-
-  function renderPartitions() {
-    const host = document.getElementById('partitions');
-    host.innerHTML = '';
-    const keys = [
-      { k: 'feibianxian', name: '非边限' },
-      { k: 'bianxian', name: '边限' },
-      { k: 'shenyuan', name: '深渊' }
-    ];
-    if (!state.config.tagPartitions) state.config.tagPartitions = {};
-    keys.forEach(({ k, name }) => {
-      const section = h('div', { class: 'category', style: 'margin-top:12px;' });
+    function renderCustomSectionByTitle(title, sectionIndex) {
+      if (!Array.isArray(state.config.customSections)) state.config.customSections = [];
+      let sec = state.config.customSections.find(s => s && s.title === title);
+      if (!sec) { sec = { title, items: [] }; state.config.customSections.push(sec); }
+      const wrap = h('div', { class: 'category', draggable: 'true' });
       const head = h('div', { class: 'category-head' }, [
-        h('div', { class: 'row' }, [ h('div', { text: name, style: 'font-weight:600;' }) ]),
-        h('div', {}, [ h('button', { class: 'btn small', onclick: () => addPartitionCategory(k) }, ['+ 添加分类']) ])
+        h('div', { class: 'row' }, [
+          h('span', { class: 'drag-handle', title: '拖动排序', onmousedown: () => { dragState.allowed = true; } }),
+          h('input', { type: 'text', value: sec.title || '', placeholder: '板块名称', style: 'width:240px;', oninput: (e) => { const old = sec.title; sec.title = e.target.value; const idx = state.config.sections.indexOf('custom:'+old); if (idx>=0) state.config.sections[idx] = 'custom:'+sec.title; } })
+        ]),
+        h('div', {}, [ h('button', { class: 'btn small', onclick: () => { (sec.items || (sec.items=[])).push({ label: '', value: '' }); renderSections(); } }, ['+ 添加']) ])
       ]);
-      const list = h('div', { class: 'grid' });
-      const arr = Array.isArray(state.config.tagPartitions[k]) ? state.config.tagPartitions[k] : (state.config.tagPartitions[k] = []);
-      arr.forEach((cat, idx) => list.appendChild(renderCategory(cat, idx, { scope: 'partition', key: k })));
-      section.appendChild(head);
-      section.appendChild(list);
-      host.appendChild(section);
-    });
-  }
+      const table = h('table', { class: 'tags-table fixed' });
+      const thead = h('thead', {}, [ h('tr', {}, [ h('th', { class: 'col-handle', text: ' ' }), h('th', { class: 'col-name', text: '名称' }), h('th', { class: 'col-op', text: '操作' }) ]) ]);
+      const tbody = h('tbody');
+      (sec.items || []).forEach((item, idx) => {
+        const tr = h('tr', { class: 'simple-row', draggable: 'true', 'data-key': 'section-'+sec.title }, [
+          h('td', { class: 'col-handle' }, [ h('span', { class: 'drag-handle', title: '拖动排序', onmousedown: () => { dragState.allowed = true; dragState.simpleKey = 'section-'+sec.title; } }) ]),
+          h('td', { class: 'col-name' }, [ h('input', { type: 'text', value: item.label || '', placeholder: '名称', style: 'width:80%;', oninput: (e) => { item.label = e.target.value; item.value = e.target.value; } }) ]),
+          h('td', { class: 'col-op' }, [ h('button', { class: 'btn danger small', onclick: () => { sec.items.splice(idx,1); renderSections(); } }, ['删除']) ])
+        ]);
+        tbody.appendChild(tr);
+      });
+      table.appendChild(thead); table.appendChild(tbody);
+      wrap.appendChild(head); wrap.appendChild(table);
+      // section 拖拽支持
+      wrap.addEventListener('dragstart', (e) => { if (!dragState.allowed) { e.preventDefault(); return; } dragState.mode='section'; dragState.srcIndex = sectionIndex; wrap.classList.add('dragging'); setTimeout(()=>{dragState.allowed=false;},0); });
+      wrap.addEventListener('dragend', ()=> wrap.classList.remove('dragging'));
+      wrap.addEventListener('dragover', (e)=>{ if (dragState.mode==='section') { e.preventDefault(); wrap.classList.add('drag-over'); }});
+      wrap.addEventListener('dragleave', ()=> wrap.classList.remove('drag-over'));
+      wrap.addEventListener('drop', (e)=>{ e.preventDefault(); wrap.classList.remove('drag-over'); if (dragState.mode!=='section') return; const from=dragState.srcIndex; const to=sectionIndex; if (from===to) return; const arr=state.config.sections; const [m]=arr.splice(from,1); arr.splice(to,0,m); renderSections(); });
+      return wrap;
+    }
 
-  function addPartitionCategory(key) {
-    if (!state.config.tagPartitions) state.config.tagPartitions = {};
-    const arr = Array.isArray(state.config.tagPartitions[key]) ? state.config.tagPartitions[key] : (state.config.tagPartitions[key] = []);
-    arr.push({ category: '新分类', asPill: false, tags: [] });
-    renderPartitions();
-  }
+    function addSimple(key) {
+      if (!Array.isArray(state.config[key])) state.config[key] = [];
+      state.config[key].push({ label: '', value: '' });
+      renderSections();
+    }
+
+    function removeSimple(key, idx) {
+      state.config[key].splice(idx, 1);
+      renderSections();
+    }
+
+    function renderPartitions() {
+      const host = document.getElementById('partitions');
+      host.innerHTML = '';
+      const keys = [
+        { k: 'feibianxian', name: '非边限' },
+        { k: 'bianxian', name: '边限' },
+        { k: 'shenyuan', name: '深渊' }
+      ];
+      if (!state.config.tagPartitions) state.config.tagPartitions = {};
+      keys.forEach(({ k, name }) => {
+        const section = h('div', { class: 'category', style: 'margin-top:12px;' });
+        const head = h('div', { class: 'category-head' }, [
+          h('div', { class: 'row' }, [ h('div', { text: name, style: 'font-weight:600;' }) ]),
+          h('div', {}, [ h('button', { class: 'btn small', onclick: () => addPartitionCategory(k) }, ['+ 添加分类']) ])
+        ]);
+        const list = h('div', { class: 'grid' });
+        const arr = Array.isArray(state.config.tagPartitions[k]) ? state.config.tagPartitions[k] : (state.config.tagPartitions[k] = []);
+        arr.forEach((cat, idx) => list.appendChild(renderCategory(cat, idx, { scope: 'partition', key: k })));
+        section.appendChild(head);
+        section.appendChild(list);
+        host.appendChild(section);
+      });
+    }
+
+    function addPartitionCategory(key) {
+      if (!state.config.tagPartitions) state.config.tagPartitions = {};
+      const arr = Array.isArray(state.config.tagPartitions[key]) ? state.config.tagPartitions[key] : (state.config.tagPartitions[key] = []);
+      arr.push({ category: '新分类', asPill: false, tags: [] });
+      renderPartitions();
+    }
 
     function renderCategory(cat, index, ctx) {
       const box = h('div', { class: 'category', draggable: 'true' });
@@ -354,7 +407,7 @@
       return box;
     }
 
-  function addCategory() {
+    function addCategory() {
       if (!Array.isArray(state.config.tagCategories)) state.config.tagCategories = [];
       state.config.tagCategories.push({ category: '新分类', asPill: false, tags: [] });
       renderCategories();
@@ -512,8 +565,10 @@
 
   document.getElementById('addSection').addEventListener('click', () => {
     if (!Array.isArray(state.config.customSections)) state.config.customSections = [];
-    state.config.customSections.push({ title: '新板块', items: [] });
-    renderCustomSections();
+    const title = '新板块';
+    state.config.customSections.push({ title, items: [] });
+    state.config.sections.push('custom:'+title);
+    renderSections();
   });
 
     async function saveConfig() {
@@ -526,7 +581,8 @@
         backgrounds: state.config.backgrounds,
         limits: state.config.limits,
         tagPartitions: state.config.tagPartitions,
-        customSections: state.config.customSections
+        customSections: state.config.customSections,
+        sections: state.config.sections
       };
       try {
         const res = await fetch('/api/config', {
@@ -549,7 +605,6 @@
     const dragState = { mode: null, srcCat: null, srcTag: null, allowed: false, tagCatIndex: null, simpleKey: null, srcIndex: null };
 
     // UI wiring
-    document.getElementById('addCategory').addEventListener('click', addCategory);
     document.getElementById('saveConfig').addEventListener('click', saveConfig);
     document.getElementById('saveConfig2').addEventListener('click', saveConfig);
     document.getElementById('reloadConfig').addEventListener('click', () => loadConfig().then(() => setStatus('已重新加载')).catch(e => setStatus('加载失败：' + e.message, true)));
