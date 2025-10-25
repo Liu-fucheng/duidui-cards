@@ -339,8 +339,9 @@
       renderPartitions();
     }
 
-    function renderCategory(cat, index, ctx) {
-      const box = h('div', { class: 'category', draggable: 'true' });
+  function renderCategory(cat, index, ctx) {
+      const scope = (ctx && ctx.scope === 'partition') ? 'partition' : 'normal';
+      const box = h('div', { class: 'category', draggable: 'true', 'data-scope': scope, 'data-index': String(index), 'data-partition-key': (scope === 'partition' ? (ctx && ctx.key || '') : '') });
       const head = h('div', { class: 'category-head' }, [
         h('div', { class: 'row' }, [
           h('span', { class: 'drag-handle', title: '拖动排序', 'data-role': 'cat-handle', onmousedown: () => { dragState.allowed = true; } }),
@@ -456,13 +457,14 @@
       if (!dragState.allowed) { e.preventDefault(); return; }
       const tbody = tr.parentElement;
       const catBox = tr.closest('.category');
-      const allCategories = Array.from(document.querySelectorAll('#categories .category'));
-      const catIndex = allCategories.indexOf(catBox);
+      const catIndex = catBox ? parseInt(catBox.getAttribute('data-index') || '-1', 10) : -1;
       const rows = Array.from(tbody.querySelectorAll('tr.tag-row'));
       const rowIndex = rows.indexOf(tr);
       dragState.mode = 'tag';
       dragState.srcCat = catIndex;
       dragState.srcTag = rowIndex;
+      dragState.scope = catBox ? catBox.getAttribute('data-scope') : 'normal';
+      dragState.partitionKey = catBox ? catBox.getAttribute('data-partition-key') : '';
       e.dataTransfer && (e.dataTransfer.effectAllowed = 'move');
       tr.classList.add('dragging');
       setTimeout(() => { dragState.allowed = false; }, 0);
@@ -488,20 +490,85 @@
       tr.classList.remove('drag-over');
       if (dragState.mode !== 'tag') return;
       // 仅限同分类内排序
-      const allCategories = Array.from(document.querySelectorAll('#categories .category'));
       const targetCatBox = tr.closest('.category');
-      const targetCatIndex = allCategories.indexOf(targetCatBox);
+      const targetCatIndex = targetCatBox ? parseInt(targetCatBox.getAttribute('data-index') || '-1', 10) : -1;
       if (targetCatIndex !== dragState.srcCat) return;
       const rows = Array.from(tr.parentElement.querySelectorAll('tr.tag-row'));
       const to = rows.indexOf(tr);
       const from = dragState.srcTag;
       if (from === undefined || to === undefined || from === to) return;
-      const cat = (state.config.tagCategories || [])[targetCatIndex];
+      let cat;
+      if (dragState.scope === 'partition') {
+        const arr = (state.config.tagPartitions && state.config.tagPartitions[dragState.partitionKey]) || [];
+        cat = arr[targetCatIndex];
+      } else {
+        cat = (state.config.tagCategories || [])[targetCatIndex];
+      }
       if (!cat || !Array.isArray(cat.tags)) return;
       const [m] = cat.tags.splice(from, 1);
       cat.tags.splice(to, 0, m);
       setStatus('已调整标签顺序（未保存）');
-      renderCategories();
+      (dragState.scope === 'partition') ? renderPartitions() : renderCategories();
+    });
+
+    // --- 触摸端（移动设备）对标签行的排序降级支持 ---
+    let touchScrollBlock = false;
+    document.addEventListener('touchstart', (e) => {
+      const handle = e.target && e.target.closest && e.target.closest('tr.tag-row .drag-handle');
+      if (!handle) return;
+      const tr = handle.closest('tr.tag-row');
+      if (!tr) return;
+      const catBox = tr.closest('.category');
+      dragState.mode = 'touch-tag';
+      dragState.touchActive = true;
+      dragState.srcRow = tr;
+      dragState.scope = catBox ? catBox.getAttribute('data-scope') : 'normal';
+      dragState.partitionKey = catBox ? catBox.getAttribute('data-partition-key') : '';
+      dragState.srcCat = catBox ? parseInt(catBox.getAttribute('data-index') || '-1', 10) : -1;
+      const rows = Array.from(tr.parentElement.querySelectorAll('tr.tag-row'));
+      dragState.srcTag = rows.indexOf(tr);
+      tr.classList.add('dragging');
+      touchScrollBlock = true;
+      e.preventDefault();
+    }, { passive: false });
+
+    document.addEventListener('touchmove', (e) => {
+      if (!dragState.touchActive) return;
+      const t = e.touches[0];
+      const el = document.elementFromPoint(t.clientX, t.clientY);
+      const over = el && el.closest && el.closest('tr.tag-row');
+      document.querySelectorAll('tr.tag-row.drag-over').forEach(x => x.classList.remove('drag-over'));
+      if (over && over.parentElement === dragState.srcRow.parentElement) {
+        over.classList.add('drag-over');
+        dragState.touchOverRow = over;
+      }
+      if (touchScrollBlock) e.preventDefault();
+    }, { passive: false });
+
+    document.addEventListener('touchend', () => {
+      if (!dragState.touchActive) return;
+      const srcRow = dragState.srcRow;
+      const overRow = dragState.touchOverRow;
+      const rows = Array.from(srcRow.parentElement.querySelectorAll('tr.tag-row'));
+      const from = dragState.srcTag;
+      const to = overRow ? rows.indexOf(overRow) : from;
+      srcRow.classList.remove('dragging');
+      if (overRow) overRow.classList.remove('drag-over');
+      dragState.touchActive = false;
+      touchScrollBlock = false;
+      if (from === undefined || to === undefined || from === to) return;
+      let cat;
+      if (dragState.scope === 'partition') {
+        const arr = (state.config.tagPartitions && state.config.tagPartitions[dragState.partitionKey]) || [];
+        cat = arr[dragState.srcCat];
+      } else {
+        cat = (state.config.tagCategories || [])[dragState.srcCat];
+      }
+      if (!cat || !Array.isArray(cat.tags)) return;
+      const [m] = cat.tags.splice(from, 1);
+      cat.tags.splice(to, 0, m);
+      setStatus('已调整标签顺序（未保存）');
+      (dragState.scope === 'partition') ? renderPartitions() : renderCategories();
     });
 
     // --- 拖拽（简单数组：性向/背景/限制） ---
@@ -638,7 +705,7 @@
      }
 
     // 拖拽状态
-    const dragState = { mode: null, srcCat: null, srcTag: null, allowed: false, tagCatIndex: null, simpleKey: null, srcIndex: null };
+    const dragState = { mode: null, srcCat: null, srcTag: null, allowed: false, tagCatIndex: null, simpleKey: null, srcIndex: null, scope: 'normal', partitionKey: '', touchActive: false, srcRow: null, touchOverRow: null };
 
     // UI wiring
     document.getElementById('saveConfig').addEventListener('click', saveConfig);
