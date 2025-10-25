@@ -879,8 +879,20 @@
     const parts = cond.split(':');
     if (parts.length !== 2) return true;
     const [field, value] = parts.map(x => x.trim());
-    const vals = selected[field] || selected[field+'[]'] || [];
-    return vals.includes(value);
+    
+    // 智能匹配：尝试多种字段名变体
+    const variants = [
+      field,                    // 原样 如 性向
+      `custom_${field}`,        // 单选 如 custom_性向
+      `custom_${field}[]`       // 多选 如 custom_性向[]
+    ];
+    
+    for (const v of variants) {
+      const vals = selected[v] || [];
+      if (vals.includes(value)) return true;
+    }
+    
+    return false;
   }
 
 
