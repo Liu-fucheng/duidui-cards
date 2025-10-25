@@ -737,10 +737,10 @@
     tagsOptions.innerHTML = categories.map((cat) => {
       const pills = [];
       // 类胶囊（整类可点选）
-      if (cat.asPill && (cat.pillValue || cat.category)) {
+      if (cat.asPill && cat.category) {
         const id = `tag${tagIndex++}`;
         const label = cat.pillLabel || cat.category;
-        const value = (cat.pillValue || cat.pillLabel || cat.category);
+        const value = cat.category;
         pills.push(`<input class="pill-input" type="checkbox" id="${id}" name="tags" value="${value}">
         <label class="pill ripple" for="${id}">${label}</label>`);
       }

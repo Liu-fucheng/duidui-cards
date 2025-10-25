@@ -45,7 +45,7 @@
     .dragging { opacity: 0.6; }
     .drag-over { outline: 2px dashed var(--accent); outline-offset: 2px; }
     .col-handle { width: 36px; }
-    .big-check { width: 22px; height: 22px; transform: scale(1.25); accent-color: var(--accent); }
+    .big-check { width: 24px; height: 24px; transform: scale(1.6); accent-color: var(--accent); }
   </style>
 </head>
 <body>
@@ -271,12 +271,9 @@
       // 分类设置：是否作为整类可单独点选（胶囊）
       const pillRow = h('div', { class: 'row', style: 'margin-top:8px; align-items:center; gap:10px;' }, [
         h('label', {}, [
-          h('input', { type: 'checkbox', checked: !!cat.asPill, onchange: (e) => { cat.asPill = e.target.checked; } }),
+          h('input', { class: 'big-check', type: 'checkbox', checked: !!cat.asPill, onchange: (e) => { cat.asPill = e.target.checked; } }),
           document.createTextNode(' 整类可点选（胶囊）')
-        ]),
-        h('span', { text: ' 标记值/文案：' }),
-        h('input', { type: 'text', value: cat.pillLabel || '', placeholder: '胶囊显示名（可选）', style: 'width:180px;', oninput: (e) => { cat.pillLabel = e.target.value; } }),
-        h('input', { type: 'text', value: cat.pillValue || '', placeholder: '提交值（可选）', style: 'width:160px;', oninput: (e) => { cat.pillValue = e.target.value; } })
+        ])
       ]);
 
       box.appendChild(head);
