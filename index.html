@@ -704,8 +704,7 @@
             const name = sec.multiple === false ? `custom_${title}` : `custom_${title}[]`;
             return `<label><input type="${inputType}" name="${name}" value="${it.value}"> ${it.label}</label>`;
           }).join('');
-          const hint = sec.multiple === false ? '' : ' (可多选)';
-          htmls.push(`<div class="field"><label class="group-label">${sec.title}${hint}:</label><div class="inline-options">${items}</div></div>`);
+          htmls.push(`<div class="field"><label class="group-label">${sec.title}:</label><div class="inline-options">${items}</div></div>`);
         }
       });
       secHost.innerHTML = htmls.join('');
