@@ -107,6 +107,17 @@
         </div>
       </div>
       <div class="space"></div>
+      <div class="card" style="padding:0;border:none;box-shadow:none;background:transparent;">
+        <div class="category">
+          <div class="category-head">
+            <div class="row"><div style="font-weight:700;">自定义板块（与性向/背景/限制同级）</div></div>
+            <div class="row"><button class="btn" id="addSection">+ 新增板块</button></div>
+          </div>
+          <div class="space"></div>
+          <div id="customSections"></div>
+        </div>
+      </div>
+      <div class="space"></div>
       <div class="row" style="justify-content: space-between; align-items: center;">
         <button class="btn" id="addCategory">+ 新增分类</button>
         <div class="row">
@@ -170,6 +181,7 @@
     container.appendChild(createSimpleSection('backgrounds', '背景'));
     container.appendChild(createSimpleSection('limits', '限制'));
       renderPartitions();
+    renderCustomSections();
   }
 
   function createSimpleSection(key, title) {
@@ -451,6 +463,59 @@
       renderSimpleSections();
     });
 
+  function renderCustomSections() {
+    const host = document.getElementById('customSections');
+    host.innerHTML = '';
+    if (!Array.isArray(state.config.customSections)) state.config.customSections = [];
+    state.config.customSections.forEach((sec, sIdx) => {
+      const box = h('div', { class: 'category', style: 'margin-top:12px;' });
+      const head = h('div', { class: 'category-head' }, [
+        h('div', { class: 'row' }, [
+          h('span', { class: 'drag-handle', title: '拖动排序', onmousedown: () => { dragState.allowed = true; } }),
+          h('input', { type: 'text', value: sec.title || '', placeholder: '板块名称，如：题材', style: 'width:240px;', oninput: (e) => { sec.title = e.target.value; } })
+        ]),
+        h('div', {}, [
+          h('button', { class: 'btn danger small', onclick: () => { state.config.customSections.splice(sIdx, 1); renderCustomSections(); } }, ['删除板块'])
+        ])
+      ]);
+
+      const table = h('table', { class: 'tags-table fixed' });
+      const thead = h('thead', {}, [
+        h('tr', {}, [
+          h('th', { class: 'col-handle', text: ' ' }),
+          h('th', { class: 'col-name', text: '名称' }),
+          h('th', { class: 'col-op', text: '操作' })
+        ])
+      ]);
+      const tbody = h('tbody');
+      (Array.isArray(sec.items) ? sec.items : (sec.items = [])).forEach((item, iIdx) => {
+        const tr = h('tr', { class: 'simple-row', draggable: 'true', 'data-key': `section-${sIdx}` }, [
+          h('td', { class: 'col-handle' }, [ h('span', { class: 'drag-handle', title: '拖动排序', onmousedown: () => { dragState.allowed = true; dragState.simpleKey = `section-${sIdx}`; } }) ]),
+          h('td', { class: 'col-name' }, [ h('input', { type: 'text', value: item.label || '', placeholder: '如 都市', style: 'width:80%;', oninput: (e) => { item.label = e.target.value; item.value = e.target.value; } }) ]),
+          h('td', { class: 'col-op' }, [ h('button', { class: 'btn danger small', onclick: () => { sec.items.splice(iIdx, 1); renderCustomSections(); } }, ['删除']) ])
+        ]);
+        tbody.appendChild(tr);
+      });
+      table.appendChild(thead);
+      table.appendChild(tbody);
+
+      const footer = h('div', { style: 'text-align:right; margin-top:8px;' }, [
+        h('button', { class: 'add-tag-btn', onclick: () => { (sec.items || (sec.items = [])).push({ label: '', value: '' }); renderCustomSections(); } }, ['+'])
+      ]);
+
+      box.appendChild(head);
+      box.appendChild(table);
+      box.appendChild(footer);
+      host.appendChild(box);
+    });
+  }
+
+  document.getElementById('addSection').addEventListener('click', () => {
+    if (!Array.isArray(state.config.customSections)) state.config.customSections = [];
+    state.config.customSections.push({ title: '新板块', items: [] });
+    renderCustomSections();
+  });
+
     async function saveConfig() {
       setStatus('保存中...');
       const token = getToken();
@@ -460,7 +525,8 @@
         orientations: state.config.orientations,
         backgrounds: state.config.backgrounds,
         limits: state.config.limits,
-        tagPartitions: state.config.tagPartitions
+        tagPartitions: state.config.tagPartitions,
+        customSections: state.config.customSections
       };
       try {
         const res = await fetch('/api/config', {

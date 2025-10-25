@@ -107,6 +107,17 @@ function sanitizeConfig(input) {
   if (input && Array.isArray(input.tagCategories)) {
     output.tagCategories = sanitizeCategories(input.tagCategories);
   }
+  // 自定义板块
+  if (input && Array.isArray(input.customSections)) {
+    output.customSections = (input.customSections || [])
+      .filter(s => s && typeof s.title === 'string')
+      .map(s => ({
+        title: s.title,
+        items: (Array.isArray(s.items) ? s.items : [])
+          .filter(it => it && (typeof it.label === 'string' || typeof it.value === 'string'))
+          .map(it => ({ label: it.label || it.value, value: it.value || it.label }))
+      }));
+  }
   if (input && input.tagPartitions && typeof input.tagPartitions === 'object') {
     const p = input.tagPartitions;
     output.tagPartitions = {

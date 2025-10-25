@@ -591,6 +591,10 @@
     </div>
     </div>
 
+    <div id="customSectionsHost" class="field">
+      <!-- 自定义选项将通过 JavaScript 动态添加 -->
+    </div>
+
     <div class="field">
       <div class="tags-header">
         <label class="group-label">Tags</label>
@@ -715,6 +719,16 @@
     backgroundOptions.innerHTML = CONFIG.backgrounds.map((opt, i) => `
       <label><input type="checkbox" id="bg${i}" name="background" value="${opt.value}"> ${opt.label}</label>
     `).join('');
+
+    // 自定义板块（与性向/背景/限制同级）
+    const secHost = document.getElementById('customSectionsHost');
+    if (secHost) {
+      const sections = Array.isArray(CONFIG.customSections) ? CONFIG.customSections : [];
+      secHost.innerHTML = sections.map(sec => {
+        const items = (sec.items || []).map((it, i) => `<label><input type="checkbox" name="custom_${sec.title}" value="${it.value}"> ${it.label}</label>`).join('');
+        return `<div class="field"><label class="group-label">${sec.title}:</label><div class="inline-options">${items}</div></div>`;
+      }).join('');
+    }
 
     // Tags 初次渲染
     renderTagsByPartition();
