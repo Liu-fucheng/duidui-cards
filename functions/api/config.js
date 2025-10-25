@@ -97,9 +97,16 @@ function sanitizeConfig(input) {
       asPill: Boolean(c.asPill),
       pillLabel: typeof c.pillLabel === 'string' ? c.pillLabel : undefined,
       pillValue: typeof c.pillValue === 'string' ? c.pillValue : undefined,
+      showIf: typeof c.showIf === 'string' ? c.showIf : undefined,
+      mutexWith: Array.isArray(c.mutexWith) ? c.mutexWith.filter(x => typeof x === 'string') : undefined,
       tags: (Array.isArray(c.tags) ? c.tags : [])
         .filter(t => t && typeof t.value === 'string' && typeof t.label === 'string')
-        .map(t => ({ value: t.value, label: t.label }))
+        .map(t => ({ 
+          value: t.value, 
+          label: t.label,
+          showIf: typeof t.showIf === 'string' ? t.showIf : undefined,
+          mutexWith: Array.isArray(t.mutexWith) ? t.mutexWith.filter(x => typeof x === 'string') : undefined
+        }))
     }));
   if (input && Array.isArray(input.tagCategories)) {
     output.tagCategories = sanitizeCategories(input.tagCategories);

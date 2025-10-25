@@ -740,12 +740,17 @@
 
     const categories = getEffectiveCategories();
     tagsOptions.innerHTML = categories.map((cat) => {
+      const catShowIf = cat.showIf ? `data-showif="${cat.showIf}"` : '';
+      const catMutex = cat.mutexWith && cat.mutexWith.length ? `data-mutex="${cat.mutexWith.join(',')}"` : '';
+      
       // 子标签
       const subPills = (cat.tags || []).map(opt => {
         const id = `tag${tagIndex++}`;
         const val = (opt.value || opt.label);
-        return `<input class="pill-input" type="checkbox" id="${id}" name="tags" value="${val}">
-        <label class="pill ripple" for="${id}">${opt.label}</label>`;
+        const showIf = opt.showIf ? `data-showif="${opt.showIf}"` : '';
+        const mutex = opt.mutexWith && opt.mutexWith.length ? `data-mutex="${opt.mutexWith.join(',')}"` : '';
+        return `<input class="pill-input" type="checkbox" id="${id}" name="tags" value="${val}" ${mutex}>
+        <label class="pill ripple option-item" for="${id}" ${showIf}>${opt.label}</label>`;
       });
 
       let headerHtml;
@@ -754,15 +759,15 @@
         const id = `tag${tagIndex++}`;
         const label = cat.pillLabel || cat.category;
         const value = cat.category;
-        const catPill = `<input class="pill-input" type="checkbox" id="${id}" name="tags" value="${value}">
-          <label class="pill pill-lg ripple" for="${id}">${label}</label>`;
+        const catPill = `<input class="pill-input" type="checkbox" id="${id}" name="tags" value="${value}" ${catMutex}>
+          <label class="pill pill-lg ripple option-item" for="${id}" ${catShowIf}>${label}</label>`;
         headerHtml = `<div class="category-line">${catPill}<span class="category-sep">-</span>${subPills.join('')}</div>`;
       } else {
         // 普通：显示文字标题，下面一行显示小类
         headerHtml = `<div class="tag-category-title">${cat.category}</div><div class="pill-group">${subPills.join('')}</div>`;
       }
 
-      return `<div class="tag-category" data-category="${cat.category}">${headerHtml}</div>`;
+      return `<div class="tag-category" data-category="${cat.category}" ${catShowIf}>${headerHtml}</div>`;
     }).join('');
 
     // Tags 搜索功能（仅绑定一次）
@@ -783,6 +788,9 @@
       });
       tagsSearch.dataset.bound = '1';
     }
+    
+    // 绑定 tags 的条件逻辑
+    bindConditionalLogic();
   }
 
   function getEffectiveCategories() {
@@ -841,7 +849,7 @@
     }
 
     // 板块显示条件
-    document.querySelectorAll('.field[data-showif]').forEach(field => {
+    document.querySelectorAll('.field[data-showif], .tag-category[data-showif]').forEach(field => {
       const cond = field.getAttribute('data-showif');
       field.style.display = checkCondition(cond, selected) ? '' : 'none';
     });
@@ -852,7 +860,7 @@
       label.style.display = checkCondition(cond, selected) ? '' : 'none';
     });
 
-    // 互斥逻辑
+    // 互斥逻辑（tags 用 name="tags"，自定义板块用各自 name）
     document.querySelectorAll('input[data-mutex]').forEach(input => {
       if (!input.checked) return;
       const mutexValues = (input.getAttribute('data-mutex') || '').split(',').map(x => x.trim()).filter(Boolean);

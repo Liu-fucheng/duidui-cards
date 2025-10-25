@@ -357,34 +357,42 @@
         ])
       ]);
 
-      const table = h('table', { class: 'tags-table fixed' });
+      const table = h('table', { class: 'tags-table' });
       const thead = h('thead', {}, [
         h('tr', {}, [
           h('th', { class: 'col-handle', text: ' ' }),
-          h('th', { class: 'col-name', text: '显示名' }),
-          h('th', { class: 'col-op', text: '操作' })
+          h('th', { text: '显示名' }),
+          h('th', { text: '启用条件', style: 'width:140px;' }),
+          h('th', { text: '互斥项', style: 'width:120px;' }),
+          h('th', { class: 'right', text: '操作', style: 'width:70px;' })
         ])
       ]);
       const tbody = h('tbody');
       (Array.isArray(cat.tags) ? cat.tags : []).forEach((tag, tIdx) => {
         const tr = h('tr', { class: 'tag-row', draggable: 'true' }, [
           h('td', { class: 'col-handle' }, [ h('span', { class: 'drag-handle', title: '拖动排序', onmousedown: () => { dragState.allowed = true; dragState.tagCatIndex = index; } }) ]),
-          h('td', { class: 'col-name' }, [h('input', { type: 'text', value: tag.label || '', placeholder: '如 校园', style: 'width:80%;', oninput: (e) => { tag.label = e.target.value; tag.value = e.target.value; } })]),
-          h('td', { class: 'col-op' }, [h('button', { class: 'btn danger small', onclick: () => { cat.tags.splice(tIdx, 1); (ctx && ctx.scope === 'partition') ? renderPartitions() : renderCategories(); } }, ['删除'])])
+          h('td', {}, [h('input', { type: 'text', value: tag.label || '', placeholder: '如 校园', style: 'width:100%;', oninput: (e) => { tag.label = e.target.value; tag.value = e.target.value; } })]),
+          h('td', {}, [h('input', { type: 'text', value: tag.showIf || '', placeholder: '如 性向:GB', style: 'width:100%;', oninput: (e) => { tag.showIf = e.target.value.trim() || undefined; } })]),
+          h('td', {}, [h('input', { type: 'text', value: (tag.mutexWith || []).join(','), placeholder: '如 都市,古代', style: 'width:100%;', oninput: (e) => { const v = e.target.value.trim(); tag.mutexWith = v ? v.split(',').map(x => x.trim()).filter(Boolean) : undefined; } })]),
+          h('td', { class: 'right' }, [h('button', { class: 'btn danger small', onclick: () => { cat.tags.splice(tIdx, 1); (ctx && ctx.scope === 'partition') ? renderPartitions() : renderCategories(); } }, ['删除'])])
         ]);
         tbody.appendChild(tr);
       });
       table.appendChild(thead);
       table.appendChild(tbody);
 
-      // 分类设置：是否作为整类可单独点选（胶囊）
-      const pillRow = h('div', { class: 'row', style: 'margin-top:8px; align-items:center; gap:10px;' }, [
+      // 分类设置：是否作为整类可单独点选（胶囊）+ 分类级别的条件和互斥
+      const pillRow = h('div', { class: 'row', style: 'margin-top:8px; align-items:center; gap:10px; flex-wrap:wrap;' }, [
         h('label', {}, [
           h('input', { class: 'big-check', type: 'checkbox', checked: !!cat.asPill, onchange: (e) => { 
             cat.asPill = e.target.checked; 
           } }),
           document.createTextNode(' 整类可点选（胶囊）')
-        ])
+        ]),
+        h('span', { text: '显示条件：', style: 'margin-left:16px; color:#876; font-size:13px;' }),
+        h('input', { type: 'text', value: cat.showIf || '', placeholder: '如 性向:GB', style: 'width:140px;', oninput: (e) => { cat.showIf = e.target.value.trim() || undefined; } }),
+        h('span', { text: '互斥：', style: 'margin-left:8px; color:#876; font-size:13px;' }),
+        h('input', { type: 'text', value: (cat.mutexWith || []).join(','), placeholder: '如 场景,关系', style: 'width:120px;', oninput: (e) => { const v = e.target.value.trim(); cat.mutexWith = v ? v.split(',').map(x => x.trim()).filter(Boolean) : undefined; } })
       ]);
 
       const tableFooter = h('div', { style: 'text-align: right; margin-top: 8px;' }, [
