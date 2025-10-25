@@ -286,13 +286,16 @@
       table.appendChild(tbody);
 
       // 分类设置：是否作为整类可单独点选（胶囊）
-      const pillRow = h('div', { class: 'row', style: 'margin-top:8px; align-items:center; gap:10px; justify-content: space-between;' }, [
+      const pillRow = h('div', { class: 'row', style: 'margin-top:8px; align-items:center; gap:10px;' }, [
         h('label', {}, [
           h('input', { class: 'big-check', type: 'checkbox', checked: !!cat.asPill, onchange: (e) => { 
             cat.asPill = e.target.checked; 
           } }),
           document.createTextNode(' 整类可点选（胶囊）')
-        ]),
+        ])
+      ]);
+
+      const tableFooter = h('div', { style: 'text-align: right; margin-top: 8px;' }, [
         h('button', { class: 'add-tag-btn', type: 'button', title: '添加标签', onclick: () => {
           if (!Array.isArray(cat.tags)) cat.tags = [];
           cat.tags.push({ label: '', value: '' });
@@ -303,6 +306,7 @@
       box.appendChild(head);
       box.appendChild(pillRow);
       box.appendChild(table);
+      box.appendChild(tableFooter);
 
       // --- 拖拽（分类） ---
       box.addEventListener('dragstart', (e) => {
