@@ -204,7 +204,7 @@
       width: 22px;
       height: 22px;
     }
-    .inline-options label { display: inline-flex; align-items: center; gap: 6px; }
+    .inline-options label { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 
     /* 兼容任意 UI 库类名（若存在） */
     .MuiCheckbox-root, .MuiRadio-root { color: var(--accent) !important; }
@@ -528,9 +528,9 @@
         <label class="group-label" for="category">分区:</label>
         <input type="text" id="category" name="category" class="short-input" />
       </div>
-      <div class="inline-field" style="margin-top:10px; align-items:center; gap:16px;">
+      <div class="inline-field" style="margin-top:10px; align-items:center; gap:16px; flex-wrap:nowrap;">
         <label class="group-label">作者:</label>
-        <div class="inline-options">
+        <div class="inline-options" style="flex-wrap:nowrap;">
           <label><input type="radio" name="authorType" value="real" checked class="mui-radio"> 实名</label>
           <label><input type="radio" name="authorType" value="anonymous" class="mui-radio"> 匿名</label>
         </div>
@@ -557,12 +557,16 @@
       </div>
     </div>
 
-    <div id="characterContainer" class="field hidden">
-      <label class="group-label">角色名:</label>
-      <div id="singleCharacterContainer" class="inline-field hidden" style="margin-top:6px;">
+    <div id="singleCharacterContainer" class="field hidden">
+      <div class="inline-field" style="margin-top:0;">
+        <label class="group-label" for="singleCharacterName">角色名:</label>
         <input type="text" id="singleCharacterName" name="characters" class="short-input" placeholder="角色名" />
       </div>
-      <div class="chip-row" id="multiCharactersContainer">
+    </div>
+    
+    <div id="multiCharactersContainer" class="field hidden">
+      <label class="group-label">角色名:</label>
+      <div class="chip-row" style="margin-top:6px;">
         <div id="characterList" class="chip-list"><!-- 动态生成胶囊输入 --></div>
         <button type="button" id="addCharacterBtn" class="add-chip-btn" title="增加角色">+</button>
       </div>
@@ -895,9 +899,12 @@
     return chip;
   }
 
-  function initCharacterList() {
+  function initCharacterList(count = 1) {
     characterList.innerHTML = '';
-    characterList.appendChild(createCharacterChip('角色1'));
+    const n = Math.max(1, count|0);
+    for (let i = 1; i <= n; i++) {
+      characterList.appendChild(createCharacterChip(`角色${i}`));
+    }
   }
 
   document.getElementById('addCharacterBtn').addEventListener('click', () => {
@@ -907,8 +914,7 @@
 
   // --- 动态表单逻辑 ---
 
-  // 1. 单人/多人卡 + 同名/不同名 逻辑
-  const characterContainer = document.getElementById('characterContainer');
+  // 1. 单人/多人卡逻辑（单人=文本框，多人=胶囊+加号）
   const nameRelationGroup = document.getElementById('nameRelationGroup');
   const singleCharacterContainer = document.getElementById('singleCharacterContainer');
   const multiCharactersContainer = document.getElementById('multiCharactersContainer');
@@ -916,23 +922,24 @@
   function updateCharacterUI() {
     const type = (document.querySelector('input[name="cardType"]:checked') || {}).value;
     const relation = (document.querySelector('input[name="nameRelation"]:checked') || {}).value || 'same';
+    
     if (type === 'multi') {
-      // 多人卡：只显示多人芯片，不显示同名/不同名选项
+      // 多人卡：隐藏同名/不同名，显示胶囊+加号，隐藏单人文本框
       nameRelationGroup.classList.add('hidden');
-      characterContainer.classList.remove('hidden');
       singleCharacterContainer.classList.add('hidden');
       multiCharactersContainer.classList.remove('hidden');
+      initCharacterList(2);
     } else {
       // 单人卡：显示同名/不同名选项
       nameRelationGroup.classList.remove('hidden');
+      multiCharactersContainer.classList.add('hidden');
+      
       if (relation === 'different') {
-        characterContainer.classList.remove('hidden');
+        // 单人不同名：显示文本框
         singleCharacterContainer.classList.remove('hidden');
-        multiCharactersContainer.classList.add('hidden');
       } else {
-        characterContainer.classList.add('hidden');
+        // 单人同名：隐藏文本框
         singleCharacterContainer.classList.add('hidden');
-        multiCharactersContainer.classList.add('hidden');
       }
     }
   }
