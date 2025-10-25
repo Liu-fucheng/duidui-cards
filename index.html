@@ -937,12 +937,14 @@
     if (type === 'multi') {
       // 多人卡：隐藏同名/不同名，显示胶囊+加号，隐藏单人文本框
       nameRelationGroup.classList.add('hidden');
+      nameRelationGroup.style.display = 'none';
       singleCharacterContainer.classList.add('hidden');
       multiCharactersContainer.classList.remove('hidden');
       initCharacterList(2);
     } else {
       // 单人卡：显示同名/不同名选项
       nameRelationGroup.classList.remove('hidden');
+      nameRelationGroup.style.display = '';
       multiCharactersContainer.classList.add('hidden');
       
       if (relation === 'different') {
