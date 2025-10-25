@@ -233,6 +233,9 @@
       overflow: hidden;
       user-select: none;
     }
+    .pill-lg { height: 42px; padding: 0 18px; font-size: 16px; font-weight: 600; }
+    .category-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+    .category-sep { color: #876; margin: 0 4px; }
     .pill:hover { border-color: var(--accent); }
     .pill:active { background: #E4D6C6; }
     input[type="checkbox"].pill-input { position: absolute; opacity: 0; pointer-events: none; }
@@ -745,31 +748,29 @@
 
     const categories = getEffectiveCategories();
     tagsOptions.innerHTML = categories.map((cat) => {
-      const pills = [];
       // 子标签
-      pills.push(...(cat.tags || []).map(opt => {
+      const subPills = (cat.tags || []).map(opt => {
         const id = `tag${tagIndex++}`;
         const val = (opt.value || opt.label);
         return `<input class="pill-input" type="checkbox" id="${id}" name="tags" value="${val}">
         <label class="pill ripple" for="${id}">${opt.label}</label>`;
-      }));
+      });
 
-      // 标题：若整类可点选，则把标题渲染为一个胶囊；否则显示文本标题
-      const titleHtml = (() => {
-        if (cat.asPill && cat.category) {
-          const id = `tag${tagIndex++}`;
-          const label = cat.pillLabel || cat.category;
-          const value = cat.category;
-          return `<input class="pill-input" type="checkbox" id="${id}" name="tags" value="${value}">
-          <label class="pill ripple" for="${id}">${label}</label>`;
-        }
-        return `${cat.category}`;
-      })();
+      let headerHtml;
+      if (cat.asPill && cat.category) {
+        // 类可选：标题渲染为更大的胶囊，并在同一行加一个连字符，再接小类
+        const id = `tag${tagIndex++}`;
+        const label = cat.pillLabel || cat.category;
+        const value = cat.category;
+        const catPill = `<input class="pill-input" type="checkbox" id="${id}" name="tags" value="${value}">
+          <label class="pill pill-lg ripple" for="${id}">${label}</label>`;
+        headerHtml = `<div class="category-line">${catPill}<span class="category-sep">-</span>${subPills.join('')}</div>`;
+      } else {
+        // 普通：显示文字标题，下面一行显示小类
+        headerHtml = `<div class="tag-category-title">${cat.category}</div><div class="pill-group">${subPills.join('')}</div>`;
+      }
 
-      return `<div class="tag-category" data-category="${cat.category}">
-        <div class="tag-category-title">${titleHtml}</div>
-        <div class="pill-group">${pills.join('')}</div>
-      </div>`;
+      return `<div class="tag-category" data-category="${cat.category}">${headerHtml}</div>`;
     }).join('');
 
     // Tags 搜索功能（仅绑定一次）
