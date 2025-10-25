@@ -90,9 +90,6 @@ async function readConfigFromDb(env) {
 
 function sanitizeConfig(input) {
   const output = {};
-  if (input && Array.isArray(input.orientations)) output.orientations = input.orientations;
-  if (input && Array.isArray(input.backgrounds)) output.backgrounds = input.backgrounds;
-  if (input && Array.isArray(input.limits)) output.limits = input.limits;
   const sanitizeCategories = (arr) => (Array.isArray(arr) ? arr : [])
     .filter(c => c && typeof c.category === 'string' && Array.isArray(c.tags))
     .map(c => ({
@@ -113,12 +110,13 @@ function sanitizeConfig(input) {
       .filter(s => s && typeof s.title === 'string')
       .map(s => ({
         title: s.title,
+        multiple: s.multiple !== false,
         items: (Array.isArray(s.items) ? s.items : [])
           .filter(it => it && (typeof it.label === 'string' || typeof it.value === 'string'))
           .map(it => ({ label: it.label || it.value, value: it.value || it.label }))
       }));
   }
-  // 板块顺序（字符串数组，如：['partition','orientations','backgrounds','limits','custom:题材']）
+  // 板块顺序
   if (input && Array.isArray(input.sections)) {
     output.sections = (input.sections || [])
       .filter(x => typeof x === 'string')

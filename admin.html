@@ -143,16 +143,15 @@
       renderSections();
     }
 
-    function normalizeSections() {
-      // 生成统一的 sections 顺序
-      if (!Array.isArray(state.config.sections)) {
-        state.config.sections = ['partition', 'orientations', 'backgrounds', 'limits'];
-      }
-      // 确保已知内置板块存在
-      ['partition','orientations','backgrounds','limits'].forEach(k => {
-        if (!state.config.sections.includes(k)) state.config.sections.unshift(k);
-      });
+  function normalizeSections() {
+    // 生成统一的 sections 顺序，默认 partition 在第一个
+    if (!Array.isArray(state.config.sections)) {
+      state.config.sections = ['partition'];
     }
+    if (!state.config.sections.includes('partition')) {
+      state.config.sections.unshift('partition');
+    }
+  }
 
     function renderSections() {
       const host = document.getElementById('sectionsHost');
@@ -160,9 +159,6 @@
       const order = state.config.sections || [];
       order.forEach((key, idx) => {
         if (key === 'partition') host.appendChild(renderPartitionSection(idx));
-        else if (key === 'orientations') host.appendChild(createSimpleSection('orientations', '性向', idx, true));
-        else if (key === 'backgrounds') host.appendChild(createSimpleSection('backgrounds', '背景', idx, true));
-        else if (key === 'limits') host.appendChild(createSimpleSection('limits', '限制', idx, true));
         else if (key.startsWith('custom:')) {
           const title = key.slice(7);
           host.appendChild(renderCustomSectionByTitle(title, idx));
@@ -237,39 +233,55 @@
       return wrap;
     }
 
-    function renderCustomSectionByTitle(title, sectionIndex) {
-      if (!Array.isArray(state.config.customSections)) state.config.customSections = [];
-      let sec = state.config.customSections.find(s => s && s.title === title);
-      if (!sec) { sec = { title, items: [] }; state.config.customSections.push(sec); }
-      const wrap = h('div', { class: 'category', draggable: 'true' });
-      const head = h('div', { class: 'category-head' }, [
-        h('div', { class: 'row' }, [
-          h('span', { class: 'drag-handle', title: '拖动排序', onmousedown: () => { dragState.allowed = true; } }),
-          h('input', { type: 'text', value: sec.title || '', placeholder: '板块名称', style: 'width:240px;', oninput: (e) => { const old = sec.title; sec.title = e.target.value; const idx = state.config.sections.indexOf('custom:'+old); if (idx>=0) state.config.sections[idx] = 'custom:'+sec.title; } })
-        ]),
-        h('div', {}, [ h('button', { class: 'btn small', onclick: () => { (sec.items || (sec.items=[])).push({ label: '', value: '' }); renderSections(); } }, ['+ 添加']) ])
+  function renderCustomSectionByTitle(title, sectionIndex) {
+    if (!Array.isArray(state.config.customSections)) state.config.customSections = [];
+    let sec = state.config.customSections.find(s => s && s.title === title);
+    if (!sec) { sec = { title, multiple: true, items: [] }; state.config.customSections.push(sec); }
+    const wrap = h('div', { class: 'category', draggable: 'true' });
+    const head = h('div', { class: 'category-head' }, [
+      h('div', { class: 'row' }, [
+        h('span', { class: 'drag-handle', title: '拖动排序', onmousedown: () => { dragState.allowed = true; } }),
+        h('input', { type: 'text', value: sec.title || '', placeholder: '板块名称', style: 'width:240px;', oninput: (e) => { const old = sec.title; sec.title = e.target.value; const idx = state.config.sections.indexOf('custom:'+old); if (idx>=0) state.config.sections[idx] = 'custom:'+sec.title; } })
+      ]),
+      h('div', {}, [ h('button', { class: 'btn danger small', onclick: () => { const idx = state.config.sections.indexOf('custom:'+sec.title); if (idx>=0) state.config.sections.splice(idx,1); const si = state.config.customSections.indexOf(sec); if (si>=0) state.config.customSections.splice(si,1); renderSections(); } }, ['删除板块']) ])
+    ]);
+    
+    const settingRow = h('div', { class: 'row', style: 'margin-top:8px; align-items:center; gap:10px;' }, [
+      h('label', {}, [
+        h('input', { class: 'big-check', type: 'checkbox', checked: sec.multiple !== false, onchange: (e) => { sec.multiple = e.target.checked; } }),
+        document.createTextNode(' 可多选')
+      ])
+    ]);
+
+    const table = h('table', { class: 'tags-table fixed' });
+    const thead = h('thead', {}, [ h('tr', {}, [ h('th', { class: 'col-handle', text: ' ' }), h('th', { class: 'col-name', text: '名称' }), h('th', { class: 'col-op', text: '操作' }) ]) ]);
+    const tbody = h('tbody');
+    (sec.items || []).forEach((item, idx) => {
+      const tr = h('tr', { class: 'simple-row', draggable: 'true', 'data-key': 'section-'+sec.title }, [
+        h('td', { class: 'col-handle' }, [ h('span', { class: 'drag-handle', title: '拖动排序', onmousedown: () => { dragState.allowed = true; dragState.simpleKey = 'section-'+sec.title; } }) ]),
+        h('td', { class: 'col-name' }, [ h('input', { type: 'text', value: item.label || '', placeholder: '名称', style: 'width:80%;', oninput: (e) => { item.label = e.target.value; item.value = e.target.value; } }) ]),
+        h('td', { class: 'col-op' }, [ h('button', { class: 'btn danger small', onclick: () => { sec.items.splice(idx,1); renderSections(); } }, ['删除']) ])
       ]);
-      const table = h('table', { class: 'tags-table fixed' });
-      const thead = h('thead', {}, [ h('tr', {}, [ h('th', { class: 'col-handle', text: ' ' }), h('th', { class: 'col-name', text: '名称' }), h('th', { class: 'col-op', text: '操作' }) ]) ]);
-      const tbody = h('tbody');
-      (sec.items || []).forEach((item, idx) => {
-        const tr = h('tr', { class: 'simple-row', draggable: 'true', 'data-key': 'section-'+sec.title }, [
-          h('td', { class: 'col-handle' }, [ h('span', { class: 'drag-handle', title: '拖动排序', onmousedown: () => { dragState.allowed = true; dragState.simpleKey = 'section-'+sec.title; } }) ]),
-          h('td', { class: 'col-name' }, [ h('input', { type: 'text', value: item.label || '', placeholder: '名称', style: 'width:80%;', oninput: (e) => { item.label = e.target.value; item.value = e.target.value; } }) ]),
-          h('td', { class: 'col-op' }, [ h('button', { class: 'btn danger small', onclick: () => { sec.items.splice(idx,1); renderSections(); } }, ['删除']) ])
-        ]);
-        tbody.appendChild(tr);
-      });
-      table.appendChild(thead); table.appendChild(tbody);
-      wrap.appendChild(head); wrap.appendChild(table);
-      // section 拖拽支持
-      wrap.addEventListener('dragstart', (e) => { if (!dragState.allowed) { e.preventDefault(); return; } dragState.mode='section'; dragState.srcIndex = sectionIndex; wrap.classList.add('dragging'); setTimeout(()=>{dragState.allowed=false;},0); });
-      wrap.addEventListener('dragend', ()=> wrap.classList.remove('dragging'));
-      wrap.addEventListener('dragover', (e)=>{ if (dragState.mode==='section') { e.preventDefault(); wrap.classList.add('drag-over'); }});
-      wrap.addEventListener('dragleave', ()=> wrap.classList.remove('drag-over'));
-      wrap.addEventListener('drop', (e)=>{ e.preventDefault(); wrap.classList.remove('drag-over'); if (dragState.mode!=='section') return; const from=dragState.srcIndex; const to=sectionIndex; if (from===to) return; const arr=state.config.sections; const [m]=arr.splice(from,1); arr.splice(to,0,m); renderSections(); });
-      return wrap;
-    }
+      tbody.appendChild(tr);
+    });
+    table.appendChild(thead); table.appendChild(tbody);
+    
+    const footer = h('div', { style: 'text-align:right; margin-top:8px;' }, [
+      h('button', { class: 'add-tag-btn', onclick: () => { (sec.items || (sec.items=[])).push({ label: '', value: '' }); renderSections(); } }, ['+'])
+    ]);
+    
+    wrap.appendChild(head);
+    wrap.appendChild(settingRow);
+    wrap.appendChild(table);
+    wrap.appendChild(footer);
+    // section 拖拽支持
+    wrap.addEventListener('dragstart', (e) => { if (!dragState.allowed) { e.preventDefault(); return; } dragState.mode='section'; dragState.srcIndex = sectionIndex; wrap.classList.add('dragging'); setTimeout(()=>{dragState.allowed=false;},0); });
+    wrap.addEventListener('dragend', ()=> wrap.classList.remove('dragging'));
+    wrap.addEventListener('dragover', (e)=>{ if (dragState.mode==='section') { e.preventDefault(); wrap.classList.add('drag-over'); }});
+    wrap.addEventListener('dragleave', ()=> wrap.classList.remove('drag-over'));
+    wrap.addEventListener('drop', (e)=>{ e.preventDefault(); wrap.classList.remove('drag-over'); if (dragState.mode!=='section') return; const from=dragState.srcIndex; const to=sectionIndex; if (from===to) return; const arr=state.config.sections; const [m]=arr.splice(from,1); arr.splice(to,0,m); renderSections(); });
+    return wrap;
+  }
 
     function addSimple(key) {
       if (!Array.isArray(state.config[key])) state.config[key] = [];
@@ -282,30 +294,31 @@
       renderSections();
     }
 
-    function renderPartitions(targetHost) {
-      const host = targetHost || document.getElementById('partitions');
-      if (!host) return;
-      host.innerHTML = '';
-      const keys = [
-        { k: 'feibianxian', name: '非边限' },
-        { k: 'bianxian', name: '边限' },
-        { k: 'shenyuan', name: '深渊' }
-      ];
-      if (!state.config.tagPartitions) state.config.tagPartitions = {};
-      keys.forEach(({ k, name }) => {
-        const section = h('div', { class: 'category', style: 'margin-top:12px;' });
-        const head = h('div', { class: 'category-head' }, [
-          h('div', { class: 'row' }, [ h('div', { text: name, style: 'font-weight:600;' }) ]),
-          h('div', {}, [ h('button', { class: 'btn small', onclick: () => addPartitionCategory(k) }, ['+ 添加分类']) ])
-        ]);
-        const list = h('div', { class: 'grid' });
-        const arr = Array.isArray(state.config.tagPartitions[k]) ? state.config.tagPartitions[k] : (state.config.tagPartitions[k] = []);
-        arr.forEach((cat, idx) => list.appendChild(renderCategory(cat, idx, { scope: 'partition', key: k })));
-        section.appendChild(head);
-        section.appendChild(list);
-        host.appendChild(section);
-      });
-    }
+  function renderPartitions(targetHost) {
+    const host = targetHost || document.getElementById('partitions');
+    if (!host) return;
+    host.innerHTML = '';
+    const keys = [
+      { k: 'common', name: '公共' },
+      { k: 'feibianxian', name: '非边限' },
+      { k: 'bianxian', name: '边限' },
+      { k: 'shenyuan', name: '深渊' }
+    ];
+    if (!state.config.tagPartitions) state.config.tagPartitions = {};
+    keys.forEach(({ k, name }) => {
+      const section = h('div', { class: 'category', style: 'margin-top:12px;' });
+      const head = h('div', { class: 'category-head' }, [
+        h('div', { class: 'row' }, [ h('div', { text: name, style: 'font-weight:600;' }) ]),
+        h('div', {}, [ h('button', { class: 'btn small', onclick: () => addPartitionCategory(k) }, ['+ 添加分类']) ])
+      ]);
+      const list = h('div', { class: 'grid' });
+      const arr = Array.isArray(state.config.tagPartitions[k]) ? state.config.tagPartitions[k] : (state.config.tagPartitions[k] = []);
+      arr.forEach((cat, idx) => list.appendChild(renderCategory(cat, idx, { scope: 'partition', key: k })));
+      section.appendChild(head);
+      section.appendChild(list);
+      host.appendChild(section);
+    });
+  }
 
     function addPartitionCategory(key) {
       if (!state.config.tagPartitions) state.config.tagPartitions = {};
@@ -567,41 +580,42 @@
 
   document.getElementById('addSection').addEventListener('click', () => {
     if (!Array.isArray(state.config.customSections)) state.config.customSections = [];
-    const title = '新板块';
-    state.config.customSections.push({ title, items: [] });
+    let title = '新板块';
+    let counter = 1;
+    while (state.config.customSections.some(s => s.title === title)) {
+      title = '新板块' + (++counter);
+    }
+    state.config.customSections.push({ title, multiple: true, items: [] });
     state.config.sections.push('custom:'+title);
     renderSections();
   });
 
-    async function saveConfig() {
-      setStatus('保存中...');
-      const token = getToken();
-      if (!token) { setStatus('请先输入并保存管理员 Token', true); return; }
-      const body = {
-        tagCategories: state.config.tagCategories,
-        orientations: state.config.orientations,
-        backgrounds: state.config.backgrounds,
-        limits: state.config.limits,
-        tagPartitions: state.config.tagPartitions,
-        customSections: state.config.customSections,
-        sections: state.config.sections
-      };
-      try {
-        const res = await fetch('/api/config', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-          body: JSON.stringify(body)
-        });
-        const data = await res.json();
-        if (!res.ok || !data.success) throw new Error(data.message || '保存失败');
-        state.config = data.config;
-        renderSimpleSections();
-        renderCategories();
-        setStatus('已保存');
-      } catch (e) {
-        setStatus('保存失败：' + e.message, true);
-      }
-    }
+     async function saveConfig() {
+       setStatus('保存中...');
+       const token = getToken();
+       if (!token) { setStatus('请先输入并保存管理员 Token', true); return; }
+       const body = {
+         tagCategories: state.config.tagCategories,
+         tagPartitions: state.config.tagPartitions,
+         customSections: state.config.customSections,
+         sections: state.config.sections
+       };
+       try {
+         const res = await fetch('/api/config', {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+           body: JSON.stringify(body)
+         });
+         const data = await res.json();
+         if (!res.ok || !data.success) throw new Error(data.message || '保存失败');
+         state.config = data.config;
+         normalizeSections();
+         renderSections();
+         setStatus('已保存');
+       } catch (e) {
+         setStatus('保存失败：' + e.message, true);
+       }
+     }
 
     // 拖拽状态
     const dragState = { mode: null, srcCat: null, srcTag: null, allowed: false, tagCatIndex: null, simpleKey: null, srcIndex: null };
