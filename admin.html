@@ -84,7 +84,20 @@
         </div>
       </div>
       <div class="space"></div>
+      <div id="simpleSections" class="grid"></div>
+      <div class="space"></div>
       <div id="categories" class="grid"></div>
+      <div class="space"></div>
+      <div class="card" style="padding:0;border:none;box-shadow:none;background:transparent;">
+        <div class="category">
+          <div class="category-head">
+            <div class="row"><div style="font-weight:700;">分区专属 Tags</div></div>
+            <div class="muted">每个分区 = 公共 + 专属；支持分类设为“整类可单选胶囊”。</div>
+          </div>
+          <div class="space"></div>
+          <div id="partitions"></div>
+        </div>
+      </div>
       <div class="space"></div>
       <button class="btn" id="addCategory">+ 新增分类</button>
       <div id="status" class="status"></div>
@@ -124,6 +137,7 @@
       const data = await res.json();
       if (!data.success) throw new Error(data.message || '加载失败');
       state.config = data.config || {};
+      renderSimpleSections();
       renderCategories();
     }
 
@@ -133,6 +147,93 @@
       const categories = Array.isArray(state.config.tagCategories) ? state.config.tagCategories : [];
       categories.forEach((cat, idx) => container.appendChild(renderCategory(cat, idx)));
     }
+
+  function renderSimpleSections() {
+    const container = document.getElementById('simpleSections');
+    container.innerHTML = '';
+    container.appendChild(createSimpleSection('orientations', '性向'));
+    container.appendChild(createSimpleSection('backgrounds', '背景'));
+    container.appendChild(createSimpleSection('limits', '限制'));
+      renderPartitions();
+  }
+
+  function createSimpleSection(key, title) {
+    if (!Array.isArray(state.config[key])) state.config[key] = [];
+    const wrap = h('div', { class: 'category' });
+    const head = h('div', { class: 'category-head' }, [
+      h('div', { class: 'row' }, [ h('div', { text: title, style: 'font-weight:600;' }) ]),
+      h('div', {}, [ h('button', { class: 'btn small', onclick: () => addSimple(key) }, ['+ 添加']) ])
+    ]);
+
+    const table = h('table', { class: 'tags-table' });
+    const thead = h('thead', {}, [
+      h('tr', {}, [
+        h('th', { class: 'col-handle', text: ' ' }),
+        h('th', { text: '显示名 label' }),
+        h('th', { text: '提交值 value' }),
+        h('th', { class: 'right', text: '操作' })
+      ])
+    ]);
+    const tbody = h('tbody');
+    state.config[key].forEach((item, idx) => {
+      const tr = h('tr', { class: 'simple-row', draggable: 'true', 'data-key': key }, [
+        h('td', { class: 'col-handle' }, [ h('span', { class: 'drag-handle', title: '拖动排序', onmousedown: () => { dragState.allowed = true; dragState.simpleKey = key; } }) ]),
+        h('td', {}, [ h('input', { type: 'text', value: item.label || '', placeholder: '如 现代', style: 'width:220px;', oninput: (e) => { item.label = e.target.value; } }) ]),
+        h('td', {}, [ h('input', { type: 'text', value: item.value || '', placeholder: '如 modern', style: 'width:220px;', oninput: (e) => { item.value = e.target.value; } }) ]),
+        h('td', { class: 'right' }, [ h('button', { class: 'btn danger small', onclick: () => removeSimple(key, idx) }, ['删除']) ])
+      ]);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(thead);
+    table.appendChild(tbody);
+
+    wrap.appendChild(head);
+    wrap.appendChild(table);
+    return wrap;
+  }
+
+  function addSimple(key) {
+    if (!Array.isArray(state.config[key])) state.config[key] = [];
+    state.config[key].push({ label: '', value: '' });
+    renderSimpleSections();
+  }
+
+  function removeSimple(key, idx) {
+    state.config[key].splice(idx, 1);
+    renderSimpleSections();
+  }
+
+  function renderPartitions() {
+    const host = document.getElementById('partitions');
+    host.innerHTML = '';
+    const keys = [
+      { k: 'common', name: '公共' },
+      { k: 'feibianxian', name: '非边限' },
+      { k: 'bianxian', name: '边限' },
+      { k: 'shenyuan', name: '深渊' }
+    ];
+    if (!state.config.tagPartitions) state.config.tagPartitions = {};
+    keys.forEach(({ k, name }) => {
+      const section = h('div', { class: 'category', style: 'margin-top:12px;' });
+      const head = h('div', { class: 'category-head' }, [
+        h('div', { class: 'row' }, [ h('div', { text: name, style: 'font-weight:600;' }) ]),
+        h('div', {}, [ h('button', { class: 'btn small', onclick: () => addPartitionCategory(k) }, ['+ 添加分类']) ])
+      ]);
+      const list = h('div', { class: 'grid' });
+      const arr = Array.isArray(state.config.tagPartitions[k]) ? state.config.tagPartitions[k] : (state.config.tagPartitions[k] = []);
+      arr.forEach((cat, idx) => list.appendChild(renderCategory(cat, idx)));
+      section.appendChild(head);
+      section.appendChild(list);
+      host.appendChild(section);
+    });
+  }
+
+  function addPartitionCategory(key) {
+    if (!state.config.tagPartitions) state.config.tagPartitions = {};
+    const arr = Array.isArray(state.config.tagPartitions[key]) ? state.config.tagPartitions[key] : (state.config.tagPartitions[key] = []);
+    arr.push({ category: '新分类', asPill: false, tags: [] });
+    renderPartitions();
+  }
 
     function renderCategory(cat, index) {
       const box = h('div', { class: 'category', draggable: 'true' });
@@ -170,7 +271,19 @@
       table.appendChild(thead);
       table.appendChild(tbody);
 
+      // 分类设置：是否作为整类可单独点选（胶囊）
+      const pillRow = h('div', { class: 'row', style: 'margin-top:8px; align-items:center; gap:10px;' }, [
+        h('label', {}, [
+          h('input', { type: 'checkbox', checked: !!cat.asPill, onchange: (e) => { cat.asPill = e.target.checked; renderCategories(); } }),
+          document.createTextNode(' 整类可点选（胶囊）')
+        ]),
+        h('span', { text: ' 标记值/文案：' }),
+        h('input', { type: 'text', value: cat.pillLabel || '', placeholder: '胶囊显示名（可选）', style: 'width:180px;', oninput: (e) => { cat.pillLabel = e.target.value; } }),
+        h('input', { type: 'text', value: cat.pillValue || '', placeholder: '提交值（可选）', style: 'width:160px;', oninput: (e) => { cat.pillValue = e.target.value; } })
+      ]);
+
       box.appendChild(head);
+      box.appendChild(pillRow);
       box.appendChild(table);
 
       // --- 拖拽（分类） ---
@@ -284,11 +397,64 @@
       renderCategories();
     });
 
+    // --- 拖拽（简单数组：性向/背景/限制） ---
+    document.addEventListener('dragstart', (e) => {
+      const tr = e.target && e.target.closest && e.target.closest('tr.simple-row');
+      if (!tr) return;
+      if (!dragState.allowed) { e.preventDefault(); return; }
+      const key = tr.getAttribute('data-key');
+      const rows = Array.from(tr.parentElement.querySelectorAll('tr.simple-row'));
+      dragState.mode = 'simple';
+      dragState.simpleKey = key;
+      dragState.srcIndex = rows.indexOf(tr);
+      e.dataTransfer && (e.dataTransfer.effectAllowed = 'move');
+      tr.classList.add('dragging');
+      setTimeout(() => { dragState.allowed = false; }, 0);
+    });
+    document.addEventListener('dragend', (e) => {
+      const tr = e.target && e.target.closest && e.target.closest('tr.simple-row');
+      if (tr) tr.classList.remove('dragging');
+      document.querySelectorAll('tr.simple-row.drag-over').forEach(el => el.classList.remove('drag-over'));
+    });
+    document.addEventListener('dragover', (e) => {
+      const tr = e.target && e.target.closest && e.target.closest('tr.simple-row');
+      if (!tr) return;
+      if (dragState.mode === 'simple') { e.preventDefault(); tr.classList.add('drag-over'); }
+    });
+    document.addEventListener('dragleave', (e) => {
+      const tr = e.target && e.target.closest && e.target.closest('tr.simple-row');
+      if (tr) tr.classList.remove('drag-over');
+    });
+    document.addEventListener('drop', (e) => {
+      const tr = e.target && e.target.closest && e.target.closest('tr.simple-row');
+      if (!tr) return;
+      e.preventDefault();
+      tr.classList.remove('drag-over');
+      if (dragState.mode !== 'simple') return;
+      const key = tr.getAttribute('data-key');
+      if (key !== dragState.simpleKey) return;
+      const rows = Array.from(tr.parentElement.querySelectorAll('tr.simple-row'));
+      const to = rows.indexOf(tr);
+      const from = dragState.srcIndex;
+      if (from === undefined || to === undefined || from === to) return;
+      const arr = state.config[key];
+      const [m] = arr.splice(from, 1);
+      arr.splice(to, 0, m);
+      setStatus('已调整顺序（未保存）');
+      renderSimpleSections();
+    });
+
     async function saveConfig() {
       setStatus('保存中...');
       const token = getToken();
       if (!token) { setStatus('请先输入并保存管理员 Token', true); return; }
-      const body = { tagCategories: state.config.tagCategories };
+      const body = {
+        tagCategories: state.config.tagCategories,
+        orientations: state.config.orientations,
+        backgrounds: state.config.backgrounds,
+        limits: state.config.limits,
+        tagPartitions: state.config.tagPartitions
+      };
       try {
         const res = await fetch('/api/config', {
           method: 'POST',
@@ -298,6 +464,7 @@
         const data = await res.json();
         if (!res.ok || !data.success) throw new Error(data.message || '保存失败');
         state.config = data.config;
+        renderSimpleSections();
         renderCategories();
         setStatus('已保存');
       } catch (e) {
@@ -306,7 +473,7 @@
     }
 
     // 拖拽状态
-    const dragState = { mode: null, srcCat: null, srcTag: null, allowed: false, tagCatIndex: null };
+    const dragState = { mode: null, srcCat: null, srcTag: null, allowed: false, tagCatIndex: null, simpleKey: null, srcIndex: null };
 
     // UI wiring
     document.getElementById('addCategory').addEventListener('click', addCategory);

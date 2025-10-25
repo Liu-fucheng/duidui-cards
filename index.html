@@ -524,43 +524,51 @@
   <form id="uploadForm">
 
     <div id="section-base" class="field">
-      <div class="inline-field">
-        <label class="group-label">卡片类型*:</label>
+      <div class="inline-field" style="margin-top:0;">
+        <label class="group-label" for="category">分区:</label>
+        <input type="text" id="category" name="category" class="short-input" />
+      </div>
+      <div class="inline-field" style="margin-top:10px; align-items:center; gap:16px;">
+        <label class="group-label">作者:</label>
         <div class="inline-options">
-          <label><input type="radio" name="cardType" value="single" checked class="mui-radio"> 单人卡</label>
-          <label><input type="radio" name="cardType" value="multi" class="mui-radio"> 多人卡</label>
+          <label><input type="radio" name="authorType" value="real" checked class="mui-radio"> 实名</label>
+          <label><input type="radio" name="authorType" value="anonymous" class="mui-radio"> 匿名</label>
+        </div>
+        <input type="text" id="authorName" name="authorName" class="short-input" />
+        <input type="hidden" id="authorId" name="authorId" />
+      </div>
+      <div class="inline-field" style="margin-top:10px; justify-content:space-between;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <label class="group-label">类型*:</label>
+          <div class="inline-options">
+            <label><input type="radio" name="cardType" value="single" checked class="mui-radio"> 单人卡</label>
+            <label><input type="radio" name="cardType" value="multi" class="mui-radio"> 多人卡</label>
+          </div>
+        </div>
+        <div id="nameRelationGroup" class="inline-options">
+          <span class="group-label" style="margin:0;">角色与卡</span>
+          <label><input type="radio" name="nameRelation" value="same" checked class="mui-radio"> 同名</label>
+          <label><input type="radio" name="nameRelation" value="different" class="mui-radio"> 不同名</label>
         </div>
       </div>
       <div class="inline-field" style="margin-top:10px;">
         <label class="group-label" for="cardName">卡名:</label>
         <input type="text" id="cardName" name="cardName" class="short-input" required />
       </div>
-      <div class="inline-field" style="margin-top:10px;">
-        <label class="group-label" for="category">分区:</label>
-        <input type="text" id="category" name="category" class="short-input" />
-      </div>
-      <div class="inline-field" style="margin-top:10px;">
-        <label class="group-label" for="authorName">作者:</label>
-        <input type="text" id="authorName" name="authorName" class="short-input" />
-        <input type="hidden" id="authorId" name="authorId" />
-    </div>
     </div>
 
     <div id="characterContainer" class="field hidden">
-      <label class="group-label">角色名 (多人卡):</label>
-      <div class="chip-row">
+      <label class="group-label">角色名:</label>
+      <div id="singleCharacterContainer" class="inline-field hidden" style="margin-top:6px;">
+        <input type="text" id="singleCharacterName" name="characters" class="short-input" placeholder="角色名" />
+      </div>
+      <div class="chip-row" id="multiCharactersContainer">
         <div id="characterList" class="chip-list"><!-- 动态生成胶囊输入 --></div>
         <button type="button" id="addCharacterBtn" class="add-chip-btn" title="增加角色">+</button>
       </div>
     </div>
     
-    <div class="field">
-      <label class="group-label">作者类型*:</label>
-      <div class="inline-options">
-        <label><input type="radio" name="authorType" value="real" checked class="mui-radio"> 实名</label>
-        <label><input type="radio" name="authorType" value="anonymous" class="mui-radio"> 匿名</label>
-      </div>
-    </div>
+    <!-- 作者类型已合并到作者行 -->
 
     <div id="section-tags" class="field">
       <label class="group-label">性向* (可多选, 至少选一):</label>
@@ -655,7 +663,7 @@
   <div id="cardList">正在加载...</div>
 
   <footer class="app-footer">
-    © 2025 兑兑卡 DuiDui Cards · 用心分享每一张角色卡
+    © 2025 堆堆Demo
   </footer>
 
 <!-- Material UI JS (使用 CDN) -->
@@ -665,42 +673,7 @@
 
 <script>
   // --- 全局配置（从服务端加载） ---
-  let CONFIG = {
-    orientations: [
-      { value: 'GB', label: 'GB' },
-      { value: 'BG', label: 'BG' },
-      { value: 'GL', label: 'GL' },
-      { value: 'BL', label: 'BL' },
-      { value: 'none', label: '无CP' }
-    ],
-    backgrounds: [
-      { value: 'modern', label: '现代' },
-      { value: 'ancient', label: '古代' },
-      { value: 'future', label: '未来' },
-      { value: 'fantasy', label: '幻想' }
-    ],
-    tagCategories: [
-      {
-        category: '场景',
-        tags: [
-          { value: 'campus', label: '校园' },
-          { value: 'city', label: '都市' }
-        ]
-      },
-      {
-        category: '关系',
-        tags: [
-          { value: 'older', label: '年上' },
-          { value: 'younger', label: '年下' }
-        ]
-      }
-    ],
-    limits: [
-      { value: 'none', label: '无' },
-      { value: 'female', label: '限女User' },
-      { value: 'male', label: '限男User' }
-    ]
-  };
+  let CONFIG = {};
 
   // 尝试从服务端加载配置
   async function loadConfig() {
@@ -730,36 +703,8 @@
       <label><input type="checkbox" id="bg${i}" name="background" value="${opt.value}"> ${opt.label}</label>
     `).join('');
 
-    // Tags (分类胶囊样式)
-    const tagsOptions = document.getElementById('tagsOptions');
-    let tagIndex = 0;
-    tagsOptions.innerHTML = CONFIG.tagCategories.map((cat, catIdx) => {
-      const categoryHtml = cat.tags.map(opt => {
-        const id = `tag${tagIndex++}`;
-        return `<input class="pill-input" type="checkbox" id="${id}" name="tags" value="${opt.value}">
-        <label class="pill ripple" for="${id}">${opt.label}</label>`;
-      }).join('');
-      return `<div class="tag-category" data-category="${cat.category}">
-        <div class="tag-category-title">${cat.category}</div>
-        <div class="pill-group">${categoryHtml}</div>
-      </div>`;
-    }).join('');
-
-    // Tags 搜索功能
-    const tagsSearch = document.getElementById('tagsSearch');
-    tagsSearch.addEventListener('input', (e) => {
-      const query = e.target.value.toLowerCase().trim();
-      document.querySelectorAll('.tag-category').forEach(cat => {
-        const pills = cat.querySelectorAll('.pill');
-        let hasVisible = false;
-        pills.forEach(pill => {
-          const match = pill.textContent.toLowerCase().includes(query);
-          pill.style.display = match || !query ? '' : 'none';
-          if (match || !query) hasVisible = true;
-        });
-        cat.classList.toggle('hidden', !hasVisible);
-      });
-    });
+    // Tags 初次渲染
+    renderTagsByPartition();
 
     // 限制
     const limitOptions = document.getElementById('limitOptions');
@@ -769,6 +714,103 @@
 
     // 绑定限制互斥逻辑
     bindLimitLogic();
+
+    // 监听分区变化，实时切换标签集合
+    const categoryInput = document.getElementById('category');
+    if (categoryInput && !categoryInput.dataset.bound) {
+      categoryInput.addEventListener('input', () => {
+        renderTagsByPartition();
+      });
+      categoryInput.dataset.bound = '1';
+    }
+  }
+
+  function renderTagsByPartition() {
+    const tagsOptions = document.getElementById('tagsOptions');
+    if (!tagsOptions) return;
+    let tagIndex = 0;
+
+    const categories = getEffectiveCategories();
+    tagsOptions.innerHTML = categories.map((cat) => {
+      const pills = [];
+      // 类胶囊（整类可点选）
+      if (cat.asPill && (cat.pillValue || cat.category)) {
+        const id = `tag${tagIndex++}`;
+        const label = cat.pillLabel || cat.category;
+        const value = cat.pillValue || `cat:${cat.category}`;
+        pills.push(`<input class="pill-input" type="checkbox" id="${id}" name="tags" value="${value}">
+        <label class="pill ripple" for="${id}">${label}</label>`);
+      }
+      // 子标签
+      pills.push(...(cat.tags || []).map(opt => {
+        const id = `tag${tagIndex++}`;
+        return `<input class="pill-input" type="checkbox" id="${id}" name="tags" value="${opt.value}">
+        <label class="pill ripple" for="${id}">${opt.label}</label>`;
+      }));
+
+      return `<div class="tag-category" data-category="${cat.category}">
+        <div class="tag-category-title">${cat.category}</div>
+        <div class="pill-group">${pills.join('')}</div>
+      </div>`;
+    }).join('');
+
+    // Tags 搜索功能（仅绑定一次）
+    const tagsSearch = document.getElementById('tagsSearch');
+    if (tagsSearch && !tagsSearch.dataset.bound) {
+      tagsSearch.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase().trim();
+        document.querySelectorAll('.tag-category').forEach(cat => {
+          const pills = cat.querySelectorAll('.pill');
+          let hasVisible = false;
+          pills.forEach(pill => {
+            const match = pill.textContent.toLowerCase().includes(query);
+            pill.style.display = match || !query ? '' : 'none';
+            if (match || !query) hasVisible = true;
+          });
+          cat.classList.toggle('hidden', !hasVisible);
+        });
+      });
+      tagsSearch.dataset.bound = '1';
+    }
+  }
+
+  function getEffectiveCategories() {
+    const common = Array.isArray(CONFIG.tagCategories) ? CONFIG.tagCategories : [];
+    const partitions = (CONFIG.tagPartitions || {});
+    const cateInput = document.getElementById('category');
+    const raw = (cateInput && cateInput.value || '').trim();
+    const map = { '非边限': 'feibianxian', '边限': 'bianxian', '深渊': 'shenyuan' };
+    const key = map[raw] || null;
+    const extra = key && Array.isArray(partitions[key]) ? partitions[key] : [];
+    return mergeCategoriesByName(common, extra);
+  }
+
+  function mergeCategoriesByName(base, extra) {
+    const byName = new Map();
+    const add = (arr) => {
+      (arr || []).forEach(cat => {
+        if (!cat || !cat.category) return;
+        if (!byName.has(cat.category)) {
+          byName.set(cat.category, { category: cat.category, asPill: !!cat.asPill, pillLabel: cat.pillLabel, pillValue: cat.pillValue, tags: [] });
+        }
+        const entry = byName.get(cat.category);
+        // 合并 asPill 等设置（后者优先）
+        if (cat.asPill) entry.asPill = true;
+        if (cat.pillLabel) entry.pillLabel = cat.pillLabel;
+        if (cat.pillValue) entry.pillValue = cat.pillValue;
+        // 合并并去重标签
+        const seen = new Set(entry.tags.map(t => t.value));
+        (cat.tags || []).forEach(t => {
+          if (t && typeof t.value === 'string' && !seen.has(t.value)) {
+            entry.tags.push({ value: t.value, label: t.label });
+            seen.add(t.value);
+          }
+        });
+      });
+    };
+    add(base);
+    add(extra);
+    return Array.from(byName.values());
   }
 
   function bindLimitLogic() {
@@ -861,26 +903,52 @@
 
   // --- 动态表单逻辑 ---
 
-  // 1. 单人/多人卡 逻辑
+  // 1. 单人/多人卡 + 同名/不同名 逻辑
   const characterContainer = document.getElementById('characterContainer');
-  document.querySelectorAll('input[name="cardType"]').forEach(radio => {
-    radio.addEventListener('change', (e) => {
-      if (e.target.value === 'multi') {
+  const nameRelationGroup = document.getElementById('nameRelationGroup');
+  const singleCharacterContainer = document.getElementById('singleCharacterContainer');
+  const multiCharactersContainer = document.getElementById('multiCharactersContainer');
+
+  function updateCharacterUI() {
+    const type = (document.querySelector('input[name="cardType"]:checked') || {}).value;
+    const relation = (document.querySelector('input[name="nameRelation"]:checked') || {}).value || 'same';
+    if (type === 'multi') {
+      // 多人卡：只显示多人芯片，不显示同名/不同名选项
+      nameRelationGroup.classList.add('hidden');
+      characterContainer.classList.remove('hidden');
+      singleCharacterContainer.classList.add('hidden');
+      multiCharactersContainer.classList.remove('hidden');
+    } else {
+      // 单人卡：显示同名/不同名选项
+      nameRelationGroup.classList.remove('hidden');
+      if (relation === 'different') {
         characterContainer.classList.remove('hidden');
+        singleCharacterContainer.classList.remove('hidden');
+        multiCharactersContainer.classList.add('hidden');
       } else {
         characterContainer.classList.add('hidden');
+        singleCharacterContainer.classList.add('hidden');
+        multiCharactersContainer.classList.add('hidden');
       }
-    });
+    }
+  }
+
+  document.querySelectorAll('input[name="cardType"]').forEach(radio => {
+    radio.addEventListener('change', updateCharacterUI);
   });
+  document.querySelectorAll('input[name="nameRelation"]').forEach(radio => {
+    radio.addEventListener('change', updateCharacterUI);
+  });
+  updateCharacterUI();
 
   // 2. 作者 逻辑
   const authorNameInput = document.getElementById('authorName');
   document.querySelectorAll('input[name="authorType"]').forEach(radio => {
     radio.addEventListener('change', (e) => {
       if (e.target.value === 'anonymous') {
-        authorNameInput.placeholder = '你的马甲 (不填默认匿名)';
+        authorNameInput.placeholder = '马甲 (不填默认匿名)';
       } else {
-        authorNameInput.placeholder = '你的实名';
+        authorNameInput.placeholder = '实名';
       }
     });
   });
@@ -927,7 +995,10 @@
       const formData = new FormData(uploadForm);
 
       if (formData.get('cardType') === 'single') {
-        formData.delete('characters');
+        const relation = formData.get('nameRelation') || 'same';
+        if (relation === 'same') {
+          formData.delete('characters');
+        }
       }
       
       if (formData.get('secondaryWarningToggle') === 'no') {
@@ -949,6 +1020,8 @@
         document.querySelector('input[name="cardType"][value="single"]').dispatchEvent(new Event('change'));
         document.querySelector('input[name="authorType"][value="real"]').dispatchEvent(new Event('change'));
         document.querySelector('input[name="secondaryWarningToggle"][value="no"]').dispatchEvent(new Event('change'));
+        document.querySelector('input[name="nameRelation"][value="same"]').checked = true;
+        updateCharacterUI();
         initCharacterList();
         
         // 清空文件存储和预览

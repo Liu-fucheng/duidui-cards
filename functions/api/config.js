@@ -18,9 +18,7 @@ const DEFAULT_CONFIG = {
     { value: 'modern', label: '现代' },
     { value: 'ancient', label: '古代' },
     { value: 'future', label: '未来' },
-    { value: 'fantasy', label: '幻想' },
-    { value: 'scifi', label: '科幻' },
-    { value: 'historical', label: '历史' }
+    { value: 'fantasy', label: '幻想' }
   ],
   tagCategories: [
     {
@@ -95,15 +93,28 @@ function sanitizeConfig(input) {
   if (input && Array.isArray(input.orientations)) output.orientations = input.orientations;
   if (input && Array.isArray(input.backgrounds)) output.backgrounds = input.backgrounds;
   if (input && Array.isArray(input.limits)) output.limits = input.limits;
+  const sanitizeCategories = (arr) => (Array.isArray(arr) ? arr : [])
+    .filter(c => c && typeof c.category === 'string' && Array.isArray(c.tags))
+    .map(c => ({
+      category: c.category,
+      asPill: Boolean(c.asPill),
+      pillLabel: typeof c.pillLabel === 'string' ? c.pillLabel : undefined,
+      pillValue: typeof c.pillValue === 'string' ? c.pillValue : undefined,
+      tags: (Array.isArray(c.tags) ? c.tags : [])
+        .filter(t => t && typeof t.value === 'string' && typeof t.label === 'string')
+        .map(t => ({ value: t.value, label: t.label }))
+    }));
   if (input && Array.isArray(input.tagCategories)) {
-    output.tagCategories = input.tagCategories
-      .filter(c => c && typeof c.category === 'string' && Array.isArray(c.tags))
-      .map(c => ({
-        category: c.category,
-        tags: c.tags
-          .filter(t => t && typeof t.value === 'string' && typeof t.label === 'string')
-          .map(t => ({ value: t.value, label: t.label }))
-      }));
+    output.tagCategories = sanitizeCategories(input.tagCategories);
+  }
+  if (input && input.tagPartitions && typeof input.tagPartitions === 'object') {
+    const p = input.tagPartitions;
+    output.tagPartitions = {
+      common: sanitizeCategories(p.common),
+      feibianxian: sanitizeCategories(p.feibianxian),
+      bianxian: sanitizeCategories(p.bianxian),
+      shenyuan: sanitizeCategories(p.shenyuan)
+    };
   }
   return output;
 }
