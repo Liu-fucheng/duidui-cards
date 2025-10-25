@@ -45,11 +45,7 @@
     .dragging { opacity: 0.6; }
     .drag-over { outline: 2px dashed var(--accent); outline-offset: 2px; }
     .col-handle { width: 36px; }
-    .big-check { width: 22px; height: 22px; transform: scale(1.2); accent-color: var(--accent); }
-    .tags-table.fixed { width: 100%; table-layout: fixed; }
-    .tags-table.fixed th.col-handle, .tags-table.fixed td.col-handle { width: 36px; }
-    .tags-table.fixed th.col-name, .tags-table.fixed td.col-name { width: 50%; }
-    .tags-table.fixed th.col-op, .tags-table.fixed td.col-op { width: 50%; }
+    .big-check { width: 22px; height: 22px; transform: scale(1.25); accent-color: var(--accent); }
   </style>
 </head>
 <body>
@@ -165,17 +161,17 @@
   function createSimpleSection(key, title) {
     if (!Array.isArray(state.config[key])) state.config[key] = [];
     const wrap = h('div', { class: 'category' });
-      const head = h('div', { class: 'category-head' }, [
+    const head = h('div', { class: 'category-head' }, [
       h('div', { class: 'row' }, [ h('div', { text: title, style: 'font-weight:600;' }) ]),
       h('div', {}, [ h('button', { class: 'btn small', onclick: () => addSimple(key) }, ['+ 添加']) ])
     ]);
 
-    const table = h('table', { class: 'tags-table fixed' });
+      const table = h('table', { class: 'tags-table fixed' });
     const thead = h('thead', {}, [
       h('tr', {}, [
-        h('th', { class: 'col-handle', text: ' ' }),
-        h('th', { class: 'col-name', text: '名称' }),
-        h('th', { class: 'col-op', text: '操作' })
+          h('th', { class: 'col-handle', text: ' ' }),
+          h('th', { class: 'col-name', text: '名称' }),
+          h('th', { class: 'col-op', text: '操作' })
       ])
     ]);
     const tbody = h('tbody');
@@ -183,7 +179,7 @@
       const tr = h('tr', { class: 'simple-row', draggable: 'true', 'data-key': key }, [
         h('td', { class: 'col-handle' }, [ h('span', { class: 'drag-handle', title: '拖动排序', onmousedown: () => { dragState.allowed = true; dragState.simpleKey = key; } }) ]),
         h('td', { class: 'col-name' }, [ h('input', { type: 'text', value: item.label || '', placeholder: '名称', style: 'width:100%;', oninput: (e) => { item.label = e.target.value; item.value = e.target.value; } }) ]),
-        h('td', { class: 'col-op' }, [ h('button', { class: 'btn danger small', onclick: () => removeSimple(key, idx) }, ['删除']) ])
+        h('td', { class: 'col-op right' }, [ h('button', { class: 'btn danger small', onclick: () => removeSimple(key, idx) }, ['删除']) ])
       ]);
       tbody.appendChild(tr);
     });
@@ -256,16 +252,16 @@
       const thead = h('thead', {}, [
         h('tr', {}, [
           h('th', { class: 'col-handle', text: ' ' }),
-          h('th', { class: 'col-name', text: '名称' }),
-          h('th', { class: 'col-op', text: '操作' })
+          h('th', { class: 'col-name', text: '显示名' }),
+          h('th', { class: 'col-op right', text: '操作' })
         ])
       ]);
       const tbody = h('tbody');
       (Array.isArray(cat.tags) ? cat.tags : []).forEach((tag, tIdx) => {
         const tr = h('tr', { class: 'tag-row', draggable: 'true' }, [
           h('td', { class: 'col-handle' }, [ h('span', { class: 'drag-handle', title: '拖动排序', onmousedown: () => { dragState.allowed = true; dragState.tagCatIndex = index; } }) ]),
-          h('td', { class: 'col-name' }, [h('input', { type: 'text', value: tag.label || '', placeholder: '名称', style: 'width:100%;', oninput: (e) => { tag.label = e.target.value; tag.value = e.target.value; } })]),
-          h('td', { class: 'col-op' }, [h('button', { class: 'btn danger small', onclick: () => { cat.tags.splice(tIdx, 1); (ctx && ctx.scope === 'partition') ? renderPartitions() : renderCategories(); } }, ['删除'])])
+          h('td', { class: 'col-name' }, [h('input', { type: 'text', value: tag.label || '', placeholder: '如 校园', style: 'width:100%;', oninput: (e) => { tag.label = e.target.value; tag.value = e.target.value; } })]),
+          h('td', { class: 'col-op right' }, [h('button', { class: 'btn danger small', onclick: () => { cat.tags.splice(tIdx, 1); (ctx && ctx.scope === 'partition') ? renderPartitions() : renderCategories(); } }, ['删除'])])
         ]);
         tbody.appendChild(tr);
       });
@@ -275,12 +271,12 @@
       // 分类设置：是否作为整类可单独点选（胶囊）
       const pillRow = h('div', { class: 'row', style: 'margin-top:8px; align-items:center; gap:10px;' }, [
         h('label', {}, [
-          h('input', { class: 'big-check', type: 'checkbox', checked: !!cat.asPill, onchange: (e) => { cat.asPill = e.target.checked; } }),
+          h('input', { type: 'checkbox', checked: !!cat.asPill, onchange: (e) => { cat.asPill = e.target.checked; } }),
           document.createTextNode(' 整类可点选（胶囊）')
         ]),
         h('span', { text: ' 标记值/文案：' }),
-        h('input', { type: 'text', value: cat.pillLabel || '', placeholder: '胶囊显示名（可选）', style: 'width:160px;', oninput: (e) => { cat.pillLabel = e.target.value; } }),
-        h('input', { type: 'text', value: cat.pillValue || '', placeholder: '提交值（可选）', style: 'width:140px;', oninput: (e) => { cat.pillValue = e.target.value; } })
+        h('input', { type: 'text', value: cat.pillLabel || '', placeholder: '胶囊显示名（可选）', style: 'width:180px;', oninput: (e) => { cat.pillLabel = e.target.value; } }),
+        h('input', { type: 'text', value: cat.pillValue || '', placeholder: '提交值（可选）', style: 'width:160px;', oninput: (e) => { cat.pillValue = e.target.value; } })
       ]);
 
       box.appendChild(head);
