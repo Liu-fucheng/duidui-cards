@@ -746,14 +746,6 @@
     const categories = getEffectiveCategories();
     tagsOptions.innerHTML = categories.map((cat) => {
       const pills = [];
-      // 类胶囊（整类可点选）
-      if (cat.asPill && cat.category) {
-        const id = `tag${tagIndex++}`;
-        const label = cat.pillLabel || cat.category;
-        const value = cat.category;
-        pills.push(`<input class="pill-input" type="checkbox" id="${id}" name="tags" value="${value}">
-        <label class="pill ripple" for="${id}">${label}</label>`);
-      }
       // 子标签
       pills.push(...(cat.tags || []).map(opt => {
         const id = `tag${tagIndex++}`;
@@ -762,8 +754,20 @@
         <label class="pill ripple" for="${id}">${opt.label}</label>`;
       }));
 
+      // 标题：若整类可点选，则把标题渲染为一个胶囊；否则显示文本标题
+      const titleHtml = (() => {
+        if (cat.asPill && cat.category) {
+          const id = `tag${tagIndex++}`;
+          const label = cat.pillLabel || cat.category;
+          const value = cat.category;
+          return `<input class="pill-input" type="checkbox" id="${id}" name="tags" value="${value}">
+          <label class="pill ripple" for="${id}">${label}</label>`;
+        }
+        return `${cat.category}`;
+      })();
+
       return `<div class="tag-category" data-category="${cat.category}">
-        <div class="tag-category-title">${cat.category}</div>
+        <div class="tag-category-title">${titleHtml}</div>
         <div class="pill-group">${pills.join('')}</div>
       </div>`;
     }).join('');

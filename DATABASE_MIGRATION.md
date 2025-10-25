@@ -49,3 +49,4 @@ wrangler d1 execute YOUR_DATABASE_NAME --command "ALTER TABLE cards_v2 ADD COLUM
 
 
 
+
