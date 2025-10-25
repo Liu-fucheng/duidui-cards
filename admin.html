@@ -51,6 +51,8 @@
     .tags-table.fixed th.col-handle, .tags-table.fixed td.col-handle { width: 36px; }
     .tags-table.fixed th.col-name, .tags-table.fixed td.col-name { width: 80%; }
     .tags-table.fixed th.col-op, .tags-table.fixed td.col-op { width: 20%; text-align: center; }
+    .add-tag-btn { width: 32px; height: 32px; border-radius: 50%; border: none; cursor: pointer; color: #fff; background: var(--accent); display: inline-flex; align-items: center; justify-content: center; font-size: 18px; line-height: 1; margin-top: 8px; }
+    .add-tag-btn:hover { background: var(--accent-2); }
   </style>
 </head>
 <body>
@@ -246,7 +248,6 @@
   }
 
     function renderCategory(cat, index, ctx) {
-      console.log('渲染分类', cat.category, 'asPill=', cat.asPill, 'index=', index, 'ctx=', ctx);
       const box = h('div', { class: 'category', draggable: 'true' });
       const head = h('div', { class: 'category-head' }, [
         h('div', { class: 'row' }, [
@@ -255,10 +256,8 @@
         ]),
         h('div', {}, [
           h('button', { class: 'btn small', onclick: () => { 
-            console.log('添加标签前，分类', cat.category, 'asPill=', cat.asPill);
             if (!Array.isArray(cat.tags)) cat.tags = []; 
             cat.tags.push({ label: '', value: '' }); 
-            console.log('添加标签后，分类', cat.category, 'asPill=', cat.asPill);
             (ctx && ctx.scope === 'partition') ? renderPartitions() : renderCategories(); 
           } }, ['+ 添加标签']),
           h('span', { text: ' ' }),
@@ -287,14 +286,18 @@
       table.appendChild(tbody);
 
       // 分类设置：是否作为整类可单独点选（胶囊）
-      const pillRow = h('div', { class: 'row', style: 'margin-top:8px; align-items:center; gap:10px;' }, [
+      const pillRow = h('div', { class: 'row', style: 'margin-top:8px; align-items:center; gap:10px; justify-content: space-between;' }, [
         h('label', {}, [
           h('input', { class: 'big-check', type: 'checkbox', checked: !!cat.asPill, onchange: (e) => { 
             cat.asPill = e.target.checked; 
-            console.log('分类', cat.category, 'asPill 设为', cat.asPill);
           } }),
           document.createTextNode(' 整类可点选（胶囊）')
-        ])
+        ]),
+        h('button', { class: 'add-tag-btn', type: 'button', title: '添加标签', onclick: () => {
+          if (!Array.isArray(cat.tags)) cat.tags = [];
+          cat.tags.push({ label: '', value: '' });
+          (ctx && ctx.scope === 'partition') ? renderPartitions() : renderCategories();
+        } }, ['+'])
       ]);
 
       box.appendChild(head);
