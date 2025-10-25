@@ -795,13 +795,17 @@
   }
 
   function getEffectiveCategories() {
-    const common = Array.isArray(CONFIG.tagCategories) ? CONFIG.tagCategories : [];
     const partitions = (CONFIG.tagPartitions || {});
     const cateInput = document.getElementById('category');
     const raw = (cateInput && cateInput.value || '').trim();
     const map = { '非边限': 'feibianxian', '边限': 'bianxian', '深渊': 'shenyuan' };
     const key = map[raw] || null;
+    
+    // 公共分类来自 tagPartitions.common
+    const common = Array.isArray(partitions.common) ? partitions.common : [];
     const extra = key && Array.isArray(partitions[key]) ? partitions[key] : [];
+    
+    console.log('公共分类:', common.length, '专属分类:', extra.length);
     return mergeCategoriesByName(common, extra);
   }
 
