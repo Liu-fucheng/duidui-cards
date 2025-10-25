@@ -245,6 +245,7 @@
   }
 
     function renderCategory(cat, index, ctx) {
+      console.log('渲染分类', cat.category, 'asPill=', cat.asPill, 'index=', index, 'ctx=', ctx);
       const box = h('div', { class: 'category', draggable: 'true' });
       const head = h('div', { class: 'category-head' }, [
         h('div', { class: 'row' }, [
@@ -252,7 +253,13 @@
           h('input', { type: 'text', value: cat.category || '', placeholder: '分类名称', style: 'width:240px;', oninput: (e) => { cat.category = e.target.value; } })
         ]),
         h('div', {}, [
-          h('button', { class: 'btn small', onclick: () => { if (!Array.isArray(cat.tags)) cat.tags = []; cat.tags.push({ label: '', value: '' }); (ctx && ctx.scope === 'partition') ? renderPartitions() : renderCategories(); } }, ['+ 添加标签']),
+          h('button', { class: 'btn small', onclick: () => { 
+            console.log('添加标签前，分类', cat.category, 'asPill=', cat.asPill);
+            if (!Array.isArray(cat.tags)) cat.tags = []; 
+            cat.tags.push({ label: '', value: '' }); 
+            console.log('添加标签后，分类', cat.category, 'asPill=', cat.asPill);
+            (ctx && ctx.scope === 'partition') ? renderPartitions() : renderCategories(); 
+          } }, ['+ 添加标签']),
           h('span', { text: ' ' }),
           h('button', { class: 'btn danger small', onclick: () => { if (ctx && ctx.scope === 'partition') { const arr = (state.config.tagPartitions && state.config.tagPartitions[ctx.key]) || []; arr.splice(index, 1); renderPartitions(); } else { state.config.tagCategories.splice(index, 1); renderCategories(); } } }, ['删除分类'])
         ])
