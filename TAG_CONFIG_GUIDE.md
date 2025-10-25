@@ -1,15 +1,15 @@
-# Tags 配置指南
+# Tags 配置与后台管理
 
-## 如何修改 Tags
+现在 Tags 支持通过后台在线管理，配置持久化在 Cloudflare D1 中。
 
-Tags 配置在 `functions/api/config.js` 文件中。
+如果你仍然想直接改代码，也可以编辑 `functions/api/config.js` 里的默认配置（仅作兜底），但线上实际使用的是数据库中的配置。
 
 ### 文件位置
 ```
 functions/api/config.js
 ```
 
-### 配置结构
+## 配置结构
 
 Tags 按**大类**分组，每个大类包含多个小标签：
 
@@ -26,7 +26,7 @@ tagCategories: [
 ]
 ```
 
-### 当前配置示例
+### 默认配置示例（仅兜底）
 
 ```javascript
 tagCategories: [
@@ -134,12 +134,27 @@ export async function onRequestGet(context) {
 }
 ```
 
-## 修改后生效
+## 后台管理使用方法
 
-1. 修改 `functions/api/config.js` 文件
-2. 重新部署（如果使用 Cloudflare Pages，提交代码即可）
-3. 清除浏览器缓存或等待1小时（配置有1小时缓存）
-4. 刷新页面即可看到新的 tags
+1. 打开 `admin.html`（部署后访问 `/admin.html`）。
+2. 输入管理员 Token 并进入管理。
+3. 在“Tag 分类”里新增/删除分类和标签，点击“保存更改”。
+4. 前台页面会从 `/api/config` 读取最新配置并展示。
+
+管理员 Token 仅保存在浏览器本地（localStorage），通过 `Authorization: Bearer <Token>` 请求头发送，不会上传到服务器存储。
+
+## Cloudflare 配置步骤
+
+1. 绑定 D1 实例（名称示例 `D1_DB`）
+   - 在 Pages/Workers 项目里绑定 D1 数据库到环境变量 `D1_DB`。
+   - 首次访问会自动创建表 `app_config` 并写入默认配置。
+2. 配置环境变量 `ADMIN_TOKEN`
+   - 在 Pages/Workers 的环境变量里添加 `ADMIN_TOKEN`，并填入一串高强度随机串。
+   - 后台保存时需要携带 `Authorization: Bearer <ADMIN_TOKEN>`。
+3. 部署
+   - 提交代码或点击重新部署。
+4. 验证
+   - 访问 `/admin.html`，输入 `ADMIN_TOKEN`，新增或修改一个标签，保存成功后刷新前台页面验证。
 
 ## 搜索功能
 
@@ -164,5 +179,6 @@ Tags (可多选):                [搜索 tag...]
 ```
 
 选中的标签会变深色，有内阴影效果。
+
 
 

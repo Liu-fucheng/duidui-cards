@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>标签管理后台</title>
+  <style>
+    :root {
+      --bg: #F3E9DD;
+      --surface: #FAF4EC;
+      --text: #5C4033;
+      --muted: #D9CBBE;
+      --accent: #8B5E3C;
+      --accent-2: #6D4C3D;
+      --pill-bg: #EADFD2;
+    }
+
+    html, body { background: var(--bg); color: var(--text); font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, PingFang SC, Hiragino Sans GB, Microsoft YaHei, Helvetica Neue, Arial, Noto Sans, "Noto Sans CJK SC", sans-serif; }
+    body { margin: 24px; max-width: 980px; margin-left: auto; margin-right: auto; }
+    h1 { font-size: 24px; margin: 0 0 16px; }
+    .card { background: var(--surface); border: 1px solid var(--muted); border-radius: 12px; padding: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+    .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 10px; border: 1px solid var(--muted); background: var(--surface); cursor: pointer; }
+    .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .btn.danger { background: #B5534E; color: #fff; border-color: #B5534E; }
+    .btn.small { padding: 6px 10px; border-radius: 8px; }
+    .muted { color: #9A8274; font-size: 13px; }
+    input[type="text"], textarea { padding: 8px 10px; border: 1px solid var(--muted); border-radius: 8px; background: #fff; color: var(--text); }
+    input[type="text"] { height: 34px; }
+    .input-sm { height: 30px; padding: 6px 8px; }
+    .space { height: 16px; }
+    .grid { display: grid; gap: 12px; }
+    .category { border: 1px dashed var(--muted); border-radius: 10px; padding: 12px; background: #fff; }
+    .category-head { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+    .tags-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    .tags-table th, .tags-table td { border-bottom: 1px solid #eee; padding: 8px; text-align: left; }
+    .tags-table th { font-weight: 600; color: #7b6558; background: #f9f6f2; }
+    .right { text-align: right; }
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .token-box { display: flex; align-items: center; gap: 8px; }
+    .status { margin-top: 10px; font-weight: 600; color: var(--accent-2); }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>标签管理后台</h1>
+    <div class="token-box">
+      <input type="password" id="adminToken" placeholder="管理员 Token" class="input-sm" style="width:220px;">
+      <button class="btn small" id="toggleToken">显示</button>
+      <button class="btn primary small" id="saveToken">保存Token</button>
+      <button class="btn small" id="clearToken">清除</button>
+    </div>
+  </div>
+
+  <div class="card" id="guardCard">
+    <div class="row">
+      <div>
+        <div style="font-weight:600; margin-bottom:6px;">需要管理员 Token</div>
+        <div class="muted">将通过 Authorization: Bearer 头发送，保存在本地浏览器，不会上传。</div>
+      </div>
+      <div style="flex:1"></div>
+      <button class="btn primary" id="enterAdmin">进入管理</button>
+    </div>
+  </div>
+
+  <div class="space"></div>
+
+  <div id="editor" class="hidden">
+    <div class="card">
+      <div class="row" style="justify-content: space-between;">
+        <div>
+          <div style="font-weight:700;">Tag 分类</div>
+          <div class="muted">编辑分类、标签的显示名和提交值，保存后前台自动读取最新配置。</div>
+        </div>
+        <div class="row">
+          <button class="btn" id="reloadConfig">重新加载</button>
+          <button class="btn primary" id="saveConfig">保存更改</button>
+        </div>
+      </div>
+      <div class="space"></div>
+      <div id="categories" class="grid"></div>
+      <div class="space"></div>
+      <button class="btn" id="addCategory">+ 新增分类</button>
+      <div id="status" class="status"></div>
+    </div>
+  </div>
+
+  <script>
+    const state = {
+      config: null
+    };
+
+    function getToken() {
+      return localStorage.getItem('admin_token') || (document.getElementById('adminToken').value || '').trim();
+    }
+
+    function setStatus(text, isError) {
+      const el = document.getElementById('status');
+      el.textContent = text || '';
+      el.style.color = isError ? '#B5534E' : 'var(--accent-2)';
+    }
+
+    function h(tag, attrs = {}, children = []) {
+      const el = document.createElement(tag);
+      Object.entries(attrs).forEach(([k, v]) => {
+        if (k === 'class') el.className = v;
+        else if (k === 'text') el.textContent = v;
+        else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2), v);
+        else el.setAttribute(k, v);
+      });
+      children.forEach(c => el.appendChild(typeof c === 'string' ? document.createTextNode(c) : c));
+      return el;
+    }
+
+    async function loadConfig() {
+      setStatus('');
+      const res = await fetch('/api/config');
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || '加载失败');
+      state.config = data.config || {};
+      renderCategories();
+    }
+
+    function renderCategories() {
+      const container = document.getElementById('categories');
+      container.innerHTML = '';
+      const categories = Array.isArray(state.config.tagCategories) ? state.config.tagCategories : [];
+      categories.forEach((cat, idx) => container.appendChild(renderCategory(cat, idx)));
+    }
+
+    function renderCategory(cat, index) {
+      const box = h('div', { class: 'category' });
+      const head = h('div', { class: 'category-head' }, [
+        h('div', {}, [
+          h('input', { type: 'text', value: cat.category || '', placeholder: '分类名称', style: 'width:240px;', oninput: (e) => { cat.category = e.target.value; } })
+        ]),
+        h('div', {}, [
+          h('button', { class: 'btn small', onclick: () => addTag(cat) }, ['+ 添加标签']),
+          h('span', { text: ' ' }),
+          h('button', { class: 'btn danger small', onclick: () => removeCategory(index) }, ['删除分类'])
+        ])
+      ]);
+
+      const table = h('table', { class: 'tags-table' });
+      const thead = h('thead', {}, [
+        h('tr', {}, [
+          h('th', { text: '显示名 label' }),
+          h('th', { text: '提交值 value' }),
+          h('th', { class: 'right', text: '操作' })
+        ])
+      ]);
+      const tbody = h('tbody');
+      (Array.isArray(cat.tags) ? cat.tags : []).forEach((tag, tIdx) => {
+        const tr = h('tr', {}, [
+          h('td', {}, [h('input', { type: 'text', value: tag.label || '', placeholder: '如 校园', style: 'width:220px;', oninput: (e) => { tag.label = e.target.value; } })]),
+          h('td', {}, [h('input', { type: 'text', value: tag.value || '', placeholder: '如 campus', style: 'width:220px;', oninput: (e) => { tag.value = e.target.value; } })]),
+          h('td', { class: 'right' }, [h('button', { class: 'btn danger small', onclick: () => removeTag(cat, tIdx) }, ['删除'])])
+        ]);
+        tbody.appendChild(tr);
+      });
+      table.appendChild(thead);
+      table.appendChild(tbody);
+
+      box.appendChild(head);
+      box.appendChild(table);
+      return box;
+    }
+
+    function addCategory() {
+      if (!Array.isArray(state.config.tagCategories)) state.config.tagCategories = [];
+      state.config.tagCategories.push({ category: '新分类', tags: [] });
+      renderCategories();
+    }
+
+    function removeCategory(index) {
+      state.config.tagCategories.splice(index, 1);
+      renderCategories();
+    }
+
+    function addTag(cat) {
+      if (!Array.isArray(cat.tags)) cat.tags = [];
+      cat.tags.push({ label: '', value: '' });
+      renderCategories();
+    }
+
+    function removeTag(cat, idx) {
+      cat.tags.splice(idx, 1);
+      renderCategories();
+    }
+
+    async function saveConfig() {
+      setStatus('保存中...');
+      const token = getToken();
+      if (!token) { setStatus('请先输入并保存管理员 Token', true); return; }
+      const body = { tagCategories: state.config.tagCategories };
+      try {
+        const res = await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.message || '保存失败');
+        state.config = data.config;
+        renderCategories();
+        setStatus('已保存');
+      } catch (e) {
+        setStatus('保存失败：' + e.message, true);
+      }
+    }
+
+    // UI wiring
+    document.getElementById('addCategory').addEventListener('click', addCategory);
+    document.getElementById('saveConfig').addEventListener('click', saveConfig);
+    document.getElementById('reloadConfig').addEventListener('click', () => loadConfig().then(() => setStatus('已重新加载')).catch(e => setStatus('加载失败：' + e.message, true)));
+
+    document.getElementById('toggleToken').addEventListener('click', () => {
+      const el = document.getElementById('adminToken');
+      el.type = el.type === 'password' ? 'text' : 'password';
+    });
+    document.getElementById('saveToken').addEventListener('click', () => {
+      const v = (document.getElementById('adminToken').value || '').trim();
+      if (v) localStorage.setItem('admin_token', v);
+      setStatus('Token 已保存在本地');
+    });
+    document.getElementById('clearToken').addEventListener('click', () => {
+      localStorage.removeItem('admin_token');
+      document.getElementById('adminToken').value = '';
+      setStatus('Token 已清除');
+    });
+    document.getElementById('enterAdmin').addEventListener('click', () => {
+      const token = getToken();
+      if (!token) { setStatus('请输入 Token', true); return; }
+      localStorage.setItem('admin_token', token);
+      document.getElementById('guardCard').classList.add('hidden');
+      document.getElementById('editor').classList.remove('hidden');
+      loadConfig().catch(e => setStatus('加载失败：' + e.message, true));
+    });
+
+    // Init
+    (function init() {
+      const saved = localStorage.getItem('admin_token');
+      if (saved) {
+        document.getElementById('adminToken').value = saved;
+        document.getElementById('guardCard').classList.add('hidden');
+        document.getElementById('editor').classList.remove('hidden');
+        loadConfig().catch(e => setStatus('加载失败：' + e.message, true));
+      }
+    })();
+  </script>
+</body>
+</html>
+
+
