@@ -740,14 +740,15 @@
       if (cat.asPill && (cat.pillValue || cat.category)) {
         const id = `tag${tagIndex++}`;
         const label = cat.pillLabel || cat.category;
-        const value = cat.pillValue || `cat:${cat.category}`;
+        const value = (cat.pillValue || cat.pillLabel || cat.category);
         pills.push(`<input class="pill-input" type="checkbox" id="${id}" name="tags" value="${value}">
         <label class="pill ripple" for="${id}">${label}</label>`);
       }
       // 子标签
       pills.push(...(cat.tags || []).map(opt => {
         const id = `tag${tagIndex++}`;
-        return `<input class="pill-input" type="checkbox" id="${id}" name="tags" value="${opt.value}">
+        const val = (opt.value || opt.label);
+        return `<input class="pill-input" type="checkbox" id="${id}" name="tags" value="${val}">
         <label class="pill ripple" for="${id}">${opt.label}</label>`;
       }));
 

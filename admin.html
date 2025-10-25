@@ -169,8 +169,7 @@
     const thead = h('thead', {}, [
       h('tr', {}, [
         h('th', { class: 'col-handle', text: ' ' }),
-        h('th', { text: '显示名 label' }),
-        h('th', { text: '提交值 value' }),
+        h('th', { text: '显示名' }),
         h('th', { class: 'right', text: '操作' })
       ])
     ]);
@@ -178,8 +177,7 @@
     state.config[key].forEach((item, idx) => {
       const tr = h('tr', { class: 'simple-row', draggable: 'true', 'data-key': key }, [
         h('td', { class: 'col-handle' }, [ h('span', { class: 'drag-handle', title: '拖动排序', onmousedown: () => { dragState.allowed = true; dragState.simpleKey = key; } }) ]),
-        h('td', {}, [ h('input', { type: 'text', value: item.label || '', placeholder: '如 现代', style: 'width:220px;', oninput: (e) => { item.label = e.target.value; } }) ]),
-        h('td', {}, [ h('input', { type: 'text', value: item.value || '', placeholder: '如 modern', style: 'width:220px;', oninput: (e) => { item.value = e.target.value; } }) ]),
+        h('td', {}, [ h('input', { type: 'text', value: item.label || '', placeholder: '如 现代', style: 'width:320px;', oninput: (e) => { item.label = e.target.value; item.value = e.target.value; } }) ]),
         h('td', { class: 'right' }, [ h('button', { class: 'btn danger small', onclick: () => removeSimple(key, idx) }, ['删除']) ])
       ]);
       tbody.appendChild(tr);
@@ -253,8 +251,7 @@
       const thead = h('thead', {}, [
         h('tr', {}, [
           h('th', { class: 'col-handle', text: ' ' }),
-          h('th', { text: '显示名 label' }),
-          h('th', { text: '提交值 value' }),
+          h('th', { text: '显示名' }),
           h('th', { class: 'right', text: '操作' })
         ])
       ]);
@@ -262,8 +259,7 @@
       (Array.isArray(cat.tags) ? cat.tags : []).forEach((tag, tIdx) => {
         const tr = h('tr', { class: 'tag-row', draggable: 'true' }, [
           h('td', { class: 'col-handle' }, [ h('span', { class: 'drag-handle', title: '拖动排序', onmousedown: () => { dragState.allowed = true; dragState.tagCatIndex = index; } }) ]),
-          h('td', {}, [h('input', { type: 'text', value: tag.label || '', placeholder: '如 校园', style: 'width:220px;', oninput: (e) => { tag.label = e.target.value; } })]),
-          h('td', {}, [h('input', { type: 'text', value: tag.value || '', placeholder: '如 campus', style: 'width:220px;', oninput: (e) => { tag.value = e.target.value; } })]),
+          h('td', {}, [h('input', { type: 'text', value: tag.label || '', placeholder: '如 校园', style: 'width:320px;', oninput: (e) => { tag.label = e.target.value; tag.value = e.target.value; } })]),
           h('td', { class: 'right' }, [h('button', { class: 'btn danger small', onclick: () => { cat.tags.splice(tIdx, 1); (ctx && ctx.scope === 'partition') ? renderPartitions() : renderCategories(); } }, ['删除'])])
         ]);
         tbody.appendChild(tr);
