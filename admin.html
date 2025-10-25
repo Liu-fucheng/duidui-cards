@@ -98,7 +98,7 @@
         <div class="category">
           <div class="category-head">
             <div class="row"><div style="font-weight:700;">分区专属 Tags</div></div>
-            <div class="muted">每个分区 = 公共 + 专属；支持分类设为"整类可单选胶囊"。</div>
+            <div class="muted">非边限/边限/深渊的专属分类，前台会自动合并到"公共"（上方 Tag 分类）后显示。</div>
           </div>
           <div class="space"></div>
           <div id="partitions"></div>
@@ -217,7 +217,6 @@
     const host = document.getElementById('partitions');
     host.innerHTML = '';
     const keys = [
-      { k: 'common', name: '公共' },
       { k: 'feibianxian', name: '非边限' },
       { k: 'bianxian', name: '边限' },
       { k: 'shenyuan', name: '深渊' }
