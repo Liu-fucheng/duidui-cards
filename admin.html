@@ -180,9 +180,10 @@
         h('div', {}, [ h('span', { class: 'muted', text: '包含 公共/非边限/边限/深渊' }) ])
       ]);
       const body = h('div', { id: 'partitions' });
-      renderPartitions();
+      // 先挂载，再渲染内部内容，避免找不到节点
       wrap.appendChild(head);
       wrap.appendChild(body);
+      renderPartitions(body);
       // 拖拽排序支持
       wrap.addEventListener('dragstart', (e) => { if (!dragState.allowed) { e.preventDefault(); return; } dragState.mode='section'; dragState.srcIndex = sectionIndex; wrap.classList.add('dragging'); setTimeout(()=>{dragState.allowed=false;},0); });
       wrap.addEventListener('dragend', ()=> wrap.classList.remove('dragging'));
@@ -281,8 +282,9 @@
       renderSections();
     }
 
-    function renderPartitions() {
-      const host = document.getElementById('partitions');
+    function renderPartitions(targetHost) {
+      const host = targetHost || document.getElementById('partitions');
+      if (!host) return;
       host.innerHTML = '';
       const keys = [
         { k: 'feibianxian', name: '非边限' },
