@@ -61,13 +61,13 @@ const DEFAULT_CONFIG = {
 
 async function ensureConfigTable(env) {
   if (!env || !env.D1_DB) return;
-  await env.D1_DB.exec(
+  await env.D1_DB.prepare(
     `CREATE TABLE IF NOT EXISTS app_config (
        key TEXT PRIMARY KEY,
        value TEXT NOT NULL,
        updatedAt TEXT NOT NULL
      )`
-  );
+  ).run();
 }
 
 async function readConfigFromDb(env) {
@@ -159,8 +159,7 @@ export async function onRequestPost(context) {
 
     await ensureConfigTable(env);
     await env.D1_DB.prepare(
-      `INSERT INTO app_config (key, value, updatedAt) VALUES (?, ?, ?)
-       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updatedAt = excluded.updatedAt`
+      `INSERT OR REPLACE INTO app_config (key, value, updatedAt) VALUES (?, ?, ?)`
     ).bind('ui_config', JSON.stringify(nextConfig), new Date().toISOString()).run();
 
     return new Response(JSON.stringify({ success: true, config: nextConfig }), {
