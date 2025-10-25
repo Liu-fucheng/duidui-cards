@@ -577,22 +577,10 @@
     
     <!-- 作者类型已合并到作者行 -->
 
-    <div id="section-tags" class="field">
-      <label class="group-label">性向* (可多选, 至少选一):</label>
-      <div class="inline-options" id="orientationOptions">
-        <!-- 动态从配置加载 -->
-    </div>
-    </div>
-
-    <div class="field">
-      <label class="group-label">背景 (可多选):</label>
-      <div class="inline-options" id="backgroundOptions">
-        <!-- 动态从配置加载 -->
-    </div>
-    </div>
-
-    <div id="customSectionsHost" class="field">
-      <!-- 自定义选项将通过 JavaScript 动态添加 -->
+    <div id="section-tags">
+      <div id="customSectionsHost">
+        <!-- 自定义板块将通过 JavaScript 动态添加 -->
+      </div>
     </div>
 
     <div class="field">
@@ -608,12 +596,6 @@
     </div>
     </div>
     
-    <div class="field">
-      <label class="group-label">限制 (可多选):</label>
-      <div class="inline-options" id="limitOptions">
-        <!-- 动态从配置加载 -->
-    </div>
-    </div>
 
     <div class="field">
       <label class="group-label" for="warnings">排雷:</label>
@@ -703,44 +685,34 @@
   // 渲染选项（使用简单的 checkbox，Material UI 样式会自动应用）
   function renderOptions() {
     // 兜底：确保 CONFIG 有必要的数组
-    if (!CONFIG.orientations) CONFIG.orientations = [];
-    if (!CONFIG.backgrounds) CONFIG.backgrounds = [];
-    if (!CONFIG.limits) CONFIG.limits = [];
     if (!CONFIG.tagCategories) CONFIG.tagCategories = [];
     
-    // 性向
-    const orientationOptions = document.getElementById('orientationOptions');
-    orientationOptions.innerHTML = CONFIG.orientations.map((opt, i) => `
-      <label><input type="checkbox" id="ori${i}" name="orientation" value="${opt.value}"> ${opt.label}</label>
-    `).join('');
-
-    // 背景
-    const backgroundOptions = document.getElementById('backgroundOptions');
-    backgroundOptions.innerHTML = CONFIG.backgrounds.map((opt, i) => `
-      <label><input type="checkbox" id="bg${i}" name="background" value="${opt.value}"> ${opt.label}</label>
-    `).join('');
-
-    // 自定义板块（与性向/背景/限制同级）
+    // 自定义板块（按 sections 顺序渲染）
     const secHost = document.getElementById('customSectionsHost');
     if (secHost) {
       const sections = Array.isArray(CONFIG.customSections) ? CONFIG.customSections : [];
-      secHost.innerHTML = sections.map(sec => {
-        const items = (sec.items || []).map((it, i) => `<label><input type="checkbox" name="custom_${sec.title}" value="${it.value}"> ${it.label}</label>`).join('');
-        return `<div class="field"><label class="group-label">${sec.title}:</label><div class="inline-options">${items}</div></div>`;
-      }).join('');
+      const order = Array.isArray(CONFIG.sections) ? CONFIG.sections : [];
+      const htmls = [];
+      order.forEach(key => {
+        if (key === 'partition') return; // partition 不在这里显示
+        if (key.startsWith('custom:')) {
+          const title = key.slice(7);
+          const sec = sections.find(s => s && s.title === title);
+          if (!sec) return;
+          const inputType = sec.multiple === false ? 'radio' : 'checkbox';
+          const items = (sec.items || []).map((it, i) => {
+            const name = sec.multiple === false ? `custom_${title}` : `custom_${title}[]`;
+            return `<label><input type="${inputType}" name="${name}" value="${it.value}"> ${it.label}</label>`;
+          }).join('');
+          const hint = sec.multiple === false ? '' : ' (可多选)';
+          htmls.push(`<div class="field"><label class="group-label">${sec.title}${hint}:</label><div class="inline-options">${items}</div></div>`);
+        }
+      });
+      secHost.innerHTML = htmls.join('');
     }
 
     // Tags 初次渲染
     renderTagsByPartition();
-
-    // 限制
-    const limitOptions = document.getElementById('limitOptions');
-    limitOptions.innerHTML = CONFIG.limits.map((opt, i) => `
-      <label><input type="checkbox" id="limit${i}" name="userLimit" value="${opt.value}" ${opt.value === 'none' ? 'checked' : ''}> ${opt.label}</label>
-    `).join('');
-
-    // 绑定限制互斥逻辑
-    bindLimitLogic();
 
     // 监听分区变化，实时切换标签集合
     const categoryInput = document.getElementById('category');
@@ -846,20 +818,6 @@
     return Array.from(byName.values());
   }
 
-  function bindLimitLogic() {
-    const limitNone = document.querySelector('input[name="userLimit"][value="none"]');
-    const limitOthers = Array.from(document.querySelectorAll('input[name="userLimit"]')).filter(el => el.value !== 'none');
-    if (limitNone) {
-      limitNone.addEventListener('change', () => {
-        if (limitNone.checked) {
-          limitOthers.forEach(el => { el.checked = false; });
-        }
-      });
-      limitOthers.forEach(el => el.addEventListener('change', () => {
-        if (el.checked) limitNone.checked = false;
-      }));
-    }
-  }
 
   // --- 角色名胶囊管理 ---
   const characterList = document.getElementById('characterList');
@@ -1011,13 +969,6 @@
 
   uploadForm.addEventListener("submit", async function (event) {
     event.preventDefault();
-
-    // 验证性向
-    const orientationChecked = document.querySelector('input[name="orientation"]:checked');
-    if (!orientationChecked) {
-      uploadStatus.textContent = "请至少选择一个性向";
-      return;
-    }
     
     const cardFile = document.getElementById('cardFile').files[0];
     if (!cardFile) {
@@ -1284,8 +1235,7 @@
         }
       },
       { id: 'step2', check: () => {
-          const anyOrientation = !!document.querySelector('input[name="orientation"]:checked');
-          return anyOrientation;
+          return true; // tags 变为可选
         }
       },
       { id: 'step3', check: () => {
@@ -1307,9 +1257,6 @@
 
     document.getElementById('cardName').addEventListener('input', updateSteps);
     document.getElementById('cardFile').addEventListener('change', updateSteps);
-    document.addEventListener('change', (e) => {
-      if (e.target && e.target.name === 'orientation') updateSteps();
-    });
     updateSteps();
   });
 </script>
