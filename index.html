@@ -684,11 +684,14 @@
     try {
       const response = await fetch('/api/config');
       const data = await response.json();
+      console.log('配置加载结果:', data);
       if (data.success) {
         CONFIG = data.config;
+        console.log('CONFIG.tagCategories:', CONFIG.tagCategories);
+        console.log('CONFIG.orientations:', CONFIG.orientations);
       }
     } catch (error) {
-      console.log('使用默认配置', error);
+      console.error('配置加载失败', error);
     }
     renderOptions();
   }
