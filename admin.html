@@ -281,7 +281,10 @@
       // 分类设置：是否作为整类可单独点选（胶囊）
       const pillRow = h('div', { class: 'row', style: 'margin-top:8px; align-items:center; gap:10px;' }, [
         h('label', {}, [
-          h('input', { class: 'big-check', type: 'checkbox', checked: !!cat.asPill, onchange: (e) => { cat.asPill = e.target.checked; } }),
+          h('input', { class: 'big-check', type: 'checkbox', checked: !!cat.asPill, onchange: (e) => { 
+            cat.asPill = e.target.checked; 
+            console.log('分类', cat.category, 'asPill 设为', cat.asPill);
+          } }),
           document.createTextNode(' 整类可点选（胶囊）')
         ])
       ]);
@@ -326,7 +329,7 @@
 
   function addCategory() {
       if (!Array.isArray(state.config.tagCategories)) state.config.tagCategories = [];
-      state.config.tagCategories.push({ category: '新分类', tags: [] });
+      state.config.tagCategories.push({ category: '新分类', asPill: false, tags: [] });
       renderCategories();
     }
   
