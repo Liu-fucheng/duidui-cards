@@ -168,14 +168,18 @@
 
     function renderPartitionSection(sectionIndex) {
       const wrap = h('div', { class: 'category', draggable: 'true' });
+      const body = h('div', { id: 'partitions' });
       const head = h('div', { class: 'category-head' }, [
         h('div', { class: 'row' }, [
           h('span', { class: 'drag-handle', title: '拖动排序', onmousedown: () => { dragState.allowed = true; } }),
           h('div', { text: '分区专属 Tags', style: 'font-weight:600;' })
         ]),
-        h('div', {}, [ h('span', { class: 'muted', text: '包含 公共/非边限/边限/深渊' }) ])
+        h('div', {}, [ 
+          h('button', { class: 'btn small', title: '收起/展开', onclick: () => { const hidden = body.classList.toggle('hidden'); toggle.textContent = hidden ? '>' : 'v'; } }, ['v']),
+          (function(){})()
+        ])
       ]);
-      const body = h('div', { id: 'partitions' });
+      const toggle = head.querySelector('button.btn.small');
       // 先挂载，再渲染内部内容，避免找不到节点
       wrap.appendChild(head);
       wrap.appendChild(body);
@@ -243,7 +247,10 @@
         h('span', { class: 'drag-handle', title: '拖动排序', onmousedown: () => { dragState.allowed = true; } }),
         h('input', { type: 'text', value: sec.title || '', placeholder: '板块名称', style: 'width:240px;', oninput: (e) => { const old = sec.title; sec.title = e.target.value; const idx = state.config.sections.indexOf('custom:'+old); if (idx>=0) state.config.sections[idx] = 'custom:'+sec.title; } })
       ]),
-      h('div', {}, [ h('button', { class: 'btn danger small', onclick: () => { const idx = state.config.sections.indexOf('custom:'+sec.title); if (idx>=0) state.config.sections.splice(idx,1); const si = state.config.customSections.indexOf(sec); if (si>=0) state.config.customSections.splice(si,1); renderSections(); } }, ['删除板块']) ])
+      h('div', {}, [ 
+        h('button', { class: 'btn small', title: '收起/展开' }, ['v']),
+        h('button', { class: 'btn danger small', onclick: () => { const idx = state.config.sections.indexOf('custom:'+sec.title); if (idx>=0) state.config.sections.splice(idx,1); const si = state.config.customSections.indexOf(sec); if (si>=0) state.config.customSections.splice(si,1); renderSections(); } }, ['删除板块']) 
+      ])
     ]);
     
     const settingRow = h('div', { class: 'row', style: 'margin-top:8px; align-items:center; gap:10px; flex-wrap:wrap;' }, [
@@ -282,10 +289,14 @@
       h('button', { class: 'add-tag-btn', onclick: () => { (sec.items || (sec.items=[])).push({ label: '', value: '' }); renderSections(); } }, ['+'])
     ]);
     
+    const contentWrap = h('div');
+    contentWrap.appendChild(settingRow);
+    contentWrap.appendChild(table);
+    contentWrap.appendChild(footer);
+    const collapseBtn = head.querySelector('.btn.small');
+    collapseBtn.onclick = () => { const hidden = contentWrap.classList.toggle('hidden'); collapseBtn.textContent = hidden ? '>' : 'v'; };
     wrap.appendChild(head);
-    wrap.appendChild(settingRow);
-    wrap.appendChild(table);
-    wrap.appendChild(footer);
+    wrap.appendChild(contentWrap);
     // section 拖拽支持
     wrap.addEventListener('dragstart', (e) => { if (!dragState.allowed) { e.preventDefault(); return; } dragState.mode='section'; dragState.srcIndex = sectionIndex; wrap.classList.add('dragging'); setTimeout(()=>{dragState.allowed=false;},0); });
     wrap.addEventListener('dragend', ()=> wrap.classList.remove('dragging'));
@@ -348,6 +359,7 @@
           h('input', { type: 'text', value: cat.category || '', placeholder: '分类名称', style: 'width:240px;', oninput: (e) => { cat.category = e.target.value; } })
         ]),
         h('div', {}, [
+          h('button', { class: 'btn small', title: '收起/展开' }, ['v']),
           h('button', { class: 'btn small', onclick: () => { 
             if (!Array.isArray(cat.tags)) cat.tags = []; 
             cat.tags.push({ label: '', value: '' }); 
@@ -404,10 +416,14 @@
         } }, ['+'])
       ]);
 
+      const contentWrap = h('div');
+      contentWrap.appendChild(pillRow);
+      contentWrap.appendChild(table);
+      contentWrap.appendChild(tableFooter);
+      const collapseBtn = head.querySelector('.btn.small');
+      collapseBtn.onclick = () => { const hidden = contentWrap.classList.toggle('hidden'); collapseBtn.textContent = hidden ? '>' : 'v'; };
       box.appendChild(head);
-      box.appendChild(pillRow);
-      box.appendChild(table);
-      box.appendChild(tableFooter);
+      box.appendChild(contentWrap);
 
       // --- 拖拽（分类） ---
       box.addEventListener('dragstart', (e) => {
@@ -509,6 +525,18 @@
       cat.tags.splice(to, 0, m);
       setStatus('已调整标签顺序（未保存）');
       (dragState.scope === 'partition') ? renderPartitions() : renderCategories();
+    });
+
+    // 全局兜底清理拖拽样式，避免残留半透明蒙版
+    document.addEventListener('dragend', () => {
+      document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+      document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+      dragState.mode = null; dragState.allowed = false;
+    });
+    document.addEventListener('drop', () => {
+      document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+      document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+      dragState.mode = null; dragState.allowed = false;
     });
 
     // --- 触摸端（移动设备）对标签行的排序降级支持 ---
