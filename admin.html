@@ -773,16 +773,22 @@
       (dragState.scope === 'partition') ? renderPartitions() : renderCategories();
     });
 
-    // --- 拖拽（简单数组：性向/背景/限制） ---
+    // --- 拖拽（简单数组：性向/背景/限制 + 自定义板块条目） ---
     document.addEventListener('dragstart', (e) => {
       const tr = e.target && e.target.closest && e.target.closest('tr.simple-row');
       if (!tr) return;
-      if (!dragState.allowed) { e.preventDefault(); return; }
+      if (!dragState.allowed) { 
+        console.log('❌ 拖拽被阻止: dragState.allowed =', dragState.allowed);
+        e.preventDefault(); 
+        return; 
+      }
       const key = tr.getAttribute('data-key');
+      console.log('✅ 开始拖拽 simple-row, key =', key);
       const rows = Array.from(tr.parentElement.querySelectorAll('tr.simple-row'));
       dragState.mode = 'simple';
       dragState.simpleKey = key;
       dragState.srcIndex = rows.indexOf(tr);
+      console.log('   设置 simpleKey =', dragState.simpleKey, 'srcIndex =', dragState.srcIndex);
       e.dataTransfer && (e.dataTransfer.effectAllowed = 'move');
       tr.classList.add('dragging');
       setTimeout(() => { dragState.allowed = false; }, 0);
@@ -806,36 +812,44 @@
       if (!tr) return;
       e.preventDefault();
       tr.classList.remove('drag-over');
+      console.log('📍 Drop 事件: mode =', dragState.mode);
       if (dragState.mode !== 'simple') return;
       const key = tr.getAttribute('data-key');
+      console.log('📍 Drop key =', key, 'simpleKey =', dragState.simpleKey);
       if (key !== dragState.simpleKey) return;
       const rows = Array.from(tr.parentElement.querySelectorAll('tr.simple-row'));
       const to = rows.indexOf(tr);
       const from = dragState.srcIndex;
+      console.log('📍 Drop 位置: from =', from, 'to =', to);
       if (from === undefined || to === undefined || from === to) return;
       
       // 判断是自定义板块还是普通配置数组
       if (key.startsWith('section-')) {
+        console.log('🔧 处理自定义板块条目');
         // 自定义板块的条目
         const sectionTitle = key.slice(8); // 去掉 'section-' 前缀
+        console.log('   板块标题:', sectionTitle);
         if (!Array.isArray(state.config.customSections)) {
-          console.error('customSections 不存在');
+          console.error('❌ customSections 不存在');
           return;
         }
         const sec = state.config.customSections.find(s => s && s.title === sectionTitle);
         if (!sec) {
-          console.error('找不到板块:', sectionTitle);
+          console.error('❌ 找不到板块:', sectionTitle);
+          console.log('   现有板块:', state.config.customSections.map(s => s.title));
           return;
         }
         if (!Array.isArray(sec.items)) {
-          console.error('板块 items 不是数组:', sectionTitle);
+          console.error('❌ 板块 items 不是数组:', sectionTitle);
           return;
         }
+        console.log('✅ 开始调整顺序');
         const [m] = sec.items.splice(from, 1);
         sec.items.splice(to, 0, m);
         setStatus('已调整顺序（未保存）');
         renderSections();
       } else {
+        console.log('🔧 处理普通配置数组');
         // 普通配置数组（如性向、背景等）
         const arr = state.config[key];
         if (!Array.isArray(arr)) return;
