@@ -702,15 +702,15 @@
     });
 
     // 全局兜底清理拖拽样式，避免残留半透明蒙版
+    // 注意：不要在这里重置 dragState.mode，因为 drop 事件需要用到它
     document.addEventListener('dragend', () => {
       document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
       document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-      dragState.mode = null; dragState.allowed = false;
-    });
-    document.addEventListener('drop', () => {
-      document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
-      document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-      dragState.mode = null; dragState.allowed = false;
+      // 延迟重置，确保 drop 事件先执行
+      setTimeout(() => {
+        dragState.mode = null; 
+        dragState.allowed = false;
+      }, 100);
     });
 
     // --- 触摸端（移动设备）对标签行的排序降级支持 ---
@@ -813,10 +813,16 @@
       e.preventDefault();
       tr.classList.remove('drag-over');
       console.log('📍 Drop 事件: mode =', dragState.mode);
-      if (dragState.mode !== 'simple') return;
+      if (dragState.mode !== 'simple') {
+        console.log('⚠️ mode 不是 simple，退出');
+        return;
+      }
       const key = tr.getAttribute('data-key');
       console.log('📍 Drop key =', key, 'simpleKey =', dragState.simpleKey);
-      if (key !== dragState.simpleKey) return;
+      if (key !== dragState.simpleKey) {
+        console.log('⚠️ key 不匹配，退出');
+        return;
+      }
       const rows = Array.from(tr.parentElement.querySelectorAll('tr.simple-row'));
       const to = rows.indexOf(tr);
       const from = dragState.srcIndex;
@@ -848,6 +854,7 @@
         sec.items.splice(to, 0, m);
         setStatus('已调整顺序（未保存）');
         renderSections();
+        console.log('✅ 完成排序并重新渲染');
       } else {
         console.log('🔧 处理普通配置数组');
         // 普通配置数组（如性向、背景等）
