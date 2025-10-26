@@ -71,6 +71,88 @@
     }
     .collapse-toggle:hover { color: var(--accent); }
     .collapse-toggle.collapsed { transform: rotate(-90deg); }
+    
+    /* 预览区域样式 */
+    #tagsPreview { 
+      padding: 16px; 
+      background: #fff; 
+      border-radius: 8px; 
+      max-height: 600px; 
+      overflow-y: auto; 
+    }
+    #tagsPreview.collapsed { max-height: 200px; }
+    .preview-category { 
+      margin-bottom: 20px; 
+      padding: 12px; 
+      background: var(--surface); 
+      border: 1px solid var(--muted); 
+      border-radius: 8px;
+      position: relative;
+    }
+    .preview-category-header { 
+      display: flex; 
+      align-items: center; 
+      gap: 10px; 
+      margin-bottom: 10px; 
+      font-weight: 600;
+      color: var(--text);
+    }
+    .preview-category-header .category-name { flex: 1; }
+    .preview-category-header .quick-add { 
+      opacity: 0; 
+      transition: opacity 0.2s; 
+    }
+    .preview-category:hover .quick-add { opacity: 1; }
+    .preview-pill-group { 
+      display: flex; 
+      flex-wrap: wrap; 
+      gap: 10px; 
+    }
+    .preview-pill {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 36px;
+      padding: 0 14px;
+      border-radius: 999px;
+      border: 1px solid var(--muted);
+      background: var(--pill-bg);
+      color: var(--text);
+      cursor: move;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+    .preview-pill:hover { border-color: var(--accent); box-shadow: 0 2px 6px rgba(139,94,60,0.15); }
+    .preview-pill.dragging { opacity: 0.5; }
+    .preview-pill.drag-over-pill { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .preview-pill-lg { 
+      height: 42px; 
+      padding: 0 18px; 
+      font-size: 16px; 
+      font-weight: 600; 
+      background: #DFCDBB;
+    }
+    .preview-category.drag-over-cat { 
+      outline: 2px dashed var(--accent); 
+      outline-offset: 4px; 
+    }
+    .quick-add-btn {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      line-height: 1;
+      padding: 0;
+    }
+    .quick-add-btn:hover { background: var(--accent-2); }
   </style>
 </head>
 <body>
@@ -128,16 +210,25 @@
     <div class="card">
       <div class="row" style="justify-content: space-between; margin-bottom: 12px;">
         <div>
-          <div style="font-weight:700;">预览界面</div>
-          <div class="muted">实时查看前台表单效果，保存后刷新预览。</div>
+          <div style="font-weight:700;">Tags 预览</div>
+          <div class="muted">实时查看标签效果，支持拖拽排序，Hover 大类可快速添加标签。</div>
         </div>
         <div class="row">
-          <button class="btn small" id="refreshPreview">刷新预览</button>
+          <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #876;">
+            <span>分区:</span>
+            <select id="previewPartition" style="padding: 4px 8px; border: 1px solid var(--muted); border-radius: 6px; background: #fff;">
+              <option value="">公共</option>
+              <option value="feibianxian">非边限</option>
+              <option value="bianxian">边限</option>
+              <option value="shenyuan">深渊</option>
+            </select>
+          </label>
+          <button class="btn small" id="addPreviewCategory">+ 新增大类</button>
           <button class="btn small" id="togglePreviewSize">展开/收起</button>
         </div>
       </div>
-      <div id="previewContainer" style="width: 100%; height: 600px; border: 1px solid var(--muted); border-radius: 8px; overflow: hidden; background: #fff;">
-        <iframe id="previewFrame" src="/index.html" style="width: 100%; height: 100%; border: none;"></iframe>
+      <div id="tagsPreview" style="border: 1px solid var(--muted);">
+        <!-- 动态渲染 tags 预览 -->
       </div>
     </div>
   </div>
@@ -201,6 +292,8 @@
           host.appendChild(renderCustomSectionByTitle(title, idx));
         }
       });
+      // 同步更新预览
+      renderTagsPreview();
     }
 
     function renderPartitionSection(sectionIndex) {
@@ -779,12 +872,195 @@
        }
      }
 
-     function refreshPreview() {
-       const iframe = document.getElementById('previewFrame');
-       if (iframe) {
-         iframe.src = iframe.src; // 强制刷新
-       }
+     function renderTagsPreview() {
+       const container = document.getElementById('tagsPreview');
+       if (!container) return;
+       
+       const partition = document.getElementById('previewPartition').value;
+       const categories = getPreviewCategories(partition);
+       
+       container.innerHTML = '';
+       categories.forEach((cat, catIdx) => {
+         const catDiv = h('div', { class: 'preview-category', draggable: 'true', 'data-cat-index': String(catIdx), 'data-partition': partition });
+         
+         const header = h('div', { class: 'preview-category-header' }, [
+           h('span', { class: 'category-name', text: cat.category }),
+           h('button', { class: 'quick-add-btn quick-add', title: '添加标签', onclick: () => quickAddTag(partition, catIdx) }, ['+'])
+         ]);
+         
+         const pillGroup = h('div', { class: 'preview-pill-group' });
+         
+         // 大类胶囊
+         if (cat.asPill) {
+           const label = cat.pillLabel || cat.category;
+           const pill = h('div', { class: 'preview-pill preview-pill-lg', draggable: 'false', text: label });
+           pillGroup.appendChild(pill);
+         }
+         
+         // 子标签
+         (cat.tags || []).forEach((tag, tagIdx) => {
+           const pill = h('div', { 
+             class: 'preview-pill', 
+             draggable: 'true', 
+             text: tag.label,
+             'data-tag-index': String(tagIdx),
+             'data-cat-index': String(catIdx)
+           });
+           
+           // 标签拖拽
+           pill.addEventListener('dragstart', (e) => {
+             previewDragState.mode = 'tag';
+             previewDragState.srcCat = catIdx;
+             previewDragState.srcTag = tagIdx;
+             previewDragState.partition = partition;
+             pill.classList.add('dragging');
+             e.dataTransfer.effectAllowed = 'move';
+           });
+           pill.addEventListener('dragend', () => {
+             pill.classList.remove('dragging');
+             document.querySelectorAll('.preview-pill.drag-over-pill').forEach(el => el.classList.remove('drag-over-pill'));
+           });
+           pill.addEventListener('dragover', (e) => {
+             if (previewDragState.mode === 'tag' && previewDragState.partition === partition) {
+               e.preventDefault();
+               pill.classList.add('drag-over-pill');
+             }
+           });
+           pill.addEventListener('dragleave', () => pill.classList.remove('drag-over-pill'));
+           pill.addEventListener('drop', (e) => {
+             e.preventDefault();
+             pill.classList.remove('drag-over-pill');
+             if (previewDragState.mode !== 'tag' || previewDragState.partition !== partition) return;
+             const toCat = catIdx;
+             const toTag = tagIdx;
+             if (previewDragState.srcCat === toCat && previewDragState.srcTag === toTag) return;
+             
+             // 同分类内排序
+             if (previewDragState.srcCat === toCat) {
+               const arr = getPartitionArray(partition);
+               const cat = arr[toCat];
+               if (!cat || !Array.isArray(cat.tags)) return;
+               const [moved] = cat.tags.splice(previewDragState.srcTag, 1);
+               cat.tags.splice(toTag, 0, moved);
+               renderTagsPreview();
+               setStatus('已调整标签顺序（未保存）');
+             }
+           });
+           
+           pillGroup.appendChild(pill);
+         });
+         
+         catDiv.appendChild(header);
+         catDiv.appendChild(pillGroup);
+         
+         // 分类拖拽
+         catDiv.addEventListener('dragstart', (e) => {
+           if (e.target.classList.contains('preview-pill')) return;
+           previewDragState.mode = 'category';
+           previewDragState.srcCat = catIdx;
+           previewDragState.partition = partition;
+           catDiv.classList.add('dragging');
+           e.dataTransfer.effectAllowed = 'move';
+         });
+         catDiv.addEventListener('dragend', () => {
+           catDiv.classList.remove('dragging');
+           document.querySelectorAll('.preview-category.drag-over-cat').forEach(el => el.classList.remove('drag-over-cat'));
+         });
+         catDiv.addEventListener('dragover', (e) => {
+           if (previewDragState.mode === 'category' && previewDragState.partition === partition) {
+             e.preventDefault();
+             catDiv.classList.add('drag-over-cat');
+           }
+         });
+         catDiv.addEventListener('dragleave', () => catDiv.classList.remove('drag-over-cat'));
+         catDiv.addEventListener('drop', (e) => {
+           e.preventDefault();
+           catDiv.classList.remove('drag-over-cat');
+           if (previewDragState.mode !== 'category' || previewDragState.partition !== partition) return;
+           const from = previewDragState.srcCat;
+           const to = catIdx;
+           if (from === to) return;
+           
+           const arr = getPartitionArray(partition);
+           const [moved] = arr.splice(from, 1);
+           arr.splice(to, 0, moved);
+           renderTagsPreview();
+           setStatus('已调整分类顺序（未保存）');
+         });
+         
+         container.appendChild(catDiv);
+       });
      }
+     
+     function getPreviewCategories(partition) {
+       const partitions = (state.config.tagPartitions || {});
+       const common = Array.isArray(partitions.common) ? partitions.common : [];
+       const extra = partition && Array.isArray(partitions[partition]) ? partitions[partition] : [];
+       return mergeCategoriesByName(common, extra);
+     }
+     
+     function getPartitionArray(partition) {
+       if (!state.config.tagPartitions) state.config.tagPartitions = {};
+       const key = partition || 'common';
+       if (!Array.isArray(state.config.tagPartitions[key])) state.config.tagPartitions[key] = [];
+       return state.config.tagPartitions[key];
+     }
+     
+     function mergeCategoriesByName(base, extra) {
+       const byName = new Map();
+       const add = (arr) => {
+         (arr || []).forEach(cat => {
+           if (!cat || !cat.category) return;
+           if (!byName.has(cat.category)) {
+             byName.set(cat.category, {
+               category: cat.category,
+               asPill: !!cat.asPill,
+               pillLabel: cat.pillLabel,
+               pillValue: cat.pillValue,
+               showIf: cat.showIf,
+               mutexWith: cat.mutexWith,
+               tags: []
+             });
+           }
+           const entry = byName.get(cat.category);
+           if (cat.asPill) entry.asPill = true;
+           if (cat.pillLabel) entry.pillLabel = cat.pillLabel;
+           if (cat.pillValue) entry.pillValue = cat.pillValue;
+           if (cat.showIf) entry.showIf = cat.showIf;
+           if (Array.isArray(cat.mutexWith) && cat.mutexWith.length) entry.mutexWith = cat.mutexWith;
+           
+           const seen = new Set(entry.tags.map(t => t.value || t.label));
+           (cat.tags || []).forEach(t => {
+             const val = (t && (t.value || t.label));
+             if (!val || seen.has(val)) return;
+             entry.tags.push({
+               value: t.value || t.label,
+               label: t.label || t.value,
+               showIf: t.showIf,
+               mutexWith: Array.isArray(t.mutexWith) ? t.mutexWith : undefined
+             });
+             seen.add(val);
+           });
+         });
+       };
+       add(base);
+       add(extra);
+       return Array.from(byName.values());
+     }
+     
+     function quickAddTag(partition, catIdx) {
+       const name = prompt('输入新标签名称:');
+       if (!name || !name.trim()) return;
+       const arr = getPartitionArray(partition);
+       const cat = arr[catIdx];
+       if (!cat) return;
+       if (!Array.isArray(cat.tags)) cat.tags = [];
+       cat.tags.push({ label: name.trim(), value: name.trim() });
+       renderTagsPreview();
+       setStatus('已添加标签（未保存）');
+     }
+     
+     const previewDragState = { mode: null, srcCat: null, srcTag: null, partition: '' };
 
     // 拖拽状态
     const dragState = { mode: null, srcCat: null, srcTag: null, allowed: false, tagCatIndex: null, simpleKey: null, srcIndex: null, scope: 'normal', partitionKey: '', touchActive: false, srcRow: null, touchOverRow: null };
@@ -819,18 +1095,35 @@
     });
 
     // 预览界面控制
-    document.getElementById('refreshPreview').addEventListener('click', refreshPreview);
+    let previewExpanded = localStorage.getItem('preview_expanded') !== 'false';
     
-    let previewExpanded = true;
-    document.getElementById('togglePreviewSize').addEventListener('click', () => {
-      const container = document.getElementById('previewContainer');
+    function updatePreviewSize() {
+      const container = document.getElementById('tagsPreview');
       if (previewExpanded) {
-        container.style.height = '300px';
-        previewExpanded = false;
+        container.classList.remove('collapsed');
       } else {
-        container.style.height = '600px';
-        previewExpanded = true;
+        container.classList.add('collapsed');
       }
+      localStorage.setItem('preview_expanded', previewExpanded);
+    }
+    
+    document.getElementById('togglePreviewSize').addEventListener('click', () => {
+      previewExpanded = !previewExpanded;
+      updatePreviewSize();
+    });
+    
+    document.getElementById('previewPartition').addEventListener('change', () => {
+      renderTagsPreview();
+    });
+    
+    document.getElementById('addPreviewCategory').addEventListener('click', () => {
+      const name = prompt('输入新分类名称:');
+      if (!name || !name.trim()) return;
+      const partition = document.getElementById('previewPartition').value || 'common';
+      const arr = getPartitionArray(partition);
+      arr.push({ category: name.trim(), asPill: false, tags: [] });
+      renderTagsPreview();
+      setStatus('已添加分类（未保存）');
     });
 
     // Init
@@ -840,7 +1133,10 @@
         document.getElementById('adminToken').value = saved;
         document.getElementById('guardCard').classList.add('hidden');
         document.getElementById('editor').classList.remove('hidden');
-        loadConfig().catch(e => setStatus('加载失败：' + e.message, true));
+        loadConfig().then(() => {
+          renderTagsPreview();
+          updatePreviewSize();
+        }).catch(e => setStatus('加载失败：' + e.message, true));
       }
     })();
   </script>
