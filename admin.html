@@ -818,20 +818,32 @@
       if (key.startsWith('section-')) {
         // 自定义板块的条目
         const sectionTitle = key.slice(8); // 去掉 'section-' 前缀
+        if (!Array.isArray(state.config.customSections)) {
+          console.error('customSections 不存在');
+          return;
+        }
         const sec = state.config.customSections.find(s => s && s.title === sectionTitle);
-        if (!sec || !Array.isArray(sec.items)) return;
+        if (!sec) {
+          console.error('找不到板块:', sectionTitle);
+          return;
+        }
+        if (!Array.isArray(sec.items)) {
+          console.error('板块 items 不是数组:', sectionTitle);
+          return;
+        }
         const [m] = sec.items.splice(from, 1);
         sec.items.splice(to, 0, m);
+        setStatus('已调整顺序（未保存）');
+        renderSections();
       } else {
         // 普通配置数组（如性向、背景等）
         const arr = state.config[key];
         if (!Array.isArray(arr)) return;
         const [m] = arr.splice(from, 1);
         arr.splice(to, 0, m);
+        setStatus('已调整顺序（未保存）');
+        renderSections();
       }
-      
-      setStatus('已调整顺序（未保存）');
-      renderSections();
     });
 
   function renderCustomSections() {
@@ -915,8 +927,6 @@
          normalizeSections();
          renderSections();
          setStatus('已保存');
-         // 保存后自动刷新预览
-         refreshPreview();
        } catch (e) {
          setStatus('保存失败：' + e.message, true);
        }
