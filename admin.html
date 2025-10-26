@@ -187,21 +187,12 @@
       <div class="row" style="justify-content: space-between; margin-bottom: 12px;">
         <div>
           <div style="font-weight:700;">Tags 预览</div>
-          <div class="muted">实时查看标签效果，拖拽排序，右键删除，Hover 大类可快速添加标签。</div>
+          <div class="muted">实时查看所有分区标签，拖拽排序，右键删除，Hover 大类可快速添加标签。每个分区可独立折叠。</div>
         </div>
         <div class="row">
-          <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #876;">
-            <span>分区:</span>
-            <select id="previewPartition" style="padding: 4px 8px; border: 1px solid var(--muted); border-radius: 6px; background: #fff;">
-              <option value="">公共</option>
-              <option value="feibianxian">非边限</option>
-              <option value="bianxian">边限</option>
-              <option value="shenyuan">深渊</option>
-            </select>
-          </label>
           <button class="btn small" id="addPreviewCategory">+ 新增大类</button>
           <button class="btn primary small" id="savePreview">保存预览更改</button>
-          <button class="btn small" id="togglePreviewSize">展开/收起</button>
+          <button class="btn small" id="togglePreviewSize">展开/收起全部</button>
         </div>
       </div>
       <div id="tagsPreview" style="border: 1px solid var(--muted);">
@@ -880,11 +871,29 @@
        const container = document.getElementById('tagsPreview');
        if (!container) return;
        
-       const partition = document.getElementById('previewPartition').value;
-       const categories = getPreviewCategories(partition);
+       const partitions = ['', 'feibianxian', 'bianxian', 'shenyuan'];
+       const partitionNames = { '': '公共', 'feibianxian': '非边限', 'bianxian': '边限', 'shenyuan': '深渊' };
        
        container.innerHTML = '';
-       categories.forEach((cat, catIdx) => {
+       
+       partitions.forEach(partition => {
+         const categories = getPreviewCategories(partition);
+         if (categories.length === 0) return;
+         
+         const partitionSection = h('div', { style: 'margin-bottom: 24px;' });
+         
+         // 分区标题与折叠按钮
+         const toggleBtn = h('button', { class: 'collapse-toggle', title: '收起/展开' }, ['▼']);
+         const partitionHeader = h('div', { 
+           style: 'display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 8px 12px; background: var(--pill-bg); border-radius: 8px; font-weight: 600; color: var(--accent-2);'
+         }, [
+           toggleBtn,
+           h('span', { text: partitionNames[partition] || '公共' })
+         ]);
+         
+         const contentWrap = h('div');
+         
+         categories.forEach((cat, catIdx) => {
          const catDiv = h('div', { class: 'preview-category', draggable: 'true', 'data-cat-index': String(catIdx), 'data-partition': partition });
          
          const header = h('div', { class: 'preview-category-header' }, [
@@ -1006,15 +1015,42 @@
            setStatus('已调整分类顺序（未保存）');
          });
          
-         container.appendChild(catDiv);
+         contentWrap.appendChild(catDiv);
        });
+       
+       // 绑定折叠按钮事件，使用全局状态而不是每次从 localStorage 读取
+       const storageKey = `partition_${partition}_expanded`;
+       if (!window.partitionStates) window.partitionStates = {};
+       
+       // 首次加载时从 localStorage 读取
+       if (window.partitionStates[partition] === undefined) {
+         window.partitionStates[partition] = localStorage.getItem(storageKey) !== 'false';
+       }
+       
+       const isExpanded = window.partitionStates[partition];
+       if (!isExpanded) {
+         contentWrap.classList.add('hidden');
+         toggleBtn.classList.add('collapsed');
+       }
+       
+       toggleBtn.onclick = () => {
+         const hidden = contentWrap.classList.toggle('hidden');
+         toggleBtn.classList.toggle('collapsed', hidden);
+         window.partitionStates[partition] = !hidden;
+         localStorage.setItem(storageKey, !hidden);
+       };
+       
+       partitionSection.appendChild(partitionHeader);
+       partitionSection.appendChild(contentWrap);
+       container.appendChild(partitionSection);
+     });
      }
      
      function getPreviewCategories(partition) {
        const partitions = (state.config.tagPartitions || {});
-       const common = Array.isArray(partitions.common) ? partitions.common : [];
-       const extra = partition && Array.isArray(partitions[partition]) ? partitions[partition] : [];
-       return mergeCategoriesByName(common, extra);
+       const key = partition || 'common';
+       const arr = Array.isArray(partitions[key]) ? partitions[key] : [];
+       return arr;
      }
      
      function getPartitionArray(partition) {
@@ -1130,14 +1166,14 @@
       updatePreviewSize();
     });
     
-    document.getElementById('previewPartition').addEventListener('change', () => {
-      renderTagsPreview();
-    });
-    
     document.getElementById('addPreviewCategory').addEventListener('click', () => {
+      const partitionMap = { '公共': '', '非边限': 'feibianxian', '边限': 'bianxian', '深渊': 'shenyuan' };
+      const partitionName = prompt('选择分区:\n1. 公共\n2. 非边限\n3. 边限\n4. 深渊\n\n请输入分区名称（如：公共）:');
+      if (!partitionName || !partitionName.trim()) return;
+      const partition = partitionMap[partitionName.trim()] !== undefined ? partitionMap[partitionName.trim()] : '';
+      
       const name = prompt('输入新分类名称:');
       if (!name || !name.trim()) return;
-      const partition = document.getElementById('previewPartition').value || 'common';
       const arr = getPartitionArray(partition);
       arr.push({ category: name.trim(), asPill: false, tags: [] });
       renderTagsPreview();
