@@ -898,23 +898,30 @@
 
   function checkCondition(cond, selected) {
     if (!cond) return true;
-    const parts = cond.split(':');
-    if (parts.length !== 2) return true;
-    const [field, value] = parts.map(x => x.trim());
     
-    // 智能匹配：尝试多种字段名变体
-    const variants = [
-      field,                    // 原样 如 性向
-      `custom_${field}`,        // 单选 如 custom_性向
-      `custom_${field}[]`       // 多选 如 custom_性向[]
-    ];
+    // 支持 | 分隔的或关系
+    const conditions = cond.split('|').map(c => c.trim()).filter(Boolean);
     
-    for (const v of variants) {
-      const vals = selected[v] || [];
-      if (vals.includes(value)) return true;
-    }
-    
-    return false;
+    // 任一条件满足即返回 true
+    return conditions.some(singleCond => {
+      const parts = singleCond.split(':');
+      if (parts.length !== 2) return true;
+      const [field, value] = parts.map(x => x.trim());
+      
+      // 智能匹配：尝试多种字段名变体
+      const variants = [
+        field,                    // 原样 如 性向
+        `custom_${field}`,        // 单选 如 custom_性向
+        `custom_${field}[]`       // 多选 如 custom_性向[]
+      ];
+      
+      for (const v of variants) {
+        const vals = selected[v] || [];
+        if (vals.includes(value)) return true;
+      }
+      
+      return false;
+    });
   }
 
 
