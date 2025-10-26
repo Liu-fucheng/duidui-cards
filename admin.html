@@ -77,10 +77,13 @@
       padding: 16px; 
       background: #fff; 
       border-radius: 8px; 
-      max-height: 600px; 
-      overflow-y: auto; 
+      min-height: 400px;
+      overflow-y: visible; 
     }
-    #tagsPreview.collapsed { max-height: 200px; }
+    #tagsPreview.collapsed { 
+      max-height: 200px; 
+      overflow-y: auto;
+    }
     .preview-category { 
       margin-bottom: 20px; 
       padding: 12px; 
@@ -181,6 +184,35 @@
 
   <div id="editor" class="hidden">
     <div class="card">
+      <div class="row" style="justify-content: space-between; margin-bottom: 12px;">
+        <div>
+          <div style="font-weight:700;">Tags 预览</div>
+          <div class="muted">实时查看标签效果，拖拽排序，右键删除，Hover 大类可快速添加标签。</div>
+        </div>
+        <div class="row">
+          <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #876;">
+            <span>分区:</span>
+            <select id="previewPartition" style="padding: 4px 8px; border: 1px solid var(--muted); border-radius: 6px; background: #fff;">
+              <option value="">公共</option>
+              <option value="feibianxian">非边限</option>
+              <option value="bianxian">边限</option>
+              <option value="shenyuan">深渊</option>
+            </select>
+          </label>
+          <button class="btn small" id="addPreviewCategory">+ 新增大类</button>
+          <button class="btn primary small" id="savePreview">保存预览更改</button>
+          <button class="btn small" id="togglePreviewSize">展开/收起</button>
+        </div>
+      </div>
+      <div id="tagsPreview" style="border: 1px solid var(--muted);">
+        <!-- 动态渲染 tags 预览 -->
+      </div>
+    </div>
+
+    <div class="space"></div>
+    <div class="space"></div>
+
+    <div class="card">
       <div class="row" style="justify-content: space-between;">
         <div>
           <div style="font-weight:700;">板块管理</div>
@@ -202,34 +234,6 @@
         </div>
       </div>
       <div id="status" class="status"></div>
-    </div>
-
-    <div class="space"></div>
-    <div class="space"></div>
-
-    <div class="card">
-      <div class="row" style="justify-content: space-between; margin-bottom: 12px;">
-        <div>
-          <div style="font-weight:700;">Tags 预览</div>
-          <div class="muted">实时查看标签效果，支持拖拽排序，Hover 大类可快速添加标签。</div>
-        </div>
-        <div class="row">
-          <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #876;">
-            <span>分区:</span>
-            <select id="previewPartition" style="padding: 4px 8px; border: 1px solid var(--muted); border-radius: 6px; background: #fff;">
-              <option value="">公共</option>
-              <option value="feibianxian">非边限</option>
-              <option value="bianxian">边限</option>
-              <option value="shenyuan">深渊</option>
-            </select>
-          </label>
-          <button class="btn small" id="addPreviewCategory">+ 新增大类</button>
-          <button class="btn small" id="togglePreviewSize">展开/收起</button>
-        </div>
-      </div>
-      <div id="tagsPreview" style="border: 1px solid var(--muted);">
-        <!-- 动态渲染 tags 预览 -->
-      </div>
     </div>
   </div>
 
@@ -907,6 +911,20 @@
              'data-cat-index': String(catIdx)
            });
            
+           // 右键删除
+           pill.addEventListener('contextmenu', (e) => {
+             e.preventDefault();
+             if (confirm(`确定删除标签"${tag.label}"？`)) {
+               const arr = getPartitionArray(partition);
+               const cat = arr[catIdx];
+               if (cat && Array.isArray(cat.tags)) {
+                 cat.tags.splice(tagIdx, 1);
+                 renderTagsPreview();
+                 setStatus('已删除标签（未保存）');
+               }
+             }
+           });
+           
            // 标签拖拽
            pill.addEventListener('dragstart', (e) => {
              previewDragState.mode = 'tag';
@@ -1124,6 +1142,33 @@
       arr.push({ category: name.trim(), asPill: false, tags: [] });
       renderTagsPreview();
       setStatus('已添加分类（未保存）');
+    });
+    
+    document.getElementById('savePreview').addEventListener('click', async () => {
+      setStatus('保存预览更改中...');
+      const token = getToken();
+      if (!token) { setStatus('请先输入并保存管理员 Token', true); return; }
+      const body = {
+        tagCategories: state.config.tagCategories,
+        tagPartitions: state.config.tagPartitions,
+        customSections: state.config.customSections,
+        sections: state.config.sections
+      };
+      try {
+        const res = await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.message || '保存失败');
+        state.config = data.config;
+        normalizeSections();
+        renderSections();
+        setStatus('预览更改已保存');
+      } catch (e) {
+        setStatus('保存失败：' + e.message, true);
+      }
     });
 
     // Init
