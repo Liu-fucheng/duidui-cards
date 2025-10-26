@@ -121,6 +121,25 @@
       </div>
       <div id="status" class="status"></div>
     </div>
+
+    <div class="space"></div>
+    <div class="space"></div>
+
+    <div class="card">
+      <div class="row" style="justify-content: space-between; margin-bottom: 12px;">
+        <div>
+          <div style="font-weight:700;">预览界面</div>
+          <div class="muted">实时查看前台表单效果，保存后刷新预览。</div>
+        </div>
+        <div class="row">
+          <button class="btn small" id="refreshPreview">刷新预览</button>
+          <button class="btn small" id="togglePreviewSize">展开/收起</button>
+        </div>
+      </div>
+      <div id="previewContainer" style="width: 100%; height: 600px; border: 1px solid var(--muted); border-radius: 8px; overflow: hidden; background: #fff;">
+        <iframe id="previewFrame" src="/index.html" style="width: 100%; height: 100%; border: none;"></iframe>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -753,8 +772,17 @@
          normalizeSections();
          renderSections();
          setStatus('已保存');
+         // 保存后自动刷新预览
+         refreshPreview();
        } catch (e) {
          setStatus('保存失败：' + e.message, true);
+       }
+     }
+
+     function refreshPreview() {
+       const iframe = document.getElementById('previewFrame');
+       if (iframe) {
+         iframe.src = iframe.src; // 强制刷新
        }
      }
 
@@ -788,6 +816,21 @@
       document.getElementById('guardCard').classList.add('hidden');
       document.getElementById('editor').classList.remove('hidden');
       loadConfig().catch(e => setStatus('加载失败：' + e.message, true));
+    });
+
+    // 预览界面控制
+    document.getElementById('refreshPreview').addEventListener('click', refreshPreview);
+    
+    let previewExpanded = true;
+    document.getElementById('togglePreviewSize').addEventListener('click', () => {
+      const container = document.getElementById('previewContainer');
+      if (previewExpanded) {
+        container.style.height = '300px';
+        previewExpanded = false;
+      } else {
+        container.style.height = '600px';
+        previewExpanded = true;
+      }
     });
 
     // Init
