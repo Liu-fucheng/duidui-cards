@@ -776,13 +776,33 @@
     if (tagsSearch && !tagsSearch.dataset.bound) {
       tagsSearch.addEventListener('input', (e) => {
         const query = e.target.value.toLowerCase().trim();
+        
+        // 获取当前选中的值，用于条件检查
+        const formData = new FormData(document.getElementById('uploadForm'));
+        const selected = {};
+        for (const [k, v] of formData.entries()) {
+          if (!selected[k]) selected[k] = [];
+          selected[k].push(v);
+        }
+        
         document.querySelectorAll('.tag-category').forEach(cat => {
           const pills = cat.querySelectorAll('.pill');
           let hasVisible = false;
           pills.forEach(pill => {
-            const match = pill.textContent.toLowerCase().includes(query);
-            pill.style.display = match || !query ? '' : 'none';
-            if (match || !query) hasVisible = true;
+            const label = pill.querySelector('.option-item');
+            if (!label) return;
+            
+            // 检查启用条件
+            const showIf = label.getAttribute('data-showif');
+            const conditionMet = !showIf || checkCondition(showIf, selected);
+            
+            // 检查搜索匹配
+            const textMatch = pill.textContent.toLowerCase().includes(query);
+            
+            // 同时满足条件和搜索才显示
+            const shouldShow = conditionMet && (textMatch || !query);
+            pill.style.display = shouldShow ? '' : 'none';
+            if (shouldShow) hasVisible = true;
           });
           cat.classList.toggle('hidden', !hasVisible);
         });
@@ -904,7 +924,11 @@
     
     // 任一条件满足即返回 true
     return conditions.some(singleCond => {
-      const parts = singleCond.split(':');
+      // 检查是否为"非"条件（以 ! 开头）
+      const isNegated = singleCond.startsWith('!');
+      const actualCond = isNegated ? singleCond.slice(1).trim() : singleCond;
+      
+      const parts = actualCond.split(':');
       if (parts.length !== 2) return true;
       const [field, value] = parts.map(x => x.trim());
       
@@ -915,12 +939,17 @@
         `custom_${field}[]`       // 多选 如 custom_性向[]
       ];
       
+      let matched = false;
       for (const v of variants) {
         const vals = selected[v] || [];
-        if (vals.includes(value)) return true;
+        if (vals.includes(value)) {
+          matched = true;
+          break;
+        }
       }
       
-      return false;
+      // 如果是"非"条件，返回相反的结果
+      return isNegated ? !matched : matched;
     });
   }
 

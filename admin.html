@@ -404,7 +404,7 @@
       h('tr', {}, [ 
         h('th', { class: 'col-handle', text: ' ' }), 
         h('th', { text: '名称' }), 
-        h('th', { text: '启用条件 (|为或)', style: 'width:180px;' }), 
+        h('th', { text: '启用条件 (|或 !非)', style: 'width:200px;' }), 
         h('th', { text: '互斥项', style: 'width:140px;' }), 
         h('th', { class: 'right', text: '操作', style: 'width:80px;' }) 
       ]) 
@@ -414,7 +414,7 @@
       const tr = h('tr', { class: 'simple-row', draggable: 'true', 'data-key': 'section-'+sec.title }, [
         h('td', { class: 'col-handle' }, [ h('span', { class: 'drag-handle', title: '拖动排序', onmousedown: () => { dragState.allowed = true; dragState.simpleKey = 'section-'+sec.title; } }) ]),
         h('td', {}, [ h('input', { type: 'text', value: item.label || '', placeholder: '名称', style: 'width:100%;', oninput: (e) => { item.label = e.target.value; item.value = e.target.value; } }) ]),
-        h('td', {}, [ h('input', { type: 'text', value: item.enableIf || '', placeholder: '性向:GB|性向:BG', style: 'width:100%;', oninput: (e) => { item.enableIf = e.target.value.trim() || undefined; } }) ]),
+        h('td', {}, [ h('input', { type: 'text', value: item.enableIf || '', placeholder: '!性向:无CP|性向:GB', style: 'width:100%;', oninput: (e) => { item.enableIf = e.target.value.trim() || undefined; } }) ]),
         h('td', {}, [ h('input', { type: 'text', value: (item.mutexWith || []).join(','), placeholder: '如 原创,同人', style: 'width:100%;', oninput: (e) => { const v = e.target.value.trim(); item.mutexWith = v ? v.split(',').map(x => x.trim()).filter(Boolean) : undefined; } }) ]),
         h('td', { class: 'right' }, [ h('button', { class: 'btn danger small', onclick: () => { sec.items.splice(idx,1); renderSections(); } }, ['删除']) ])
       ]);
@@ -547,7 +547,7 @@
         h('tr', {}, [
           h('th', { class: 'col-handle', text: ' ' }),
           h('th', { text: '显示名' }),
-          h('th', { text: '启用条件 (|为或)', style: 'width:160px;' }),
+          h('th', { text: '启用条件 (|或 !非)', style: 'width:180px;' }),
           h('th', { text: '互斥项', style: 'width:120px;' }),
           h('th', { class: 'right', text: '操作', style: 'width:70px;' })
         ])
@@ -557,7 +557,7 @@
         const tr = h('tr', { class: 'tag-row', draggable: 'true' }, [
           h('td', { class: 'col-handle' }, [ h('span', { class: 'drag-handle', title: '拖动排序', onmousedown: () => { dragState.allowed = true; dragState.tagCatIndex = index; } }) ]),
           h('td', {}, [h('input', { type: 'text', value: tag.label || '', placeholder: '如 校园', style: 'width:100%;', oninput: (e) => { tag.label = e.target.value; tag.value = e.target.value; } })]),
-          h('td', {}, [h('input', { type: 'text', value: tag.showIf || '', placeholder: '性向:GB|性向:BG', style: 'width:100%;', oninput: (e) => { tag.showIf = e.target.value.trim() || undefined; } })]),
+          h('td', {}, [h('input', { type: 'text', value: tag.showIf || '', placeholder: '!性向:无CP|性向:GB', style: 'width:100%;', oninput: (e) => { tag.showIf = e.target.value.trim() || undefined; } })]),
           h('td', {}, [h('input', { type: 'text', value: (tag.mutexWith || []).join(','), placeholder: '如 都市,古代', style: 'width:100%;', oninput: (e) => { const v = e.target.value.trim(); tag.mutexWith = v ? v.split(',').map(x => x.trim()).filter(Boolean) : undefined; } })]),
           h('td', { class: 'right' }, [h('button', { class: 'btn danger small', onclick: () => { cat.tags.splice(tIdx, 1); (ctx && ctx.scope === 'partition') ? renderPartitions() : renderCategories(); } }, ['删除'])])
         ]);
