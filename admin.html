@@ -175,8 +175,7 @@
           h('div', { text: '分区专属 Tags', style: 'font-weight:600;' })
         ]),
         h('div', {}, [ 
-          h('button', { class: 'btn small', title: '收起/展开', onclick: () => { const hidden = body.classList.toggle('hidden'); toggle.textContent = hidden ? '>' : 'v'; } }, ['v']),
-          (function(){})()
+          h('button', { class: 'btn small', title: '收起/展开', onclick: () => { const hidden = body.classList.toggle('hidden'); toggle.textContent = hidden ? '>' : 'v'; } }, ['v'])
         ])
       ]);
       const toggle = head.querySelector('button.btn.small');
@@ -294,7 +293,7 @@
     contentWrap.appendChild(table);
     contentWrap.appendChild(footer);
     const collapseBtn = head.querySelector('.btn.small');
-    collapseBtn.onclick = () => { const hidden = contentWrap.classList.toggle('hidden'); collapseBtn.textContent = hidden ? '>' : 'v'; };
+    if (collapseBtn) collapseBtn.onclick = () => { const hidden = contentWrap.classList.toggle('hidden'); collapseBtn.textContent = hidden ? '>' : 'v'; };
     wrap.appendChild(head);
     wrap.appendChild(contentWrap);
     // section 拖拽支持
@@ -421,7 +420,7 @@
       contentWrap.appendChild(table);
       contentWrap.appendChild(tableFooter);
       const collapseBtn = head.querySelector('.btn.small');
-      collapseBtn.onclick = () => { const hidden = contentWrap.classList.toggle('hidden'); collapseBtn.textContent = hidden ? '>' : 'v'; };
+      if (collapseBtn) collapseBtn.onclick = () => { const hidden = contentWrap.classList.toggle('hidden'); collapseBtn.textContent = hidden ? '>' : 'v'; };
       box.appendChild(head);
       box.appendChild(contentWrap);
 
