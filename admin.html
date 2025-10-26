@@ -53,6 +53,24 @@
     .tags-table.fixed th.col-op, .tags-table.fixed td.col-op { width: 20%; text-align: center; }
     .add-tag-btn { width: 32px; height: 32px; border-radius: 50%; border: none; cursor: pointer; color: #fff; background: var(--accent); display: inline-flex; align-items: center; justify-content: center; font-size: 18px; line-height: 1; margin-top: 8px; }
     .add-tag-btn:hover { background: var(--accent-2); }
+    .collapse-toggle { 
+      display: inline-flex; 
+      align-items: center; 
+      justify-content: center; 
+      width: 20px; 
+      height: 20px; 
+      border: none; 
+      background: transparent; 
+      color: #9A8274; 
+      cursor: pointer; 
+      font-size: 14px; 
+      line-height: 1; 
+      transition: color 0.15s ease, transform 0.15s ease;
+      padding: 0;
+      margin-right: 4px;
+    }
+    .collapse-toggle:hover { color: var(--accent); }
+    .collapse-toggle.collapsed { transform: rotate(-90deg); }
   </style>
 </head>
 <body>
@@ -169,16 +187,19 @@
     function renderPartitionSection(sectionIndex) {
       const wrap = h('div', { class: 'category', draggable: 'true' });
       const body = h('div', { id: 'partitions' });
+      const toggleBtn = h('button', { class: 'collapse-toggle', title: '收起/展开' }, ['▼']);
+      toggleBtn.onclick = () => { 
+        const hidden = body.classList.toggle('hidden'); 
+        toggleBtn.classList.toggle('collapsed', hidden);
+      };
       const head = h('div', { class: 'category-head' }, [
         h('div', { class: 'row' }, [
+          toggleBtn,
           h('span', { class: 'drag-handle', title: '拖动排序', onmousedown: () => { dragState.allowed = true; } }),
           h('div', { text: '分区专属 Tags', style: 'font-weight:600;' })
         ]),
-        h('div', {}, [ 
-          h('button', { class: 'btn small', title: '收起/展开', onclick: () => { const hidden = body.classList.toggle('hidden'); toggle.textContent = hidden ? '>' : 'v'; } }, ['v'])
-        ])
+        h('div', {}, [ h('span', { class: 'muted', text: '包含 公共/非边限/边限/深渊' }) ])
       ]);
-      const toggle = head.querySelector('button.btn.small');
       // 先挂载，再渲染内部内容，避免找不到节点
       wrap.appendChild(head);
       wrap.appendChild(body);
@@ -241,13 +262,14 @@
     let sec = state.config.customSections.find(s => s && s.title === title);
     if (!sec) { sec = { title, multiple: true, items: [] }; state.config.customSections.push(sec); }
     const wrap = h('div', { class: 'category', draggable: 'true' });
+    const toggleBtn = h('button', { class: 'collapse-toggle', title: '收起/展开' }, ['▼']);
     const head = h('div', { class: 'category-head' }, [
       h('div', { class: 'row' }, [
+        toggleBtn,
         h('span', { class: 'drag-handle', title: '拖动排序', onmousedown: () => { dragState.allowed = true; } }),
         h('input', { type: 'text', value: sec.title || '', placeholder: '板块名称', style: 'width:240px;', oninput: (e) => { const old = sec.title; sec.title = e.target.value; const idx = state.config.sections.indexOf('custom:'+old); if (idx>=0) state.config.sections[idx] = 'custom:'+sec.title; } })
       ]),
       h('div', {}, [ 
-        h('button', { class: 'btn small', title: '收起/展开' }, ['v']),
         h('button', { class: 'btn danger small', onclick: () => { const idx = state.config.sections.indexOf('custom:'+sec.title); if (idx>=0) state.config.sections.splice(idx,1); const si = state.config.customSections.indexOf(sec); if (si>=0) state.config.customSections.splice(si,1); renderSections(); } }, ['删除板块']) 
       ])
     ]);
@@ -292,8 +314,10 @@
     contentWrap.appendChild(settingRow);
     contentWrap.appendChild(table);
     contentWrap.appendChild(footer);
-    const collapseBtn = head.querySelector('.btn.small');
-    if (collapseBtn) collapseBtn.onclick = () => { const hidden = contentWrap.classList.toggle('hidden'); collapseBtn.textContent = hidden ? '>' : 'v'; };
+    toggleBtn.onclick = () => { 
+      const hidden = contentWrap.classList.toggle('hidden'); 
+      toggleBtn.classList.toggle('collapsed', hidden);
+    };
     wrap.appendChild(head);
     wrap.appendChild(contentWrap);
     // section 拖拽支持
@@ -352,13 +376,14 @@
   function renderCategory(cat, index, ctx) {
       const scope = (ctx && ctx.scope === 'partition') ? 'partition' : 'normal';
       const box = h('div', { class: 'category', draggable: 'true', 'data-scope': scope, 'data-index': String(index), 'data-partition-key': (scope === 'partition' ? (ctx && ctx.key || '') : '') });
+      const toggleBtn = h('button', { class: 'collapse-toggle', title: '收起/展开' }, ['▼']);
       const head = h('div', { class: 'category-head' }, [
         h('div', { class: 'row' }, [
+          toggleBtn,
           h('span', { class: 'drag-handle', title: '拖动排序', 'data-role': 'cat-handle', onmousedown: () => { dragState.allowed = true; } }),
           h('input', { type: 'text', value: cat.category || '', placeholder: '分类名称', style: 'width:240px;', oninput: (e) => { cat.category = e.target.value; } })
         ]),
         h('div', {}, [
-          h('button', { class: 'btn small', title: '收起/展开' }, ['v']),
           h('button', { class: 'btn small', onclick: () => { 
             if (!Array.isArray(cat.tags)) cat.tags = []; 
             cat.tags.push({ label: '', value: '' }); 
@@ -419,8 +444,10 @@
       contentWrap.appendChild(pillRow);
       contentWrap.appendChild(table);
       contentWrap.appendChild(tableFooter);
-      const collapseBtn = head.querySelector('.btn.small');
-      if (collapseBtn) collapseBtn.onclick = () => { const hidden = contentWrap.classList.toggle('hidden'); collapseBtn.textContent = hidden ? '>' : 'v'; };
+      toggleBtn.onclick = () => { 
+        const hidden = contentWrap.classList.toggle('hidden'); 
+        toggleBtn.classList.toggle('collapsed', hidden);
+      };
       box.appendChild(head);
       box.appendChild(contentWrap);
 
