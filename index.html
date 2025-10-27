@@ -667,6 +667,42 @@
 <script>
   // --- 全局配置（从服务端加载） ---
   let CONFIG = {};
+  let TOKEN_DATA = null; // 存储Token验证后的用户数据
+
+  // 验证Token并获取用户信息
+  async function verifyToken(token) {
+    try {
+      const response = await fetch(`/api/token?token=${token}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        TOKEN_DATA = data.data;
+        console.log('Token验证成功:', TOKEN_DATA);
+        return true;
+      } else {
+        console.error('Token验证失败:', data.message);
+        alert(`Token验证失败: ${data.message}\n请联系管理员获取新的发卡链接。`);
+        return false;
+      }
+    } catch (error) {
+      console.error('Token验证错误:', error);
+      alert('Token验证失败，请检查网络连接或联系管理员。');
+      return false;
+    }
+  }
+
+  // 标记Token为已使用
+  async function markTokenAsUsed(token) {
+    try {
+      await fetch('/api/token', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+    } catch (error) {
+      console.error('标记Token失败:', error);
+    }
+  }
 
   // 尝试从服务端加载配置
   async function loadConfig() {
@@ -1139,6 +1175,25 @@
 
       if (result.success) {
         uploadStatus.textContent = result.message;
+        
+        // 如果使用了token，标记为已使用
+        const params = new URLSearchParams(location.search);
+        const token = params.get('token');
+        if (token) {
+          await markTokenAsUsed(token);
+          // 显示成功并提示关闭页面
+          uploadStatus.innerHTML = `
+            <div style="padding: 12px; background: #E8F5E9; border: 1px solid #4CAF50; border-radius: 8px; margin-top: 16px;">
+              <strong>✅ ${result.message}</strong><br>
+              <small style="color: #666;">此Token已使用，链接已失效。您可以关闭此页面。</small>
+            </div>
+          `;
+          // 禁用表单防止重复提交
+          submitButton.disabled = true;
+          submitButton.textContent = "已提交";
+          return;
+        }
+        
         uploadForm.reset();
         // 手动重置所有动态表单
         document.querySelector('input[name="cardType"][value="single"]').dispatchEvent(new Event('change'));
@@ -1283,6 +1338,55 @@
 
   // 页面加载时初始化
   document.addEventListener('DOMContentLoaded', async () => {
+    // URL 参数处理
+    const params = new URLSearchParams(location.search);
+    const token = params.get('token');
+    
+    // 如果有token，先验证
+    if (token) {
+      const verified = await verifyToken(token);
+      if (!verified) {
+        // Token验证失败，禁用表单
+        document.getElementById('uploadForm').style.display = 'none';
+        document.getElementById('uploadStatus').textContent = '⚠️ Token验证失败，无法使用此链接上传卡片。请联系管理员获取新的发卡链接。';
+        document.getElementById('uploadStatus').style.color = '#B5534E';
+        return;
+      }
+      
+      // Token验证成功，预填信息
+      if (TOKEN_DATA) {
+        // 预填分区
+        const categoryInput = document.getElementById('category');
+        categoryInput.value = TOKEN_DATA.category;
+        categoryInput.readOnly = true;
+        categoryInput.classList.add('locked');
+        
+        // 预填作者名（使用display_name或username）
+        const authorNameInput = document.getElementById('authorName');
+        authorNameInput.value = TOKEN_DATA.display_name || TOKEN_DATA.username;
+        authorNameInput.readOnly = true;
+        authorNameInput.classList.add('locked');
+        
+        // 预填authorId（隐藏字段）
+        const authorIdInput = document.getElementById('authorId');
+        authorIdInput.value = TOKEN_DATA.user_id;
+        
+        // 默认选择实名
+        document.querySelector('input[name="authorType"][value="real"]').checked = true;
+        
+        // 显示提示信息
+        const statusDiv = document.getElementById('uploadStatus');
+        statusDiv.innerHTML = `
+          <div style="padding: 12px; background: #E8F5E9; border: 1px solid #4CAF50; border-radius: 8px; margin-bottom: 16px;">
+            <strong>✅ 已通过Discord验证</strong><br>
+            用户: ${TOKEN_DATA.display_name || TOKEN_DATA.username}<br>
+            分区: ${TOKEN_DATA.category}<br>
+            <small style="color: #666;">您的信息已自动填写并锁定，请继续填写其他信息。</small>
+          </div>
+        `;
+      }
+    }
+    
     await loadConfig();
     loadCards();
     initCharacterList();
@@ -1302,38 +1406,37 @@
       resize();
     });
 
-    // URL 参数预填与锁定
-    // 支持参数：category, authorName, authorId, lockCategory, lockAuthor
-    const params = new URLSearchParams(location.search);
-    
-    const category = params.get('category');
-    if (category) { 
-      const cat = document.getElementById('category'); 
-      cat.value = decodeURIComponent(category); 
-    }
-    
-    const authorName = params.get('authorName');
-    if (authorName) { 
-      const au = document.getElementById('authorName'); 
-      au.value = decodeURIComponent(authorName); 
-    }
-    
-    const authorId = params.get('authorId');
-    if (authorId) { 
-      const aid = document.getElementById('authorId'); 
-      aid.value = decodeURIComponent(authorId); 
-    }
-    
-    if (params.get('lockCategory') === '1') { 
-      const cat = document.getElementById('category'); 
-      cat.readOnly = true; 
-      cat.classList.add('locked'); 
-    }
-    
-    if (params.get('lockAuthor') === '1') { 
-      const au = document.getElementById('authorName'); 
-      au.readOnly = true; 
-      au.classList.add('locked'); 
+    // 兼容旧的URL参数预填与锁定（如果没有token的话）
+    if (!token) {
+      const category = params.get('category');
+      if (category) { 
+        const cat = document.getElementById('category'); 
+        cat.value = decodeURIComponent(category); 
+      }
+      
+      const authorName = params.get('authorName');
+      if (authorName) { 
+        const au = document.getElementById('authorName'); 
+        au.value = decodeURIComponent(authorName); 
+      }
+      
+      const authorId = params.get('authorId');
+      if (authorId) { 
+        const aid = document.getElementById('authorId'); 
+        aid.value = decodeURIComponent(authorId); 
+      }
+      
+      if (params.get('lockCategory') === '1') { 
+        const cat = document.getElementById('category'); 
+        cat.readOnly = true; 
+        cat.classList.add('locked'); 
+      }
+      
+      if (params.get('lockAuthor') === '1') { 
+        const au = document.getElementById('authorName'); 
+        au.readOnly = true; 
+        au.classList.add('locked'); 
+      }
     }
 
     // 顶部导航的平滑滚动
