@@ -1364,8 +1364,10 @@
         // 预填作者名（使用display_name或username）
         const authorNameInput = document.getElementById('authorName');
         authorNameInput.value = TOKEN_DATA.display_name || TOKEN_DATA.username;
+        // 注意：默认选择实名并锁定，如果切换到匿名则解锁
         authorNameInput.readOnly = true;
         authorNameInput.classList.add('locked');
+        authorNameInput.dataset.tokenLocked = 'true'; // 标记这是token锁定的
         
         // 预填authorId（隐藏字段）
         const authorIdInput = document.getElementById('authorId');
@@ -1373,6 +1375,27 @@
         
         // 默认选择实名
         document.querySelector('input[name="authorType"][value="real"]').checked = true;
+        
+        // 监听作者类型切换
+        document.querySelectorAll('input[name="authorType"]').forEach(radio => {
+          radio.addEventListener('change', (e) => {
+            if (authorNameInput.dataset.tokenLocked === 'true') {
+              if (e.target.value === 'anonymous') {
+                // 切换到匿名：解锁，允许修改为马甲名
+                authorNameInput.readOnly = false;
+                authorNameInput.classList.remove('locked');
+                authorNameInput.placeholder = '马甲 (不填默认匿名)';
+                authorNameInput.value = ''; // 清空，让用户填写马甲
+              } else {
+                // 切换到实名：锁定，恢复Discord名字
+                authorNameInput.readOnly = true;
+                authorNameInput.classList.add('locked');
+                authorNameInput.placeholder = '实名';
+                authorNameInput.value = TOKEN_DATA.display_name || TOKEN_DATA.username;
+              }
+            }
+          });
+        });
         
         // 显示提示信息
         const statusDiv = document.getElementById('uploadStatus');
