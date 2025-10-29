@@ -315,35 +315,15 @@
       .row-2 { grid-template-columns: 1fr; }
     }
 
-    /* Discord 预览区域 */
-    .main-container {
-      display: grid;
-      grid-template-columns: 1fr 400px;
-      gap: 24px;
-      align-items: start;
-    }
-    @media (max-width: 1200px) {
-      .main-container {
-        grid-template-columns: 1fr;
-      }
-      .preview-sticky {
-        position: static !important;
-      }
-    }
-    
-    .preview-sticky {
-      position: sticky;
-      top: 20px;
-    }
-
     /* Discord 风格的预览卡片 */
     .discord-preview {
       background: #313338;
-      border-radius: 8px;
-      padding: 16px;
+      border-radius: 12px;
+      padding: 20px;
       color: #dbdee1;
       font-family: 'gg sans', 'Noto Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
       box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      margin-top: 32px;
     }
     
     .discord-preview h3 {
@@ -389,6 +369,13 @@
       font-weight: 600;
       font-size: 18px;
       flex-shrink: 0;
+      overflow: hidden;
+    }
+    
+    .discord-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
     
     .discord-username {
@@ -457,6 +444,26 @@
       color: #6d6f78;
       font-style: italic;
       font-size: 13px;
+    }
+    
+    .discord-images {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 8px;
+    }
+    
+    .discord-image {
+      border-radius: 4px;
+      overflow: hidden;
+      max-width: 100%;
+    }
+    
+    .discord-image img {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 4px;
     }
 
     /* 角色名胶囊（复用 tag pill 样式，可编辑可删除） */
@@ -646,8 +653,7 @@
   <header class="app-header">
     <div class="brand">堆堆demo</div>
     <nav class="nav-actions">
-      <a class="link" href="#upload" id="navUpload">上传</a>
-      <a class="link" href="#list" id="navList">列表</a>
+      <a class="link" href="#upload" id="navUpload">角色卡上传</a>
     </nav>
   </header>
 
@@ -669,10 +675,7 @@
 
   <h1 id="upload">上传你的角色卡</h1>
   
-  <div class="main-container">
-    <!-- 左侧：表单 -->
-    <div>
-      <form id="uploadForm">
+  <form id="uploadForm">
 
     <div id="section-base" class="field">
       <div class="inline-field" style="margin-top:0;">
@@ -768,6 +771,15 @@
     </div>
 
     <div id="section-files" class="field">
+      <label class="group-label">头像 (选填，不填则使用角色卡PNG或默认图标):</label>
+      <input type="file" id="avatarImage" name="avatarImage" accept="image/*" />
+      <div class="upload-zone">
+        <button type="button" class="upload-btn" onclick="document.getElementById('avatarImage').click()">+ 选择头像</button>
+        <div id="avatarPreviews" class="preview-grid"></div>
+      </div>
+    </div>
+
+    <div class="field">
       <label class="group-label">主楼图片 (可多图):</label>
       <input type="file" id="galleryImages" name="galleryImages" multiple accept="image/*" />
       <div class="upload-zone">
@@ -777,11 +789,20 @@
     </div>
 
     <div class="field">
-      <label class="group-label">角色卡* (.png / .json):</label>
-      <input type="file" id="cardFile" name="cardFile" required accept=".png,.json" />
+      <label class="group-label">角色卡 PNG* (.png):</label>
+      <input type="file" id="cardPngFile" name="cardPngFile" accept=".png" />
       <div class="upload-zone">
-        <button type="button" class="upload-btn" onclick="document.getElementById('cardFile').click()">+ 选择文件</button>
-        <div id="cardFilePreviews" class="preview-grid"></div>
+        <button type="button" class="upload-btn" onclick="document.getElementById('cardPngFile').click()">+ 选择PNG文件</button>
+        <div id="cardPngPreviews" class="preview-grid"></div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="group-label">角色卡 JSON (选填，.json):</label>
+      <input type="file" id="cardJsonFile" name="cardJsonFile" accept=".json" />
+      <div class="upload-zone">
+        <button type="button" class="upload-btn" onclick="document.getElementById('cardJsonFile').click()">+ 选择JSON文件</button>
+        <div id="cardJsonPreviews" class="preview-grid"></div>
       </div>
     </div>
 
@@ -798,63 +819,64 @@
   </form>
 
   <div id="uploadStatus"></div>
-    </div>
 
-    <!-- 右侧：Discord 预览 -->
-    <div class="preview-sticky">
-      <div class="discord-preview">
-        <h3>📱 Discord 预览</h3>
-        <div class="discord-thread">
-          <div class="discord-message">
-            <div class="discord-author">
-              <div class="discord-avatar" id="previewAvatar">?</div>
-              <div>
-                <span class="discord-username" id="previewUsername">匿名</span>
-                <span class="discord-timestamp">今天</span>
-              </div>
-            </div>
-            <div class="discord-content">
-              <div class="discord-field" id="previewLikeSection">
-                <span class="discord-like-count">
-                  <span>❤️</span>
-                  <span>赞数：<span id="previewLikes">0</span></span>
-                </span>
-              </div>
-              <div class="discord-field">
-                <span class="discord-field-label">卡名：</span>
-                <span class="discord-field-value" id="previewCardName">
-                  <span class="preview-placeholder">未填写</span>
-                </span>
-              </div>
-              <div class="discord-field">
-                <span class="discord-field-label">马甲：</span>
-                <span class="discord-field-value" id="previewVest">匿名</span>
-              </div>
-              <div class="discord-field" id="previewOrientationField" style="display: none;">
-                <span class="discord-field-label">性向：</span>
-                <span class="discord-field-value" id="previewOrientation">
-                  <span class="preview-placeholder">未选择</span>
-                </span>
-              </div>
-              <div class="discord-field">
-                <span class="discord-field-label">排雷：</span>
-                <span class="discord-field-value" id="previewWarnings">
-                  <span class="preview-placeholder">未填写</span>
-                </span>
-              </div>
-              <div id="previewTagsContainer" style="display: none;">
-                <div class="discord-tags" id="previewTags"></div>
-              </div>
-            </div>
+  <!-- Discord 预览 -->
+  <div class="discord-preview">
+    <h3>📱 Discord 预览</h3>
+    <div class="discord-thread">
+      <div class="discord-message">
+        <div class="discord-author">
+          <div class="discord-avatar" id="previewAvatar">
+            <svg width="40" height="40" viewBox="0 0 71 55" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <g clip-path="url(#clip0)">
+                <path d="M60.1045 4.8978C55.5792 2.8214 50.7265 1.2916 45.6527 0.41542C45.5603 0.39851 45.468 0.440769 45.4204 0.525289C44.7963 1.6353 44.105 3.0834 43.6209 4.2216C38.1637 3.4046 32.7345 3.4046 27.3892 4.2216C26.905 3.0581 26.1886 1.6353 25.5617 0.525289C25.5141 0.443589 25.4218 0.40133 25.3294 0.41542C20.2584 1.2888 15.4057 2.8186 10.8776 4.8978C10.8384 4.9147 10.8048 4.9429 10.7825 4.9795C1.57795 18.7309 -0.943561 32.1443 0.293408 45.3914C0.299005 45.4562 0.335386 45.5182 0.385761 45.5576C6.45866 50.0174 12.3413 52.7249 18.1147 54.5195C18.2071 54.5477 18.305 54.5139 18.3638 54.4378C19.7295 52.5728 20.9469 50.6063 21.9907 48.5383C22.0523 48.4172 21.9935 48.2735 21.8676 48.2256C19.9366 47.4931 18.0979 46.6 16.3292 45.5858C16.1893 45.5041 16.1781 45.304 16.3068 45.2082C16.679 44.9293 17.0513 44.6391 17.4067 44.3461C17.471 44.2926 17.5606 44.2813 17.6362 44.3151C29.2558 49.6202 41.8354 49.6202 53.3179 44.3151C53.3935 44.2785 53.4831 44.2898 53.5502 44.3433C53.9057 44.6363 54.2779 44.9293 54.6529 45.2082C54.7816 45.304 54.7732 45.5041 54.6333 45.5858C52.8646 46.6197 51.0259 47.4931 49.0921 48.2228C48.9662 48.2707 48.9102 48.4172 48.9718 48.5383C50.038 50.6034 51.2554 52.5699 52.5959 54.435C52.6519 54.5139 52.7526 54.5477 52.845 54.5195C58.6464 52.7249 64.529 50.0174 70.6019 45.5576C70.6551 45.5182 70.6887 45.459 70.6943 45.3942C72.1747 30.0791 68.2147 16.7757 60.1968 4.9823C60.1772 4.9429 60.1437 4.9147 60.1045 4.8978ZM23.7259 37.3253C20.2276 37.3253 17.3451 34.1136 17.3451 30.1693C17.3451 26.225 20.1717 23.0133 23.7259 23.0133C27.308 23.0133 30.1626 26.2532 30.1066 30.1693C30.1066 34.1136 27.28 37.3253 23.7259 37.3253ZM47.3178 37.3253C43.8196 37.3253 40.9371 34.1136 40.9371 30.1693C40.9371 26.225 43.7636 23.0133 47.3178 23.0133C50.9 23.0133 53.7545 26.2532 53.6986 30.1693C53.6986 34.1136 50.9 37.3253 47.3178 37.3253Z" fill="#5865F2"/>
+              </g>
+            </svg>
+          </div>
+          <div>
+            <span class="discord-username" id="previewUsername">匿名</span>
+            <span class="discord-timestamp">今天</span>
+          </div>
+        </div>
+        <div class="discord-content">
+          <div class="discord-field" id="previewLikeSection">
+            <span class="discord-like-count">
+              <span>❤️</span>
+              <span>赞数：<span id="previewLikes">0</span></span>
+            </span>
+          </div>
+          <div class="discord-field">
+            <span class="discord-field-label">卡名：</span>
+            <span class="discord-field-value" id="previewCardName">
+              <span class="preview-placeholder">未填写</span>
+            </span>
+          </div>
+          <div class="discord-field">
+            <span class="discord-field-label">马甲：</span>
+            <span class="discord-field-value" id="previewVest">匿名</span>
+          </div>
+          <div class="discord-field" id="previewOrientationField" style="display: none;">
+            <span class="discord-field-label">性向：</span>
+            <span class="discord-field-value" id="previewOrientation">
+              <span class="preview-placeholder">未选择</span>
+            </span>
+          </div>
+          <div class="discord-field">
+            <span class="discord-field-label">排雷：</span>
+            <span class="discord-field-value" id="previewWarnings">
+              <span class="preview-placeholder">未填写</span>
+            </span>
+          </div>
+          <div id="previewTagsContainer" style="display: none;">
+            <div class="discord-tags" id="previewTags"></div>
+          </div>
+          <div id="previewImagesContainer" style="display: none;">
+            <div class="discord-images" id="previewImages"></div>
           </div>
         </div>
       </div>
     </div>
   </div>
-
-  <hr style="margin: 32px 0; border: none; border-top: 1px dashed var(--muted);">
-  <h2 id="list">已上传的卡片</h2>
-  <div id="cardList">正在加载...</div>
 
   <footer class="app-footer">
     © 2025 堆堆Demo
@@ -1405,15 +1427,18 @@
         initCharacterList();
         
         // 清空文件存储和预览
+        fileStorage['avatarImage'] = [];
         fileStorage['galleryImages'] = [];
-        fileStorage['cardFile'] = [];
+        fileStorage['cardPngFile'] = [];
+        fileStorage['cardJsonFile'] = [];
         fileStorage['attachments'] = [];
+        document.getElementById('avatarPreviews').innerHTML = '';
         document.getElementById('galleryPreviews').innerHTML = '';
-        document.getElementById('cardFilePreviews').innerHTML = '';
+        document.getElementById('cardPngPreviews').innerHTML = '';
+        document.getElementById('cardJsonPreviews').innerHTML = '';
         document.getElementById('attachmentPreviews').innerHTML = '';
         
-        // 上传成功后，重新加载列表
-        loadCards(); 
+        // 上传成功 
       } else {
         uploadStatus.textContent = "失败: " + result.message;
       }
@@ -1426,37 +1451,6 @@
     }
   });
 
-  // --- 加载卡片列表逻辑 ---
-  const cardListContainer = document.getElementById("cardList");
-
-  async function loadCards() {
-    try {
-      const response = await fetch("/api/cards");
-      const data = await response.json();
-
-      if (data.success && data.cards.length > 0) {
-        cardListContainer.innerHTML = "";
-        data.cards.forEach(card => {
-          const cardElement = document.createElement("div");
-          cardElement.className = "card";
-          let tags = [];
-          try { tags = JSON.parse(card.tags || '[]'); } catch (_) {}
-          cardElement.innerHTML = `
-            <h3>${card.cardName}</h3>
-            <p><strong>作者:</strong> ${card.authorName}</p>
-            <p><strong>简介:</strong> ${card.description || '无'}</p>
-            <p><strong>Tags:</strong> ${tags.length ? tags.join(', ') : '无'}</p>
-          `;
-          cardListContainer.appendChild(cardElement);
-        });
-      } else {
-        cardListContainer.textContent = "还没有人上传卡片。";
-      }
-    } catch (error) {
-      cardListContainer.textContent = "加载卡片列表失败。";
-    }
-  }
-  
   // --- 文件上传预览功能 ---
   const fileStorage = {}; // 存储每个input的文件列表
 
@@ -1487,6 +1481,11 @@
       
       // 重新渲染预览
       renderPreviews(inputId, previewId, isImage);
+      
+      // 如果是头像、主楼图片或PNG角色卡，更新Discord预览
+      if (inputId === 'avatarImage' || inputId === 'galleryImages' || inputId === 'cardPngFile') {
+        updateDiscordPreview();
+      }
     });
   }
 
@@ -1496,7 +1495,7 @@
     const files = fileStorage[inputId] || [];
     
     files.forEach((file, idx) => {
-      if ((isImage && file.type.startsWith('image/')) || (inputId === 'cardFile' && file.type === 'image/png')) {
+      if ((isImage && file.type.startsWith('image/')) || (inputId === 'cardPngFile' && file.type === 'image/png')) {
         const reader = new FileReader();
         reader.onload = (ev) => {
           const div = document.createElement('div');
@@ -1530,11 +1529,22 @@
     fileStorage[inputId].forEach(f => dt.items.add(f));
     input.files = dt.files;
     
-    // 重新渲染
-    const previewId = inputId === 'galleryImages' ? 'galleryPreviews' : 
-                      inputId === 'cardFile' ? 'cardFilePreviews' : 'attachmentPreviews';
-    const isImage = inputId === 'galleryImages';
-    renderPreviews(inputId, previewId, isImage);
+    // 确定预览容器和是否为图片
+    const previewMapping = {
+      'avatarImage': { previewId: 'avatarPreviews', isImage: true },
+      'galleryImages': { previewId: 'galleryPreviews', isImage: true },
+      'cardPngFile': { previewId: 'cardPngPreviews', isImage: true },
+      'cardJsonFile': { previewId: 'cardJsonPreviews', isImage: false },
+      'attachments': { previewId: 'attachmentPreviews', isImage: false }
+    };
+    
+    const mapping = previewMapping[inputId] || { previewId: inputId + 'Previews', isImage: false };
+    renderPreviews(inputId, mapping.previewId, mapping.isImage);
+    
+    // 如果删除的是头像、主楼图片或PNG角色卡，更新Discord预览
+    if (inputId === 'avatarImage' || inputId === 'galleryImages' || inputId === 'cardPngFile') {
+      updateDiscordPreview();
+    }
   };
 
   // 页面加载时初始化
@@ -1612,12 +1622,13 @@
     }
     
     await loadConfig();
-    loadCards();
     initCharacterList();
 
     // 文件预览（第4个参数表示是否支持多文件累积）
-    setupFilePreview('galleryImages', 'galleryPreviews', true, true);  // 图片，多选累积
-    setupFilePreview('cardFile', 'cardFilePreviews', false, false);    // 单文件，替换
+    setupFilePreview('avatarImage', 'avatarPreviews', true, false);     // 头像，单文件
+    setupFilePreview('galleryImages', 'galleryPreviews', true, true);   // 图片，多选累积
+    setupFilePreview('cardPngFile', 'cardPngPreviews', true, false);    // PNG卡，单文件
+    setupFilePreview('cardJsonFile', 'cardJsonPreviews', false, false); // JSON卡，单文件
     setupFilePreview('attachments', 'attachmentPreviews', false, true); // 附件，多选累积
 
     // 文本域自动高度
@@ -1665,14 +1676,9 @@
 
     // 顶部导航的平滑滚动
     const navUpload = document.getElementById('navUpload');
-    const navList = document.getElementById('navList');
     if (navUpload) navUpload.addEventListener('click', (e) => {
       e.preventDefault();
       document.getElementById('upload').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-    if (navList) navList.addEventListener('click', (e) => {
-      e.preventDefault();
-      document.getElementById('list').scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
 
     // 步骤点击跳转
@@ -1701,7 +1707,7 @@
         }
       },
       { id: 'step3', check: () => {
-          return document.getElementById('cardFile').files.length > 0;
+          return document.getElementById('cardPngFile').files.length > 0;
         }
       }
     ];
@@ -1718,12 +1724,12 @@
     };
 
     document.getElementById('cardName').addEventListener('input', updateSteps);
-    document.getElementById('cardFile').addEventListener('change', updateSteps);
+    document.getElementById('cardPngFile').addEventListener('change', updateSteps);
     updateSteps();
 
     // === Discord 预览更新功能 ===
     function updateDiscordPreview() {
-      // 更新马甲名和头像
+      // 更新马甲名
       const authorType = document.querySelector('input[name="authorType"]:checked')?.value;
       const authorName = document.getElementById('authorName').value.trim();
       let vestName = '匿名';
@@ -1737,9 +1743,35 @@
       document.getElementById('previewUsername').textContent = vestName;
       document.getElementById('previewVest').textContent = vestName;
       
-      // 更新头像（显示马甲名首字母）
-      const avatarInitial = vestName ? vestName.charAt(0).toUpperCase() : '?';
-      document.getElementById('previewAvatar').textContent = avatarInitial;
+      // 更新头像（优先级：上传的头像 > PNG角色卡 > Discord机器人图标）
+      const avatarElement = document.getElementById('previewAvatar');
+      const avatarFiles = fileStorage['avatarImage'] || [];
+      const cardPngFiles = fileStorage['cardPngFile'] || [];
+      
+      if (avatarFiles.length > 0) {
+        // 使用上传的头像
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          avatarElement.innerHTML = `<img src="${e.target.result}" alt="头像">`;
+        };
+        reader.readAsDataURL(avatarFiles[0]);
+      } else if (cardPngFiles.length > 0) {
+        // 使用PNG角色卡作为头像
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          avatarElement.innerHTML = `<img src="${e.target.result}" alt="角色卡">`;
+        };
+        reader.readAsDataURL(cardPngFiles[0]);
+      } else {
+        // 使用Discord机器人默认图标
+        avatarElement.innerHTML = `
+          <svg width="40" height="40" viewBox="0 0 71 55" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <g clip-path="url(#clip0)">
+              <path d="M60.1045 4.8978C55.5792 2.8214 50.7265 1.2916 45.6527 0.41542C45.5603 0.39851 45.468 0.440769 45.4204 0.525289C44.7963 1.6353 44.105 3.0834 43.6209 4.2216C38.1637 3.4046 32.7345 3.4046 27.3892 4.2216C26.905 3.0581 26.1886 1.6353 25.5617 0.525289C25.5141 0.443589 25.4218 0.40133 25.3294 0.41542C20.2584 1.2888 15.4057 2.8186 10.8776 4.8978C10.8384 4.9147 10.8048 4.9429 10.7825 4.9795C1.57795 18.7309 -0.943561 32.1443 0.293408 45.3914C0.299005 45.4562 0.335386 45.5182 0.385761 45.5576C6.45866 50.0174 12.3413 52.7249 18.1147 54.5195C18.2071 54.5477 18.305 54.5139 18.3638 54.4378C19.7295 52.5728 20.9469 50.6063 21.9907 48.5383C22.0523 48.4172 21.9935 48.2735 21.8676 48.2256C19.9366 47.4931 18.0979 46.6 16.3292 45.5858C16.1893 45.5041 16.1781 45.304 16.3068 45.2082C16.679 44.9293 17.0513 44.6391 17.4067 44.3461C17.471 44.2926 17.5606 44.2813 17.6362 44.3151C29.2558 49.6202 41.8354 49.6202 53.3179 44.3151C53.3935 44.2785 53.4831 44.2898 53.5502 44.3433C53.9057 44.6363 54.2779 44.9293 54.6529 45.2082C54.7816 45.304 54.7732 45.5041 54.6333 45.5858C52.8646 46.6197 51.0259 47.4931 49.0921 48.2228C48.9662 48.2707 48.9102 48.4172 48.9718 48.5383C50.038 50.6034 51.2554 52.5699 52.5959 54.435C52.6519 54.5139 52.7526 54.5477 52.845 54.5195C58.6464 52.7249 64.529 50.0174 70.6019 45.5576C70.6551 45.5182 70.6887 45.459 70.6943 45.3942C72.1747 30.0791 68.2147 16.7757 60.1968 4.9823C60.1772 4.9429 60.1437 4.9147 60.1045 4.8978ZM23.7259 37.3253C20.2276 37.3253 17.3451 34.1136 17.3451 30.1693C17.3451 26.225 20.1717 23.0133 23.7259 23.0133C27.308 23.0133 30.1626 26.2532 30.1066 30.1693C30.1066 34.1136 27.28 37.3253 23.7259 37.3253ZM47.3178 37.3253C43.8196 37.3253 40.9371 34.1136 40.9371 30.1693C40.9371 26.225 43.7636 23.0133 47.3178 23.0133C50.9 23.0133 53.7545 26.2532 53.6986 30.1693C53.6986 34.1136 50.9 37.3253 47.3178 37.3253Z" fill="#5865F2"/>
+            </g>
+          </svg>
+        `;
+      }
       
       // 更新卡名
       const cardName = document.getElementById('cardName').value.trim();
@@ -1806,6 +1838,45 @@
       const isAbyss = category === '深渊';
       const previewLikeSection = document.getElementById('previewLikeSection');
       previewLikeSection.style.display = isAbyss ? '' : 'none';
+      
+      // 更新主楼图片
+      const galleryFiles = fileStorage['galleryImages'] || [];
+      const previewImagesContainer = document.getElementById('previewImagesContainer');
+      const previewImages = document.getElementById('previewImages');
+      
+      if (galleryFiles.length > 0) {
+        previewImagesContainer.style.display = '';
+        previewImages.innerHTML = '';
+        
+        galleryFiles.forEach((file, index) => {
+          if (index < 4) { // 最多显示4张图片
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              const imgDiv = document.createElement('div');
+              imgDiv.className = 'discord-image';
+              imgDiv.innerHTML = `<img src="${e.target.result}" alt="主楼图片${index + 1}">`;
+              previewImages.appendChild(imgDiv);
+            };
+            reader.readAsDataURL(file);
+          }
+        });
+        
+        if (galleryFiles.length > 4) {
+          const moreDiv = document.createElement('div');
+          moreDiv.className = 'discord-image';
+          moreDiv.style.display = 'flex';
+          moreDiv.style.alignItems = 'center';
+          moreDiv.style.justifyContent = 'center';
+          moreDiv.style.background = '#2b2d31';
+          moreDiv.style.borderRadius = '4px';
+          moreDiv.style.padding = '20px';
+          moreDiv.style.color = '#b5bac1';
+          moreDiv.innerHTML = `+${galleryFiles.length - 4} 张图片`;
+          previewImages.appendChild(moreDiv);
+        }
+      } else {
+        previewImagesContainer.style.display = 'none';
+      }
     }
     
     // 监听所有相关字段的变化
