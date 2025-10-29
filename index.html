@@ -315,6 +315,150 @@
       .row-2 { grid-template-columns: 1fr; }
     }
 
+    /* Discord 预览区域 */
+    .main-container {
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      gap: 24px;
+      align-items: start;
+    }
+    @media (max-width: 1200px) {
+      .main-container {
+        grid-template-columns: 1fr;
+      }
+      .preview-sticky {
+        position: static !important;
+      }
+    }
+    
+    .preview-sticky {
+      position: sticky;
+      top: 20px;
+    }
+
+    /* Discord 风格的预览卡片 */
+    .discord-preview {
+      background: #313338;
+      border-radius: 8px;
+      padding: 16px;
+      color: #dbdee1;
+      font-family: 'gg sans', 'Noto Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+    
+    .discord-preview h3 {
+      color: #f2f3f5;
+      font-size: 16px;
+      font-weight: 600;
+      margin: 0 0 12px 0;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #3f4147;
+    }
+    
+    .discord-thread {
+      background: #2b2d31;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    
+    .discord-message {
+      padding: 12px 16px;
+      position: relative;
+    }
+    
+    .discord-message:hover {
+      background: #2e3035;
+    }
+    
+    .discord-author {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    
+    .discord-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #5865f2, #7289da);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    
+    .discord-username {
+      font-weight: 500;
+      color: #f2f3f5;
+      font-size: 15px;
+    }
+    
+    .discord-timestamp {
+      font-size: 12px;
+      color: #949ba4;
+      margin-left: 4px;
+    }
+    
+    .discord-content {
+      color: #dbdee1;
+      font-size: 14px;
+      line-height: 1.5;
+      margin-left: 52px;
+    }
+    
+    .discord-field {
+      margin-bottom: 6px;
+    }
+    
+    .discord-field-label {
+      font-weight: 600;
+      color: #f2f3f5;
+    }
+    
+    .discord-field-value {
+      color: #b5bac1;
+    }
+    
+    .discord-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    
+    .discord-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      background: #404249;
+      border-radius: 3px;
+      font-size: 12px;
+      color: #dbdee1;
+      font-weight: 500;
+    }
+    
+    .discord-like-count {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 8px;
+      padding: 4px 8px;
+      background: #404249;
+      border-radius: 12px;
+      font-size: 13px;
+      color: #dbdee1;
+    }
+    
+    .preview-placeholder {
+      color: #6d6f78;
+      font-style: italic;
+      font-size: 13px;
+    }
+
     /* 角色名胶囊（复用 tag pill 样式，可编辑可删除） */
     .chip-list { 
       display: flex; 
@@ -524,7 +668,11 @@
   </div>
 
   <h1 id="upload">上传你的角色卡</h1>
-  <form id="uploadForm">
+  
+  <div class="main-container">
+    <!-- 左侧：表单 -->
+    <div>
+      <form id="uploadForm">
 
     <div id="section-base" class="field">
       <div class="inline-field" style="margin-top:0;">
@@ -650,6 +798,59 @@
   </form>
 
   <div id="uploadStatus"></div>
+    </div>
+
+    <!-- 右侧：Discord 预览 -->
+    <div class="preview-sticky">
+      <div class="discord-preview">
+        <h3>📱 Discord 预览</h3>
+        <div class="discord-thread">
+          <div class="discord-message">
+            <div class="discord-author">
+              <div class="discord-avatar" id="previewAvatar">?</div>
+              <div>
+                <span class="discord-username" id="previewUsername">匿名</span>
+                <span class="discord-timestamp">今天</span>
+              </div>
+            </div>
+            <div class="discord-content">
+              <div class="discord-field" id="previewLikeSection">
+                <span class="discord-like-count">
+                  <span>❤️</span>
+                  <span>赞数：<span id="previewLikes">0</span></span>
+                </span>
+              </div>
+              <div class="discord-field">
+                <span class="discord-field-label">卡名：</span>
+                <span class="discord-field-value" id="previewCardName">
+                  <span class="preview-placeholder">未填写</span>
+                </span>
+              </div>
+              <div class="discord-field">
+                <span class="discord-field-label">马甲：</span>
+                <span class="discord-field-value" id="previewVest">匿名</span>
+              </div>
+              <div class="discord-field" id="previewOrientationField" style="display: none;">
+                <span class="discord-field-label">性向：</span>
+                <span class="discord-field-value" id="previewOrientation">
+                  <span class="preview-placeholder">未选择</span>
+                </span>
+              </div>
+              <div class="discord-field">
+                <span class="discord-field-label">排雷：</span>
+                <span class="discord-field-value" id="previewWarnings">
+                  <span class="preview-placeholder">未填写</span>
+                </span>
+              </div>
+              <div id="previewTagsContainer" style="display: none;">
+                <div class="discord-tags" id="previewTags"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <hr style="margin: 32px 0; border: none; border-top: 1px dashed var(--muted);">
   <h2 id="list">已上传的卡片</h2>
@@ -1519,6 +1720,126 @@
     document.getElementById('cardName').addEventListener('input', updateSteps);
     document.getElementById('cardFile').addEventListener('change', updateSteps);
     updateSteps();
+
+    // === Discord 预览更新功能 ===
+    function updateDiscordPreview() {
+      // 更新马甲名和头像
+      const authorType = document.querySelector('input[name="authorType"]:checked')?.value;
+      const authorName = document.getElementById('authorName').value.trim();
+      let vestName = '匿名';
+      
+      if (authorType === 'real' && authorName) {
+        vestName = authorName;
+      } else if (authorType === 'anonymous' && authorName) {
+        vestName = authorName;
+      }
+      
+      document.getElementById('previewUsername').textContent = vestName;
+      document.getElementById('previewVest').textContent = vestName;
+      
+      // 更新头像（显示马甲名首字母）
+      const avatarInitial = vestName ? vestName.charAt(0).toUpperCase() : '?';
+      document.getElementById('previewAvatar').textContent = avatarInitial;
+      
+      // 更新卡名
+      const cardName = document.getElementById('cardName').value.trim();
+      const previewCardName = document.getElementById('previewCardName');
+      if (cardName) {
+        previewCardName.innerHTML = cardName;
+      } else {
+        previewCardName.innerHTML = '<span class="preview-placeholder">未填写</span>';
+      }
+      
+      // 更新性向（从自定义板块获取）
+      const orientations = [];
+      document.querySelectorAll('input[name="custom_性向"]:checked').forEach(cb => {
+        orientations.push(cb.value);
+      });
+      
+      const previewOrientationField = document.getElementById('previewOrientationField');
+      const previewOrientation = document.getElementById('previewOrientation');
+      if (orientations.length > 0) {
+        previewOrientationField.style.display = '';
+        previewOrientation.textContent = orientations.join(' / ');
+      } else {
+        previewOrientationField.style.display = 'none';
+      }
+      
+      // 更新排雷
+      const warnings = document.getElementById('warnings').value.trim();
+      const previewWarnings = document.getElementById('previewWarnings');
+      if (warnings) {
+        previewWarnings.textContent = warnings;
+      } else {
+        previewWarnings.innerHTML = '<span class="preview-placeholder">未填写</span>';
+      }
+      
+      // 更新 Tags
+      const selectedTags = [];
+      document.querySelectorAll('input[type="checkbox"].pill-input:checked').forEach(cb => {
+        const label = document.querySelector(`label[for="${cb.id}"]`);
+        if (label && !cb.name.startsWith('custom_')) {
+          selectedTags.push(label.textContent.trim());
+        }
+      });
+      
+      // 添加自定义板块的选中项（除了性向）
+      document.querySelectorAll('[id^="customSection-"] input:checked').forEach(input => {
+        if (input.name !== 'custom_性向' && input.type === 'checkbox') {
+          selectedTags.push(input.value);
+        }
+      });
+      
+      const previewTagsContainer = document.getElementById('previewTagsContainer');
+      const previewTags = document.getElementById('previewTags');
+      if (selectedTags.length > 0) {
+        previewTagsContainer.style.display = '';
+        previewTags.innerHTML = selectedTags.map(tag => 
+          `<span class="discord-tag">${tag}</span>`
+        ).join('');
+      } else {
+        previewTagsContainer.style.display = 'none';
+      }
+      
+      // 检查是否为深渊分区（显示赞数）
+      const category = document.getElementById('category').value.trim();
+      const isAbyss = category === '深渊';
+      const previewLikeSection = document.getElementById('previewLikeSection');
+      previewLikeSection.style.display = isAbyss ? '' : 'none';
+    }
+    
+    // 监听所有相关字段的变化
+    const fieldsToWatch = [
+      'authorName',
+      'cardName',
+      'category',
+      'warnings',
+      'description'
+    ];
+    
+    fieldsToWatch.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('input', updateDiscordPreview);
+      }
+    });
+    
+    // 监听作者类型变化
+    document.querySelectorAll('input[name="authorType"]').forEach(radio => {
+      radio.addEventListener('change', updateDiscordPreview);
+    });
+    
+    // 监听 Tags 变化（需要通过 MutationObserver 或委托事件）
+    document.addEventListener('change', (e) => {
+      if (e.target.classList.contains('pill-input') || 
+          e.target.name?.startsWith('custom_') ||
+          e.target.type === 'checkbox') {
+        updateDiscordPreview();
+      }
+    });
+    
+    // 初始化预览
+    updateDiscordPreview();
   });
 </script>
 
