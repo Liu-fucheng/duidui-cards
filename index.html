@@ -1447,6 +1447,8 @@
           // 禁用表单防止重复提交
           submitButton.disabled = true;
           submitButton.textContent = "已提交";
+          // 清除表单缓存
+          clearFormCache();
           return;
         }
         
@@ -1471,6 +1473,9 @@
         document.getElementById('cardJsonPreviews').innerHTML = '';
         document.getElementById('attachmentPreviews').innerHTML = '';
         
+        // 清除表单缓存
+        clearFormCache();
+        
         // 上传成功 
       } else {
         uploadStatus.textContent = "失败: " + result.message;
@@ -1483,6 +1488,177 @@
       submitButton.textContent = "上传";
     }
   });
+
+  // --- 自动缓存功能 ---
+  const CACHE_KEY = 'duidui_card_form_cache';
+  
+  // 保存表单数据到 localStorage
+  function saveFormCache() {
+    try {
+      const formData = {
+        // 基础信息
+        cardType: document.querySelector('input[name="cardType"]:checked')?.value,
+        nameRelation: document.querySelector('input[name="nameRelation"]:checked')?.value,
+        cardName: document.getElementById('cardName')?.value,
+        singleCharacterName: document.getElementById('singleCharacterName')?.value,
+        characters: Array.from(document.querySelectorAll('input[name="characters"]')).map(i => i.value),
+        authorType: document.querySelector('input[name="authorType"]:checked')?.value,
+        authorName: document.getElementById('authorName')?.value,
+        category: document.getElementById('category')?.value,
+        
+        // Tags
+        tags: Array.from(document.querySelectorAll('input[name="tags"]:checked')).map(i => i.id),
+        
+        // 自定义板块
+        customSections: {},
+        
+        // 文本域
+        warnings: document.getElementById('warnings')?.value,
+        description: document.getElementById('description')?.value,
+        otherInfo: document.getElementById('otherInfo')?.value,
+        secondaryWarningToggle: document.querySelector('input[name="secondaryWarningToggle"]:checked')?.value,
+        secondaryWarning: document.getElementById('secondaryWarning')?.value
+      };
+      
+      // 收集所有自定义板块的选中状态
+      document.querySelectorAll('[id^="section_"]').forEach(section => {
+        const sectionId = section.id;
+        const checkboxes = section.querySelectorAll('input[type="checkbox"]:checked');
+        const radios = section.querySelectorAll('input[type="radio"]:checked');
+        
+        if (checkboxes.length > 0) {
+          formData.customSections[sectionId] = Array.from(checkboxes).map(cb => ({
+            name: cb.name,
+            value: cb.value
+          }));
+        }
+        if (radios.length > 0) {
+          formData.customSections[sectionId] = Array.from(radios).map(r => ({
+            name: r.name,
+            value: r.value
+          }));
+        }
+      });
+      
+      localStorage.setItem(CACHE_KEY, JSON.stringify(formData));
+    } catch (e) {
+      console.warn('保存表单缓存失败:', e);
+    }
+  }
+  
+  // 从 localStorage 恢复表单数据
+  function restoreFormCache() {
+    try {
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (!cached) return false;
+      
+      const formData = JSON.parse(cached);
+      
+      // 恢复基础信息
+      if (formData.cardType) {
+        const radio = document.querySelector(`input[name="cardType"][value="${formData.cardType}"]`);
+        if (radio) radio.checked = true;
+      }
+      if (formData.nameRelation) {
+        const radio = document.querySelector(`input[name="nameRelation"][value="${formData.nameRelation}"]`);
+        if (radio) radio.checked = true;
+      }
+      if (formData.cardName) document.getElementById('cardName').value = formData.cardName;
+      if (formData.singleCharacterName) document.getElementById('singleCharacterName').value = formData.singleCharacterName;
+      
+      // 恢复多人卡角色名
+      if (formData.characters && formData.characters.length > 0) {
+        const characterList = document.getElementById('characterList');
+        if (characterList) {
+          characterList.innerHTML = '';
+          formData.characters.forEach((name, idx) => {
+            const chip = createCharacterChip(`角色${idx + 1}`);
+            const input = chip.querySelector('input');
+            if (input) input.value = name;
+            characterList.appendChild(chip);
+          });
+        }
+      }
+      
+      if (formData.authorType) {
+        const radio = document.querySelector(`input[name="authorType"][value="${formData.authorType}"]`);
+        if (radio) radio.checked = true;
+      }
+      if (formData.authorName && !document.getElementById('authorName').dataset.tokenLocked) {
+        document.getElementById('authorName').value = formData.authorName;
+      }
+      if (formData.category && !document.getElementById('category').readOnly) {
+        document.getElementById('category').value = formData.category;
+      }
+      
+      // 恢复 Tags（延迟执行，等待标签渲染完成）
+      setTimeout(() => {
+        if (formData.tags) {
+          formData.tags.forEach(tagId => {
+            const checkbox = document.getElementById(tagId);
+            if (checkbox) checkbox.checked = true;
+          });
+        }
+        
+        // 恢复自定义板块
+        if (formData.customSections) {
+          Object.keys(formData.customSections).forEach(sectionId => {
+            const values = formData.customSections[sectionId];
+            values.forEach(item => {
+              const input = document.querySelector(`input[name="${item.name}"][value="${item.value}"]`);
+              if (input) input.checked = true;
+            });
+          });
+        }
+        
+        // 触发UI更新
+        updateCharacterUI();
+        if (window.updateDiscordPreview) {
+          window.updateDiscordPreview();
+        }
+      }, 500);
+      
+      // 恢复文本域
+      if (formData.warnings) document.getElementById('warnings').value = formData.warnings;
+      if (formData.description) document.getElementById('description').value = formData.description;
+      if (formData.otherInfo) document.getElementById('otherInfo').value = formData.otherInfo;
+      if (formData.secondaryWarningToggle) {
+        const radio = document.querySelector(`input[name="secondaryWarningToggle"][value="${formData.secondaryWarningToggle}"]`);
+        if (radio) {
+          radio.checked = true;
+          radio.dispatchEvent(new Event('change'));
+        }
+      }
+      if (formData.secondaryWarning) document.getElementById('secondaryWarning').value = formData.secondaryWarning;
+      
+      console.log('✅ 已恢复表单缓存');
+      
+      // 显示恢复提示（灰色半透明胶囊）
+      const statusDiv = document.getElementById('uploadStatus');
+      if (statusDiv) {
+        statusDiv.innerHTML = `
+          <div style="display: inline-block; padding: 8px 16px; background: rgba(128, 128, 128, 0.15); border-radius: 20px; margin-bottom: 16px; color: #666; font-size: 14px;">
+            已恢复上次未提交的表单内容
+          </div>
+        `;
+      }
+      
+      return true;
+    } catch (e) {
+      console.warn('恢复表单缓存失败:', e);
+      return false;
+    }
+  }
+  
+  // 清除缓存
+  function clearFormCache() {
+    try {
+      localStorage.removeItem(CACHE_KEY);
+      console.log('✅ 已清除表单缓存');
+    } catch (e) {
+      console.warn('清除表单缓存失败:', e);
+    }
+  }
 
   // --- Discord预览更新函数（全局） ---
   window.updateDiscordPreview = function() {
@@ -1573,9 +1749,9 @@
       }
     }
     
-    // 更新性向（从自定义板块获取）
+    // 更新性向（从自定义板块获取，支持单选和多选）
     const orientations = [];
-    document.querySelectorAll('input[name="custom_性向"]:checked').forEach(cb => {
+    document.querySelectorAll('input[name="custom_性向"]:checked, input[name="custom_性向[]"]:checked').forEach(cb => {
       orientations.push(cb.value);
     });
     
@@ -1831,6 +2007,12 @@
     const params = new URLSearchParams(location.search);
     const token = params.get('token');
     
+    // 如果没有 token，尝试恢复缓存
+    let cacheRestored = false;
+    if (!token) {
+      cacheRestored = restoreFormCache();
+    }
+    
     // 如果有token，先验证
     if (token) {
       const verified = await verifyToken(token);
@@ -2043,6 +2225,36 @@
     
     // 初始化预览
     window.updateDiscordPreview();
+    
+    // === 自动保存表单缓存 ===
+    // 防抖函数，避免频繁保存
+    let saveTimeout;
+    function debouncedSaveCache() {
+      clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(() => {
+        saveFormCache();
+      }, 1000); // 1秒后保存
+    }
+    
+    // 监听所有表单输入变化
+    const formEl = document.getElementById('uploadForm');
+    if (formEl) {
+      // 监听 input 和 change 事件
+      formEl.addEventListener('input', debouncedSaveCache);
+      formEl.addEventListener('change', debouncedSaveCache);
+    }
+    
+    // 监听多人卡角色名的动态添加/删除
+    const characterList = document.getElementById('characterList');
+    if (characterList) {
+      const observer = new MutationObserver(debouncedSaveCache);
+      observer.observe(characterList, { childList: true, subtree: true });
+    }
+    
+    // 页面离开前保存（防止意外关闭）
+    window.addEventListener('beforeunload', (e) => {
+      saveFormCache();
+    });
   });
 </script>
 
