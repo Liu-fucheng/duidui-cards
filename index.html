@@ -408,6 +408,8 @@
     
     .discord-field-value {
       color: #b5bac1;
+      white-space: pre-wrap;
+      word-wrap: break-word;
     }
     
     .discord-like-count {
@@ -809,7 +811,7 @@
 
   <!-- Discord 预览 -->
   <div class="discord-preview">
-    <h3>📱 Discord 预览</h3>
+    <h3>Discord 发帖预览</h3>
     <div class="discord-thread">
       <div class="discord-message">
         <div class="discord-author">
@@ -822,6 +824,7 @@
           </div>
         </div>
         <div class="discord-content">
+          <!-- 赞数（仅深渊） -->
           <div class="discord-field" id="previewLikeSection" style="display: none;">
             <span class="discord-like-count">
               <span>❤️</span>
@@ -829,17 +832,26 @@
             </span>
           </div>
           
-          <!-- 卡名（不显示前缀） -->
-          <div class="discord-field" id="previewCardNameField">
-            <span class="discord-field-value" id="previewCardName">
-              <span class="preview-placeholder">未填写卡名</span>
-            </span>
-          </div>
-          
           <!-- 作者 -->
           <div class="discord-field">
             <span class="discord-field-label">作者：</span>
             <span class="discord-field-value" id="previewVest">匿名</span>
+          </div>
+          
+          <!-- 卡名 -->
+          <div class="discord-field">
+            <span class="discord-field-label">卡名：</span>
+            <span class="discord-field-value" id="previewCardName">
+              <span class="preview-placeholder">未填写</span>
+            </span>
+          </div>
+          
+          <!-- 角色（仅不同名或多人卡显示） -->
+          <div class="discord-field" id="previewCharactersField" style="display: none;">
+            <span class="discord-field-label">角色：</span>
+            <span class="discord-field-value" id="previewCharacters">
+              <span class="preview-placeholder">未填写</span>
+            </span>
           </div>
           
           <!-- 性向 -->
@@ -858,17 +870,20 @@
             </span>
           </div>
           
-          <!-- 排雷 -->
-          <div class="discord-field">
+          <!-- 自定义板块 -->
+          <div id="previewCustomSections"></div>
+          
+          <!-- 空行 + 排雷 -->
+          <div class="discord-field" style="margin-top: 12px;">
             <span class="discord-field-label">排雷：</span>
-            <span class="discord-field-value" id="previewWarnings">
+            <div class="discord-field-value" id="previewWarnings">
               <span class="preview-placeholder">未填写</span>
-            </span>
+            </div>
           </div>
           
-          <!-- 其她 -->
-          <div class="discord-field" id="previewOtherInfoField" style="display: none;">
-            <span class="discord-field-value" id="previewOtherInfo"></span>
+          <!-- 空行 + 其她 -->
+          <div class="discord-field" id="previewOtherInfoField" style="display: none; margin-top: 12px;">
+            <div class="discord-field-value" id="previewOtherInfo"></div>
           </div>
           
           <!-- 主楼图片 -->
@@ -1262,7 +1277,13 @@
       input.style.width = target + 'px';
     };
     autoSize();
-    input.addEventListener('input', autoSize);
+    input.addEventListener('input', () => {
+      autoSize();
+      // 更新Discord预览
+      if (window.updateDiscordPreview) {
+        window.updateDiscordPreview();
+      }
+    });
     
     // 删除按钮
     deleteBtn.addEventListener('click', () => {
@@ -1272,6 +1293,10 @@
       } else {
         input.value = '';
         autoSize();
+      }
+      // 更新Discord预览
+      if (window.updateDiscordPreview) {
+        window.updateDiscordPreview();
       }
     });
     
@@ -1322,6 +1347,11 @@
         // 单人同名：隐藏文本框
         singleCharacterContainer.classList.add('hidden');
       }
+    }
+    
+    // 更新Discord预览
+    if (window.updateDiscordPreview) {
+      window.updateDiscordPreview();
     }
   }
 
@@ -1498,14 +1528,48 @@
       avatarElement.innerHTML = `<img src="https://discord.com/assets/18e336a74a159cfd.png" alt="默认头像">`;
     }
     
-    // 更新卡名（不显示前缀）
+    // 更新卡名
     const cardName = document.getElementById('cardName')?.value.trim();
     const previewCardName = document.getElementById('previewCardName');
     if (previewCardName) {
       if (cardName) {
         previewCardName.innerHTML = cardName;
       } else {
-        previewCardName.innerHTML = '<span class="preview-placeholder">未填写卡名</span>';
+        previewCardName.innerHTML = '<span class="preview-placeholder">未填写</span>';
+      }
+    }
+    
+    // 更新角色名（仅不同名或多人卡显示）
+    const cardType = document.querySelector('input[name="cardType"]:checked')?.value;
+    const nameRelation = document.querySelector('input[name="nameRelation"]:checked')?.value;
+    const previewCharactersField = document.getElementById('previewCharactersField');
+    const previewCharacters = document.getElementById('previewCharacters');
+    
+    if (previewCharactersField && previewCharacters) {
+      let shouldShowCharacters = false;
+      const characters = [];
+      
+      if (cardType === 'multi') {
+        // 多人卡：收集所有角色名
+        document.querySelectorAll('input[name="characters"]').forEach(input => {
+          const val = input.value.trim();
+          if (val) characters.push(val);
+        });
+        shouldShowCharacters = characters.length > 0;
+      } else if (cardType === 'single' && nameRelation === 'different') {
+        // 单人卡不同名：显示单个角色名
+        const singleChar = document.getElementById('singleCharacterName')?.value.trim();
+        if (singleChar) {
+          characters.push(singleChar);
+          shouldShowCharacters = true;
+        }
+      }
+      
+      if (shouldShowCharacters) {
+        previewCharactersField.style.display = '';
+        previewCharacters.textContent = characters.join(' / ');
+      } else {
+        previewCharactersField.style.display = 'none';
       }
     }
     
@@ -1535,13 +1599,6 @@
       }
     });
     
-    // 添加自定义板块的选中项（除了性向）
-    document.querySelectorAll('[id^="section_"] input:checked').forEach(input => {
-      if (input.name !== 'custom_性向' && input.type === 'checkbox') {
-        selectedTags.push(input.value);
-      }
-    });
-    
     const previewTagsField = document.getElementById('previewTagsField');
     const previewTags = document.getElementById('previewTags');
     if (previewTagsField && previewTags) {
@@ -1553,23 +1610,60 @@
       }
     }
     
-    // 更新排雷
-    const warnings = document.getElementById('warnings')?.value.trim();
+    // 更新自定义板块（除了性向）
+    const customSectionsContainer = document.getElementById('previewCustomSections');
+    if (customSectionsContainer) {
+      customSectionsContainer.innerHTML = '';
+      
+      // 遍历所有自定义板块
+      document.querySelectorAll('[id^="section_"]').forEach(section => {
+        const sectionId = section.id;
+        if (!sectionId.startsWith('section_')) return;
+        
+        // 提取板块标题
+        const labelEl = section.querySelector('.group-label');
+        if (!labelEl) return;
+        const sectionTitle = labelEl.textContent.replace(':', '').trim();
+        
+        // 跳过性向（已单独显示）
+        if (sectionTitle === '性向') return;
+        
+        // 收集该板块的选中项
+        const sectionValues = [];
+        section.querySelectorAll('input:checked').forEach(input => {
+          sectionValues.push(input.value);
+        });
+        
+        // 如果有选中项，显示该板块
+        if (sectionValues.length > 0) {
+          const fieldDiv = document.createElement('div');
+          fieldDiv.className = 'discord-field';
+          fieldDiv.innerHTML = `
+            <span class="discord-field-label">${sectionTitle}：</span>
+            <span class="discord-field-value">${sectionValues.join(' / ')}</span>
+          `;
+          customSectionsContainer.appendChild(fieldDiv);
+        }
+      });
+    }
+    
+    // 更新排雷（保留换行）
+    const warnings = document.getElementById('warnings')?.value || '';
     const previewWarnings = document.getElementById('previewWarnings');
     if (previewWarnings) {
-      if (warnings) {
+      if (warnings.trim()) {
         previewWarnings.textContent = warnings;
       } else {
         previewWarnings.innerHTML = '<span class="preview-placeholder">未填写</span>';
       }
     }
     
-    // 更新其她
-    const otherInfo = document.getElementById('otherInfo')?.value.trim();
+    // 更新其她（保留换行）
+    const otherInfo = document.getElementById('otherInfo')?.value || '';
     const previewOtherInfoField = document.getElementById('previewOtherInfoField');
     const previewOtherInfo = document.getElementById('previewOtherInfo');
     if (previewOtherInfoField && previewOtherInfo) {
-      if (otherInfo) {
+      if (otherInfo.trim()) {
         previewOtherInfoField.style.display = '';
         previewOtherInfo.textContent = otherInfo;
       } else {
@@ -1922,7 +2016,8 @@
       'category',
       'warnings',
       'description',
-      'otherInfo'
+      'otherInfo',
+      'singleCharacterName'  // 单人角色名
     ];
     
     fieldsToWatch.forEach(id => {
