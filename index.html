@@ -361,7 +361,7 @@
       width: 40px;
       height: 40px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #5865f2, #7289da);
+      background: white;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -814,15 +814,15 @@
     <h3>Discord 发帖预览</h3>
     <div class="discord-thread">
       <div class="discord-message">
-        <div class="discord-author">
-          <div class="discord-avatar" id="previewAvatar">
-            <img src="https://discord.com/assets/18e336a74a159cfd.png" alt="默认头像">
+          <div class="discord-author">
+            <div class="discord-avatar" id="previewAvatar">
+              <img src="默认头像.png" alt="默认头像">
+            </div>
+            <div>
+              <span class="discord-username" id="previewUsername">匿名</span>
+              <span class="discord-timestamp">今天</span>
+            </div>
           </div>
-          <div>
-            <span class="discord-username" id="previewUsername">匿名</span>
-            <span class="discord-timestamp">今天</span>
-          </div>
-        </div>
         <div class="discord-content">
           <!-- 赞数（仅深渊） -->
           <div class="discord-field" id="previewLikeSection" style="display: none;">
@@ -1525,7 +1525,7 @@
       reader.readAsDataURL(cardPngFiles[0]);
     } else {
       // 使用Discord默认图标
-      avatarElement.innerHTML = `<img src="https://discord.com/assets/18e336a74a159cfd.png" alt="默认头像">`;
+      avatarElement.innerHTML = `<img src="默认头像.png" alt="默认头像">`;
     }
     
     // 更新卡名
