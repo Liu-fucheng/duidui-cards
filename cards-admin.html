@@ -637,6 +637,7 @@
           <td>${discordLink}</td>
           <td>
             <button class="btn small" onclick="viewDetail('${card.id}')">详情</button>
+            ${(card.threadId ? '' : `<button class='btn small danger' onclick="retryPostToDiscord('${card.id}')">重发到 Discord</button>`) }
           </td>
         `;
         tbody.appendChild(row);
@@ -891,6 +892,27 @@
         loadOverview();
       }
     })();
+
+    async function retryPostToDiscord(cardId) {
+      if (!confirm('确定要重发到 Discord 吗？')) return;
+      const token = getToken();
+      showStatus('cardsStatus', '⏳ 正在重发...', 'info');
+      try {
+        const res = await fetch(`/api/repost-card?id=${cardId}`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success) {
+          showStatus('cardsStatus', '重发成功，刷新后查看状态', 'success');
+          loadCards(currentPage);
+        } else {
+          showStatus('cardsStatus', '重发失败: ' + (data.message || ''), 'error');
+        }
+      } catch (e) {
+        showStatus('cardsStatus', '重发失败: ' + e.message, 'error');
+      }
+    }
   </script>
 </body>
 </html>
