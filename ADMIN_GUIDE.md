@@ -26,7 +26,7 @@
 3. **Discord Bot** (`duidui/app.py`)
    - 处理审核流程
    - 响应按钮交互（点赞、下载、查看简介）
-   - **不负责发卡** - 发卡由 Cloudflare Workers 直接完成
+   - **不发卡** - 发卡由 Cloudflare Workers 直接完成
 
 ## 🎯 发卡流程
 
