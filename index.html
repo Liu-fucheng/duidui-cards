@@ -1543,6 +1543,20 @@
   uploadForm.addEventListener("submit", async function (event) {
     event.preventDefault();
     
+    // 强制检查token
+    const params = new URLSearchParams(location.search);
+    const token = params.get('token');
+    if (!token) {
+        uploadStatus.innerHTML = `
+          <div style="padding: 12px; background: #ffebee; border: 1px solid #f44336; border-radius: 8px; color: #c62828;">
+            <strong>❌ 禁止上传</strong><br>
+            您必须通过官方Discord链接进入才能上传角色卡。<br>
+            请联系管理员获取正确的上传链接。
+          </div>
+        `;
+        return;
+    }
+    
     const cardPngFile = document.getElementById('cardPngFile').files[0];
     const cardJsonFile = document.getElementById('cardJsonFile').files[0];
     if (!cardPngFile && !cardJsonFile) {
@@ -1556,6 +1570,21 @@
 
     try {
       const formData = new FormData(uploadForm);
+
+      // 处理角色卡文件字段名统一（PNG或JSON -> cardFile）
+      const cardPngFile = formData.get('cardPngFile');
+      const cardJsonFile = formData.get('cardJsonFile');
+      
+      // 删除原字段名
+      formData.delete('cardPngFile');
+      formData.delete('cardJsonFile');
+      
+      // 添加统一的字段名（优先PNG，其次JSON）
+      if (cardPngFile && cardPngFile.size > 0) {
+        formData.append('cardFile', cardPngFile);
+      } else if (cardJsonFile && cardJsonFile.size > 0) {
+        formData.append('cardFile', cardJsonFile);
+      }
 
       if (formData.get('cardType') === 'single') {
         const relation = formData.get('nameRelation') || 'same';
