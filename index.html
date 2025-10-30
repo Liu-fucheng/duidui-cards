@@ -1740,7 +1740,20 @@
         document.getElementById('category').value = formData.category;
       }
       
-      // 恢复 Tags（延迟执行，等待标签渲染完成）
+      // 立即恢复文本域
+      if (formData.warnings) document.getElementById('warnings').value = formData.warnings;
+      if (formData.description) document.getElementById('description').value = formData.description;
+      if (formData.otherInfo) document.getElementById('otherInfo').value = formData.otherInfo;
+      if (formData.secondaryWarningToggle) {
+        const radio = document.querySelector(`input[name="secondaryWarningToggle"][value="${formData.secondaryWarningToggle}"]`);
+        if (radio) {
+          radio.checked = true;
+          radio.dispatchEvent(new Event('change'));
+        }
+      }
+      if (formData.secondaryWarning) document.getElementById('secondaryWarning').value = formData.secondaryWarning;
+      
+      // 恢复 Tags（现在tags已经渲染完成，只需要短暂延迟确保DOM稳定）
       setTimeout(() => {
         if (formData.tags) {
           formData.tags.forEach(tagId => {
@@ -1765,20 +1778,7 @@
         if (window.updateDiscordPreview) {
           window.updateDiscordPreview();
         }
-      }, 500);
-      
-      // 恢复文本域
-      if (formData.warnings) document.getElementById('warnings').value = formData.warnings;
-      if (formData.description) document.getElementById('description').value = formData.description;
-      if (formData.otherInfo) document.getElementById('otherInfo').value = formData.otherInfo;
-      if (formData.secondaryWarningToggle) {
-        const radio = document.querySelector(`input[name="secondaryWarningToggle"][value="${formData.secondaryWarningToggle}"]`);
-        if (radio) {
-          radio.checked = true;
-          radio.dispatchEvent(new Event('change'));
-        }
-      }
-      if (formData.secondaryWarning) document.getElementById('secondaryWarning').value = formData.secondaryWarning;
+      }, 50); // 缩短延迟时间，因为tags已经渲染完成
       
       console.log('✅ 已恢复表单缓存');
       
@@ -2247,12 +2247,6 @@
     const params = new URLSearchParams(location.search);
     const token = params.get('token');
     
-    // 如果没有 token，尝试恢复缓存
-    let cacheRestored = false;
-    if (!token) {
-      cacheRestored = restoreFormCache();
-    }
-    
     // 如果有token，先验证
     if (token) {
       const verified = await verifyToken(token);
@@ -2323,6 +2317,11 @@
     
     await loadConfig();
     initCharacterList();
+    
+    // 在tags渲染完成后恢复缓存（如果没有token）
+    if (!token) {
+      restoreFormCache();
+    }
 
     // 文件预览（第4个参数表示是否支持多文件累积）
     setupFilePreview('avatarImage', 'avatarPreviews', true, false);     // 头像，单文件
