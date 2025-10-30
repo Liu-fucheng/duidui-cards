@@ -453,7 +453,6 @@
     /* 根据图片数量动态调整布局 */
     .discord-images.count-1 {
       grid-template-columns: 1fr;
-      max-width: 400px;
     }
     
     .discord-images.count-1 .discord-image {
@@ -462,47 +461,98 @@
     }
     
     .discord-images.count-1 .discord-image img {
-      max-width: 100%;
-      max-height: 100%;
       object-fit: contain;
     }
-    
+
     .discord-images.count-2 {
       grid-template-columns: repeat(2, 1fr);
     }
     
     .discord-images.count-3 {
-      grid-template-columns: repeat(2, 1fr);
-      grid-auto-rows: 1fr;
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      grid-template-rows: repeat(2, 1fr);
     }
-    
-    .discord-images.count-3 .discord-image:nth-child(3) {
-      grid-column: 1 / -1;
+    .discord-images.count-3 .discord-image:nth-child(1) {
+      grid-row: span 2;
     }
     
     .discord-images.count-4 {
       grid-template-columns: repeat(2, 1fr);
-      grid-template-rows: repeat(2, 1fr);
     }
-    
-    .discord-images.count-5,
+
+    .discord-images.count-4 .discord-image {
+      aspect-ratio: 1.5 / 1;
+    }
+    .discord-images.count-5 {
+      grid-template-columns: repeat(6, 1fr);
+    }
+
+    .discord-images.count-5 .discord-image:nth-child(-n+2) { /* 前2个 */
+      grid-column: span 3;
+    }
+
+    .discord-images.count-5 .discord-image:nth-child(n+3) { /* 第3个开始 */
+      grid-column: span 2;
+    }
+
     .discord-images.count-6 {
-      grid-template-columns: repeat(2, 1fr);
-      grid-auto-rows: 1fr;
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .discord-images.count-7 {
+      grid-template-columns: repeat(12, 1fr);
     }
     
-    .discord-images.count-7,
+    .discord-images.count-7 .discord-image:nth-child(1) {
+      grid-column: span 12;
+      aspect-ratio: 1.5 / 1;
+    }
+    
+    .discord-images.count-7 .discord-image:nth-child(n+2) {
+      grid-column: span 4;
+      aspect-ratio: 1 / 1;
+    }
+
     .discord-images.count-8 {
-      grid-template-columns: repeat(2, 1fr);
-      grid-auto-rows: 1fr;
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
     }
-    
-    .discord-images.count-9,
+
+    .discord-images.count-8 .discord-image:nth-child(-n+2) {
+      grid-column: span 6;
+    }
+
+    .discord-images.count-8 .discord-image:nth-child(n+3) {
+      grid-column: span 4;
+    }
+
+    .discord-images.count-9 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .discord-images.count-9 .discord-image {
+      aspect-ratio: 1 / 1;
+    }
+
     .discord-images.count-10 {
-      grid-template-columns: repeat(2, 1fr);
-      grid-auto-rows: 1fr;
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      /* gap: 4px; */
     }
-    
+
+    .discord-images.count-10 .discord-image:nth-child(1) {
+      grid-column: span 12;
+      aspect-ratio: 1.5 / 1;
+    }
+
+    .discord-images.count-10 .discord-image:nth-child(n+2) {
+      grid-column: span 4;
+      aspect-ratio: 1 / 1;
+    }
+
+    /* 默认：多张图片时使用正方形 */
     .discord-image {
       border-radius: 4px;
       overflow: hidden;
@@ -773,7 +823,7 @@
       </div>
       <div class="inline-field" style="margin-top:10px;">
         <label class="group-label" for="threadTitle">帖子标题:</label>
-        <input type="text" id="threadTitle" name="threadTitle" class="short-input" placeholder="简短的帖子标题" />
+        <input type="text" id="threadTitle" name="threadTitle" class="short-input"/>
       </div>
     </div>
 
@@ -816,12 +866,16 @@
 
     <div class="field">
       <label class="group-label" for="warnings">排雷:</label>
-      <textarea id="warnings" name="warnings"></textarea>
+      <textarea id="warnings" name="warnings" placeholder="请务必详细填写所有可能的雷点，此板块将会在主楼展示。
+如有违反底线的【涉毒/涉政/同妻/代孕/幼童】要素，请勿投递。
+含有char/user霸凌要素，请投递深渊区。
+含有背德/sm等边缘限制级要素，请投递边限。
+非边限=清水区。"></textarea>
     </div>
 
     <div class="field">
       <label class="group-label" for="description">简介:</label>
-      <textarea id="description" name="description"></textarea>
+      <textarea id="description" name="description" placeholder="请在此处填写简介，只有交互才能查看简介。"></textarea>
     </div>
 
     <div class="field">
@@ -851,7 +905,7 @@
     </div>
 
     <div class="field">
-      <label class="group-label">主楼图片 (可多图):</label>
+      <label class="group-label">主楼图片 (可多图，最多10张):</label>
       <input type="file" id="galleryImages" name="galleryImages" multiple accept="image/*" />
       <div class="upload-zone">
         <button type="button" class="upload-btn" onclick="document.getElementById('galleryImages').click()">+ 添加图片</button>
@@ -2032,7 +2086,52 @@
       
       if (multiple) {
         // 多文件模式：累积文件
-        fileStorage[inputId] = [...fileStorage[inputId], ...newFiles];
+        const currentFiles = fileStorage[inputId] || [];
+        let filesToAdd = newFiles;
+        
+        // 特殊处理主楼图片的10张限制
+        if (inputId === 'galleryImages') {
+          const maxImages = 10;
+          const availableSlots = maxImages - currentFiles.length;
+          
+          if (availableSlots <= 0) {
+            // 已达到上限，显示提示
+            const uploadStatus = document.getElementById('uploadStatus');
+            if (uploadStatus) {
+              uploadStatus.innerHTML = `
+                <div style="padding: 8px 16px; background: rgba(255, 193, 7, 0.15); border-radius: 20px; margin-bottom: 16px; color: #856404; font-size: 14px;">
+                  ⚠️ 主楼图片已达到最大数量限制（10张）
+                </div>
+              `;
+              // 3秒后清除提示
+              setTimeout(() => {
+                if (uploadStatus.innerHTML.includes('主楼图片已达到最大数量限制')) {
+                  uploadStatus.innerHTML = '';
+                }
+              }, 3000);
+            }
+            return; // 不添加任何文件
+          } else if (filesToAdd.length > availableSlots) {
+            // 超出剩余槽位，只添加部分文件
+            filesToAdd = filesToAdd.slice(0, availableSlots);
+            const uploadStatus = document.getElementById('uploadStatus');
+            if (uploadStatus) {
+              uploadStatus.innerHTML = `
+                <div style="padding: 8px 16px; background: rgba(255, 193, 7, 0.15); border-radius: 20px; margin-bottom: 16px; color: #856404; font-size: 14px;">
+                  ⚠️ 主楼图片最多只能上传10张，已自动选择前${availableSlots}张图片
+                </div>
+              `;
+              // 3秒后清除提示
+              setTimeout(() => {
+                if (uploadStatus.innerHTML.includes('主楼图片最多只能上传10张')) {
+                  uploadStatus.innerHTML = '';
+                }
+              }, 3000);
+            }
+          }
+        }
+        
+        fileStorage[inputId] = [...currentFiles, ...filesToAdd];
       } else {
         // 单文件模式：替换
         fileStorage[inputId] = newFiles;
