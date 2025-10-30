@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数据库管理</title>
+  <style>
+    :root {
+      --bg: #F3E9DD;
+      --surface: #FAF4EC;
+      --text: #5C4033;
+      --muted: #D9CBBE;
+      --accent: #8B5E3C;
+      --success: #4CAF50;
+      --warning: #FF9800;
+      --danger: #B5534E;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { 
+      background: var(--bg); 
+      color: var(--text); 
+      font-family: ui-sans-serif, -apple-system, sans-serif; 
+      margin: 0;
+      padding: 0;
+    }
+    body { 
+      margin: 24px; 
+      max-width: 1200px; 
+      margin-left: auto; 
+      margin-right: auto; 
+    }
+    h1 { font-size: 28px; margin: 0 0 20px; }
+    h2 { font-size: 20px; margin: 20px 0 12px; }
+    .card { 
+      background: var(--surface); 
+      border: 1px solid var(--muted); 
+      border-radius: 12px; 
+      padding: 20px; 
+      margin-bottom: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05); 
+    }
+    .btn { 
+      display: inline-flex; 
+      align-items: center; 
+      gap: 6px; 
+      padding: 10px 18px; 
+      border-radius: 10px; 
+      border: 1px solid var(--muted); 
+      background: var(--surface); 
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .btn:hover { background: #fff; }
+    .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .btn.primary:hover { background: #6d4a2e; }
+    .btn.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+    .btn.success { background: var(--success); color: #fff; border-color: var(--success); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    
+    input[type="password"], input[type="text"] { 
+      padding: 8px 12px; 
+      border: 1px solid var(--muted); 
+      border-radius: 8px; 
+      background: #fff; 
+      color: var(--text);
+      font-size: 14px;
+    }
+    
+    .flex { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+    
+    .status { 
+      padding: 12px; 
+      border-radius: 8px; 
+      margin: 12px 0; 
+      font-weight: 500;
+    }
+    .status.success { background: #e8f5e9; color: #2e7d32; border: 1px solid #4caf50; }
+    .status.error { background: #ffebee; color: #c62828; border: 1px solid #f44336; }
+    .status.warning { background: #fff3e0; color: #e65100; border: 1px solid #ff9800; }
+    .status.info { background: #e3f2fd; color: #1565c0; border: 1px solid #2196f3; }
+    
+    .hidden { display: none; }
+    
+    table { 
+      width: 100%; 
+      border-collapse: collapse; 
+      margin: 12px 0;
+      background: #fff;
+    }
+    th, td { 
+      padding: 10px; 
+      text-align: left; 
+      border-bottom: 1px solid #eee; 
+    }
+    th { 
+      font-weight: 600; 
+      background: #f9f6f2; 
+      color: #7b6558;
+    }
+    
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin: 2px;
+    }
+    .badge.success { background: #c8e6c9; color: #2e7d32; }
+    .badge.error { background: #ffcdd2; color: #c62828; }
+    .badge.warning { background: #ffe0b2; color: #e65100; }
+    
+    pre {
+      background: #f5f5f5;
+      padding: 12px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 13px;
+      border: 1px solid #ddd;
+    }
+    
+    .loading {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--muted);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="flex-between">
+    <h1>🗄️ 数据库管理</h1>
+    <div class="flex">
+      <input type="password" id="adminToken" placeholder="管理员 Token" style="width:220px;">
+      <button class="btn" id="toggleToken">显示</button>
+      <button class="btn primary" id="saveToken">保存</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="flex-between">
+      <div>
+        <h2 style="margin-top: 0;">数据库状态</h2>
+        <p style="color: #876; margin: 0;">检查当前数据库表结构和迁移状态</p>
+      </div>
+      <button class="btn primary" id="checkStatus">
+        <span>🔍</span>
+        <span>检查状态</span>
+      </button>
+    </div>
+    
+    <div id="statusResult"></div>
+  </div>
+
+  <div class="card">
+    <div class="flex-between">
+      <div>
+        <h2 style="margin-top: 0;">初始化/更新数据库</h2>
+        <p style="color: #876; margin: 0;">创建缺失的表和列，运行必要的迁移</p>
+      </div>
+      <button class="btn success" id="initDatabase">
+        <span>🚀</span>
+        <span>初始化数据库</span>
+      </button>
+    </div>
+    
+    <div id="initResult"></div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top: 0;">📖 说明</h2>
+    <ul style="line-height: 1.8; color: #876;">
+      <li>首次部署时，请点击"初始化数据库"创建所有必要的表和列</li>
+      <li>如果上传失败提示缺少列，运行初始化会自动添加缺失的列</li>
+      <li>数据库结构会根据代码自动更新，无需手动编写SQL</li>
+      <li>所有操作都需要管理员Token，请先保存Token</li>
+      <li>建议在每次更新代码后检查一次数据库状态</li>
+    </ul>
+  </div>
+
+  <script>
+    const API_BASE = '/api/init-db';
+    
+    function getToken() {
+      return localStorage.getItem('db_admin_token') || document.getElementById('adminToken').value.trim();
+    }
+    
+    function showStatus(container, message, type = 'info') {
+      container.innerHTML = `<div class="status ${type}">${message}</div>`;
+    }
+    
+    function renderStatusResult(status) {
+      const container = document.getElementById('statusResult');
+      
+      let html = '<h3>表状态</h3><table>';
+      html += '<thead><tr><th>表名</th><th>状态</th><th>列数</th></tr></thead><tbody>';
+      
+      for (const [tableName, info] of Object.entries(status.tables)) {
+        const badge = info.exists 
+          ? '<span class="badge success">✓ 存在</span>' 
+          : '<span class="badge error">✗ 不存在</span>';
+        const columns = info.columns ? info.columns.length : 0;
+        html += `<tr><td><code>${tableName}</code></td><td>${badge}</td><td>${columns}</td></tr>`;
+      }
+      html += '</tbody></table>';
+      
+      if (status.migrations.length > 0) {
+        html += '<h3>需要的迁移</h3>';
+        html += '<div class="status warning">';
+        html += '<strong>⚠️ 发现需要运行的迁移：</strong><ul style="margin: 8px 0 0 20px;">';
+        status.migrations.forEach(m => {
+          html += `<li><code>${m}</code></li>`;
+        });
+        html += '</ul></div>';
+      } else if (status.needsInit) {
+        html += '<div class="status warning"><strong>⚠️ 需要初始化数据库</strong></div>';
+      } else {
+        html += '<div class="status success"><strong>✅ 数据库状态正常</strong></div>';
+      }
+      
+      container.innerHTML = html;
+    }
+    
+    function renderInitResult(results, newStatus) {
+      const container = document.getElementById('initResult');
+      
+      let html = '<h3>初始化结果</h3>';
+      
+      if (results.tablesCreated.length > 0) {
+        html += '<div class="status success">';
+        html += '<strong>✅ 创建的表：</strong><br>';
+        results.tablesCreated.forEach(t => {
+          html += `<span class="badge success">${t}</span>`;
+        });
+        html += '</div>';
+      }
+      
+      if (results.migrationsRun.length > 0) {
+        html += '<div class="status success">';
+        html += '<strong>✅ 运行的迁移：</strong><br>';
+        results.migrationsRun.forEach(m => {
+          html += `<span class="badge success">${m}</span>`;
+        });
+        html += '</div>';
+      }
+      
+      if (results.errors.length > 0) {
+        html += '<div class="status error">';
+        html += '<strong>❌ 错误：</strong><ul style="margin: 8px 0 0 20px;">';
+        results.errors.forEach(e => {
+          html += `<li>${e.table || e.migration}: ${e.error}</li>`;
+        });
+        html += '</ul></div>';
+      }
+      
+      if (results.tablesCreated.length === 0 && results.migrationsRun.length === 0 && results.errors.length === 0) {
+        html += '<div class="status info"><strong>ℹ️ 数据库已是最新状态，无需更改</strong></div>';
+      }
+      
+      // 显示更新后的状态
+      if (newStatus) {
+        html += '<h3>更新后的状态</h3>';
+        html += '<table><thead><tr><th>表名</th><th>状态</th></tr></thead><tbody>';
+        for (const [tableName, info] of Object.entries(newStatus.tables)) {
+          const badge = info.exists 
+            ? '<span class="badge success">✓ 存在</span>' 
+            : '<span class="badge error">✗ 不存在</span>';
+          html += `<tr><td><code>${tableName}</code></td><td>${badge}</td></tr>`;
+        }
+        html += '</tbody></table>';
+        
+        if (newStatus.migrations.length === 0 && !newStatus.needsInit) {
+          html += '<div class="status success"><strong>✅ 数据库状态正常</strong></div>';
+        }
+      }
+      
+      container.innerHTML = html;
+    }
+    
+    // 检查状态
+    document.getElementById('checkStatus').addEventListener('click', async () => {
+      const btn = document.getElementById('checkStatus');
+      const container = document.getElementById('statusResult');
+      
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading"></span><span>检查中...</span>';
+      
+      try {
+        const res = await fetch(API_BASE);
+        const data = await res.json();
+        
+        if (data.success) {
+          renderStatusResult(data.status);
+        } else {
+          showStatus(container, `❌ ${data.message}`, 'error');
+        }
+      } catch (e) {
+        showStatus(container, `❌ 检查失败: ${e.message}`, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>🔍</span><span>检查状态</span>';
+      }
+    });
+    
+    // 初始化数据库
+    document.getElementById('initDatabase').addEventListener('click', async () => {
+      const token = getToken();
+      if (!token) {
+        alert('请先输入并保存管理员Token');
+        return;
+      }
+      
+      if (!confirm('确定要初始化/更新数据库吗？\n\n这将创建缺失的表和列，运行必要的迁移。')) {
+        return;
+      }
+      
+      const btn = document.getElementById('initDatabase');
+      const container = document.getElementById('initResult');
+      
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading"></span><span>初始化中...</span>';
+      showStatus(container, '⏳ 正在初始化数据库，请稍候...', 'info');
+      
+      try {
+        const res = await fetch(API_BASE, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          renderInitResult(data.results, data.status);
+          // 自动刷新状态
+          setTimeout(() => {
+            document.getElementById('checkStatus').click();
+          }, 500);
+        } else {
+          showStatus(container, `❌ ${data.message}`, 'error');
+        }
+      } catch (e) {
+        showStatus(container, `❌ 初始化失败: ${e.message}`, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>🚀</span><span>初始化数据库</span>';
+      }
+    });
+    
+    // Token管理
+    document.getElementById('toggleToken').addEventListener('click', () => {
+      const el = document.getElementById('adminToken');
+      el.type = el.type === 'password' ? 'text' : 'password';
+    });
+    
+    document.getElementById('saveToken').addEventListener('click', () => {
+      const token = document.getElementById('adminToken').value.trim();
+      if (token) {
+        localStorage.setItem('db_admin_token', token);
+        alert('✅ Token已保存');
+      } else {
+        alert('请输入Token');
+      }
+    });
+    
+    // 初始化
+    (function init() {
+      const saved = localStorage.getItem('db_admin_token');
+      if (saved) {
+        document.getElementById('adminToken').value = saved;
+      }
+      
+      // 自动检查状态
+      document.getElementById('checkStatus').click();
+    })();
+  </script>
+</body>
+</html>
+

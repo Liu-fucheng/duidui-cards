@@ -397,6 +397,40 @@ async function uploadFileToR2(bucket, file, folder) {
       const orientation = JSON.stringify(formData.getAll("orientation"));
       const tags = JSON.stringify(formData.getAll("tags"));
       const backgrounds = JSON.stringify(formData.getAll("background"));
+      
+      // 3.5. 自动收集自定义板块数据
+      // 读取配置以识别自定义板块字段
+      let customSectionsData = {};
+      try {
+        const configRow = await env.D1_DB.prepare('SELECT value FROM app_config WHERE key = ?')
+          .bind('ui_config')
+          .first();
+        if (configRow && configRow.value) {
+          const config = JSON.parse(configRow.value);
+          if (config.customSections && Array.isArray(config.customSections)) {
+            // 遍历每个自定义板块，收集对应的表单数据
+            config.customSections.forEach(section => {
+              const sectionKey = `section_${section.title}`;
+              const values = formData.getAll(sectionKey);
+              if (values.length > 0) {
+                customSectionsData[section.title] = values;
+              }
+            });
+          }
+        }
+      } catch (configError) {
+        console.error('读取配置或收集自定义板块数据失败:', configError);
+        // 继续执行，不影响主流程
+      }
+      
+      // 将自定义板块数据合并到 otherInfo
+      let otherInfoValue = formData.get("otherInfo") || "";
+      if (Object.keys(customSectionsData).length > 0) {
+        const customDataStr = Object.entries(customSectionsData)
+          .map(([key, values]) => `${key}: ${values.join(', ')}`)
+          .join('\n');
+        otherInfoValue = otherInfoValue ? `${otherInfoValue}\n\n${customDataStr}` : customDataStr;
+      }
   
       // 4. 准备插入 D1 数据库 (使用新表 cards_v2)
       // 注意：如果表中没有相关字段，需要先执行:
@@ -421,7 +455,7 @@ async function uploadFileToR2(bucket, file, folder) {
           warnings: formData.get("warnings"),
           description: formData.get("description"),
           threadTitle: formData.get("threadTitle") || "",
-          otherInfo: formData.get("otherInfo") || "",
+          otherInfo: otherInfoValue,
           avatarImageKey,
           galleryImageKeys,
           cardFileKey
@@ -467,7 +501,7 @@ async function uploadFileToR2(bucket, file, folder) {
         formData.get("description"),
         formData.get("secondaryWarning"), // 二次排雷
         formData.get("threadTitle") || "",
-        formData.get("otherInfo") || "",
+        otherInfoValue,
         avatarImageKey, // 头像文件 key
         JSON.stringify(galleryImageKeys), // JSON string
         cardFileKey,
