@@ -131,7 +131,7 @@ async function uploadFileToR2(bucket, file, folder) {
 
   // 发送发卡日志
   async function sendUploadLog(env, logData) {
-    const LOG_CHANNEL_ID = '1429834614431547553';
+    const UPLOAD_LOG_CHANNEL_ID = '1429834614431547553';  // 发卡日志频道
     const botToken = env.DISCORD_BOT_TOKEN;
     
     if (!botToken) {
@@ -163,7 +163,7 @@ async function uploadFileToR2(bucket, file, folder) {
 
     try {
       // 使用Bot API发送日志
-      const response = await fetch(`https://discord.com/api/v10/channels/${LOG_CHANNEL_ID}/messages`, {
+      const response = await fetch(`https://discord.com/api/v10/channels/${UPLOAD_LOG_CHANNEL_ID}/messages`, {
         method: 'POST',
         headers: {
           'Authorization': `Bot ${botToken}`,
