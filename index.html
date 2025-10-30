@@ -875,7 +875,7 @@
 
     <div class="field">
       <label class="group-label" for="description">简介:</label>
-      <textarea id="description" name="description" placeholder="请在此处填写简介，只有交互才能查看简介。"></textarea>
+      <textarea id="description" name="description" placeholder="请在此处填写简介，非边限/边限会在主楼展示。深渊区只有交互才能查看简介。"></textarea>
     </div>
 
     <div class="field">
@@ -1016,6 +1016,14 @@
           <div class="discord-field" style="margin-top: 12px;">
             <span class="discord-field-label">排雷：</span>
             <div class="discord-field-value" id="previewWarnings">
+              <span class="preview-placeholder">未填写</span>
+            </div>
+          </div>
+          
+          <!-- 简介（非深渊分区显示） -->
+          <div class="discord-field" id="previewDescriptionField" style="display: none; margin-top: 12px;">
+            <span class="discord-field-label">简介：</span>
+            <div class="discord-field-value" id="previewDescription">
               <span class="preview-placeholder">未填写</span>
             </div>
           </div>
@@ -1975,6 +1983,23 @@
       });
     }
     
+    // 检查是否为深渊分区
+    const category = document.getElementById('category')?.value.trim();
+    const isAbyss = category === '深渊';
+    
+    // 更新简介（仅非深渊分区显示）
+    const description = document.getElementById('description')?.value || '';
+    const previewDescriptionField = document.getElementById('previewDescriptionField');
+    const previewDescription = document.getElementById('previewDescription');
+    if (previewDescriptionField && previewDescription) {
+      if (!isAbyss && description.trim()) {
+        previewDescriptionField.style.display = '';
+        previewDescription.textContent = description;
+      } else {
+        previewDescriptionField.style.display = 'none';
+      }
+    }
+    
     // 更新排雷（保留换行）
     const warnings = document.getElementById('warnings')?.value || '';
     const previewWarnings = document.getElementById('previewWarnings');
@@ -1999,12 +2024,10 @@
       }
     }
     
-    // 检查是否为深渊分区（显示赞数）
-    const category = document.getElementById('category')?.value.trim();
-    const isAbyss = category === '深渊';
+    // 赞数预览已取消（所有分区都不显示）
     const previewLikeSection = document.getElementById('previewLikeSection');
     if (previewLikeSection) {
-      previewLikeSection.style.display = isAbyss ? '' : 'none';
+      previewLikeSection.style.display = 'none';
     }
     
     // 更新主楼图片（Discord动态布局样式）
