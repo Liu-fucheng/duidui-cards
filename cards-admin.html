@@ -300,6 +300,7 @@
     
     <!-- 概览 -->
     <div class="tab-content active" id="tab-overview">
+      <div id="overviewStatus"></div>
       <div class="stats-grid" id="statsGrid">
         <div class="stat-card">
           <div class="stat-value" id="totalCards">-</div>
@@ -472,7 +473,13 @@
     function showStatus(container, message, type = 'info') {
       const el = document.getElementById(container);
       if (el) {
-        el.innerHTML = `<div class="status ${type}">${message}</div>`;
+        if (message) {
+          el.innerHTML = `<div class="status ${type}">${message}</div>`;
+        } else {
+          el.innerHTML = '';
+        }
+      } else {
+        console.warn(`状态容器不存在: ${container}`);
       }
     }
 
@@ -524,36 +531,46 @@
     // 加载概览数据
     async function loadOverview() {
       try {
-        showStatus('statsGrid', '加载中...', 'info');
+        showStatus('overviewStatus', '⏳ 加载中...', 'info');
         const res = await fetch(`${API_BASE}?action=stats`, {
           headers: { 'Authorization': `Bearer ${getToken()}` }
         });
         const data = await res.json();
 
         if (data.success) {
-          document.getElementById('totalCards').textContent = data.stats.total || 0;
-          document.getElementById('todayCards').textContent = data.stats.today || 0;
-          document.getElementById('weekCards').textContent = data.stats.week || 0;
-          document.getElementById('monthCards').textContent = data.stats.month || 0;
+          const totalEl = document.getElementById('totalCards');
+          const todayEl = document.getElementById('todayCards');
+          const weekEl = document.getElementById('weekCards');
+          const monthEl = document.getElementById('monthCards');
+          
+          if (totalEl) totalEl.textContent = data.stats.total || 0;
+          if (todayEl) todayEl.textContent = data.stats.today || 0;
+          if (weekEl) weekEl.textContent = data.stats.week || 0;
+          if (monthEl) monthEl.textContent = data.stats.month || 0;
 
           // 分区统计
           const tbody = document.querySelector('#categoryStats tbody');
-          tbody.innerHTML = '';
-          Object.entries(data.stats.byCategory || {}).forEach(([category, count]) => {
-            const percentage = ((count / (data.stats.total || 1)) * 100).toFixed(1);
-            tbody.innerHTML += `
-              <tr>
-                <td>${category}</td>
-                <td>${count}</td>
-                <td>${percentage}%</td>
-              </tr>
-            `;
-          });
+          if (tbody) {
+            tbody.innerHTML = '';
+            Object.entries(data.stats.byCategory || {}).forEach(([category, count]) => {
+              const percentage = ((count / (data.stats.total || 1)) * 100).toFixed(1);
+              tbody.innerHTML += `
+                <tr>
+                  <td>${category}</td>
+                  <td>${count}</td>
+                  <td>${percentage}%</td>
+                </tr>
+              `;
+            });
+          }
+          
+          // 清除加载状态
+          showStatus('overviewStatus', '');
         } else {
-          showStatus('statsGrid', `❌ ${data.message}`, 'error');
+          showStatus('overviewStatus', `❌ ${data.message}`, 'error');
         }
       } catch (e) {
-        showStatus('statsGrid', `❌ 加载失败: ${e.message}`, 'error');
+        showStatus('overviewStatus', `❌ 加载失败: ${e.message}`, 'error');
       }
     }
 
