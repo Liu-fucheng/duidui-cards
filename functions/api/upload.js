@@ -59,7 +59,7 @@ async function uploadFileToR2(bucket, file, folder) {
       if (response.ok) {
         const result = await response.json();
         console.log('✅ Bot已接收发卡请求:', result);
-        return { success: true };
+        return { success: true, ...result };
       } else {
         const errorText = await response.text();
         console.error('❌ Bot响应错误:', response.status, errorText);
@@ -420,6 +420,7 @@ async function uploadFileToR2(bucket, file, folder) {
 
         if (notifyResult.success) {
           console.log("✅ 已通知Bot发帖");
+          discordInfo = notifyResult;
           // 保存角色卡数据到KV（供bot查询）
           try {
             await saveCharacterCardToKV(env, {

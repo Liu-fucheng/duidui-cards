@@ -297,14 +297,8 @@
       
       try {
         const res = await fetch(API_BASE);
-        const text = await res.text();
-        let data;
-        try {
-          data = JSON.parse(text);
-        } catch {
-          showStatus(container, `❌ 响应不是合法JSON，原始内容：<pre>${text.replace(/[<>]/g, m => m === '<' ? '&lt;' : '&gt;')}</pre>`, 'error');
-          return;
-        }
+        const data = await res.json();
+        
         if (data.success) {
           renderStatusResult(data.status);
         } else {
@@ -344,14 +338,8 @@
             'Authorization': `Bearer ${token}`
           }
         });
-        const text = await res.text();
-        let data;
-        try {
-          data = JSON.parse(text);
-        } catch {
-          showStatus(container, `❌ 响应不是合法JSON，原始内容：<pre>${text.replace(/[<>]/g, m => m === '<' ? '&lt;' : '&gt;')}</pre>`, 'error');
-          return;
-        }
+        const data = await res.json();
+        
         if (data.success) {
           renderInitResult(data.results, data.status);
           // 自动刷新状态
