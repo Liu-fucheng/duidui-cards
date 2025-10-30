@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>角色卡管理后台</title>
+  <style>
+    :root {
+      --bg: #F3E9DD;
+      --surface: #FAF4EC;
+      --text: #5C4033;
+      --muted: #D9CBBE;
+      --accent: #8B5E3C;
+      --success: #4CAF50;
+      --warning: #FF9800;
+      --danger: #B5534E;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { 
+      background: var(--bg); 
+      color: var(--text); 
+      font-family: ui-sans-serif, -apple-system, sans-serif; 
+      margin: 0;
+      padding: 0;
+    }
+    body { 
+      margin: 24px; 
+      max-width: 1400px; 
+      margin-left: auto; 
+      margin-right: auto; 
+    }
+    h1 { font-size: 28px; margin: 0 0 20px; }
+    h2 { font-size: 20px; margin: 20px 0 12px; }
+    .card { 
+      background: var(--surface); 
+      border: 1px solid var(--muted); 
+      border-radius: 12px; 
+      padding: 20px; 
+      margin-bottom: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05); 
+    }
+    .btn { 
+      display: inline-flex; 
+      align-items: center; 
+      gap: 6px; 
+      padding: 10px 18px; 
+      border-radius: 10px; 
+      border: 1px solid var(--muted); 
+      background: var(--surface); 
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .btn:hover { background: #fff; }
+    .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .btn.primary:hover { background: #6d4a2e; }
+    .btn.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+    .btn.success { background: var(--success); color: #fff; border-color: var(--success); }
+    .btn.small { padding: 6px 12px; font-size: 13px; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    
+    input[type="password"], input[type="text"], input[type="number"] { 
+      padding: 8px 12px; 
+      border: 1px solid var(--muted); 
+      border-radius: 8px; 
+      background: #fff; 
+      color: var(--text);
+      font-size: 14px;
+    }
+    
+    .flex { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+    
+    .status { 
+      padding: 12px; 
+      border-radius: 8px; 
+      margin: 12px 0; 
+      font-weight: 500;
+    }
+    .status.success { background: #e8f5e9; color: #2e7d32; border: 1px solid #4caf50; }
+    .status.error { background: #ffebee; color: #c62828; border: 1px solid #f44336; }
+    .status.warning { background: #fff3e0; color: #e65100; border: 1px solid #ff9800; }
+    .status.info { background: #e3f2fd; color: #1565c0; border: 1px solid #2196f3; }
+    
+    .hidden { display: none; }
+    
+    table { 
+      width: 100%; 
+      border-collapse: collapse; 
+      margin: 12px 0;
+      background: #fff;
+      font-size: 13px;
+    }
+    th, td { 
+      padding: 10px; 
+      text-align: left; 
+      border-bottom: 1px solid #eee; 
+    }
+    th { 
+      font-weight: 600; 
+      background: #f9f6f2; 
+      color: #7b6558;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    tr:hover { background: #fafafa; }
+    
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin: 2px;
+      white-space: nowrap;
+    }
+    .badge.success { background: #c8e6c9; color: #2e7d32; }
+    .badge.error { background: #ffcdd2; color: #c62828; }
+    .badge.warning { background: #ffe0b2; color: #e65100; }
+    .badge.info { background: #bbdefb; color: #1565c0; }
+    
+    .loading {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--muted);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .tab-nav {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid var(--muted);
+    }
+    .tab-btn {
+      padding: 10px 20px;
+      background: transparent;
+      border: none;
+      border-bottom: 3px solid transparent;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 500;
+      color: #876;
+      transition: all 0.2s;
+    }
+    .tab-btn:hover { color: var(--accent); }
+    .tab-btn.active { 
+      color: var(--accent); 
+      border-bottom-color: var(--accent);
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: #fff;
+      border: 1px solid var(--muted);
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .stat-label {
+      font-size: 13px;
+      color: #876;
+      margin-top: 4px;
+    }
+
+    .filter-bar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+      padding: 12px;
+      background: #fff;
+      border-radius: 8px;
+      border: 1px solid var(--muted);
+    }
+    .filter-bar select {
+      padding: 6px 10px;
+      border: 1px solid var(--muted);
+      border-radius: 6px;
+      background: #fff;
+    }
+
+    .table-container {
+      max-height: 600px;
+      overflow-y: auto;
+      border: 1px solid var(--muted);
+      border-radius: 8px;
+    }
+
+    .detail-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .detail-modal.show { display: flex; }
+    .detail-content {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 800px;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+    }
+    .detail-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: none;
+      background: var(--danger);
+      color: #fff;
+      cursor: pointer;
+      font-size: 20px;
+    }
+    .detail-row {
+      margin-bottom: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px dashed var(--muted);
+    }
+    .detail-label {
+      font-weight: 600;
+      color: #876;
+      margin-bottom: 4px;
+    }
+    .detail-value {
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .thumbnail {
+      max-width: 100px;
+      max-height: 100px;
+      object-fit: cover;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="flex-between">
+    <h1>🎴 角色卡管理后台</h1>
+    <div class="flex">
+      <input type="password" id="adminToken" placeholder="管理员 Token" style="width:220px;">
+      <button class="btn" id="toggleToken">显示</button>
+      <button class="btn primary" id="saveToken">保存</button>
+    </div>
+  </div>
+
+  <div class="card" id="guardCard">
+    <div class="flex-between">
+      <div>
+        <div style="font-weight:600; margin-bottom:6px;">需要管理员 Token</div>
+        <div style="color: #876;">查看角色卡数据、日志和系统状态需要管理员权限</div>
+      </div>
+      <button class="btn primary" id="enterAdmin">进入管理</button>
+    </div>
+  </div>
+
+  <div id="adminPanel" class="hidden">
+    <!-- Tab导航 -->
+    <div class="tab-nav">
+      <button class="tab-btn active" data-tab="overview">概览</button>
+      <button class="tab-btn" data-tab="cards">角色卡列表</button>
+      <button class="tab-btn" data-tab="logs">发卡日志</button>
+      <button class="tab-btn" data-tab="system">系统状态</button>
+    </div>
+
+    <!-- Tab内容 -->
+    
+    <!-- 概览 -->
+    <div class="tab-content active" id="tab-overview">
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-card">
+          <div class="stat-value" id="totalCards">-</div>
+          <div class="stat-label">总角色卡数</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="todayCards">-</div>
+          <div class="stat-label">今日新增</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="weekCards">-</div>
+          <div class="stat-label">本周新增</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="monthCards">-</div>
+          <div class="stat-label">本月新增</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>分区统计</h2>
+        <table id="categoryStats">
+          <thead>
+            <tr>
+              <th>分区</th>
+              <th>数量</th>
+              <th>占比</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 角色卡列表 -->
+    <div class="tab-content" id="tab-cards">
+      <div class="card">
+        <div class="flex-between" style="margin-bottom: 16px;">
+          <h2 style="margin: 0;">角色卡列表</h2>
+          <button class="btn primary" id="refreshCards">
+            <span>🔄</span>
+            <span>刷新</span>
+          </button>
+        </div>
+
+        <div class="filter-bar">
+          <label>分区：
+            <select id="filterCategory">
+              <option value="">全部</option>
+              <option value="非边限">非边限</option>
+              <option value="边限">边限</option>
+              <option value="深渊">深渊</option>
+            </select>
+          </label>
+          <label>搜索：
+            <input type="text" id="searchCards" placeholder="卡名/作者...">
+          </label>
+          <label>每页显示：
+            <select id="pageSize">
+              <option value="20">20</option>
+              <option value="50" selected>50</option>
+              <option value="100">100</option>
+              <option value="500">500</option>
+            </select>
+          </label>
+        </div>
+
+        <div id="cardsStatus"></div>
+
+        <div class="table-container">
+          <table id="cardsTable">
+            <thead>
+              <tr>
+                <th style="width: 60px;">ID</th>
+                <th>卡名</th>
+                <th>作者</th>
+                <th>分区</th>
+                <th>类型</th>
+                <th>上传时间</th>
+                <th>Discord</th>
+                <th style="width: 100px;">操作</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="flex-between" style="margin-top: 16px;">
+          <div id="paginationInfo" style="color: #876; font-size: 13px;"></div>
+          <div class="flex" id="pagination"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 日志 -->
+    <div class="tab-content" id="tab-logs">
+      <div class="card">
+        <div class="flex-between" style="margin-bottom: 16px;">
+          <h2 style="margin: 0;">发卡日志</h2>
+          <button class="btn primary" id="refreshLogs">
+            <span>🔄</span>
+            <span>刷新</span>
+          </button>
+        </div>
+
+        <div class="filter-bar">
+          <label>时间范围：
+            <select id="logTimeRange">
+              <option value="today">今天</option>
+              <option value="week" selected>本周</option>
+              <option value="month">本月</option>
+              <option value="all">全部</option>
+            </select>
+          </label>
+        </div>
+
+        <div id="logsStatus"></div>
+
+        <div class="table-container">
+          <table id="logsTable">
+            <thead>
+              <tr>
+                <th>时间</th>
+                <th>作者</th>
+                <th>卡名</th>
+                <th>分区</th>
+                <th>帖子标题</th>
+                <th>Discord链接</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 系统状态 -->
+    <div class="tab-content" id="tab-system">
+      <div class="card">
+        <h2>系统状态</h2>
+        <button class="btn primary" id="refreshSystem">刷新</button>
+        <div id="systemStatus" style="margin-top: 16px;"></div>
+      </div>
+
+      <div class="card">
+        <h2>最近错误</h2>
+        <div id="recentErrors">暂无错误</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 详情弹窗 -->
+  <div class="detail-modal" id="detailModal">
+    <div class="detail-content">
+      <button class="detail-close" onclick="closeDetail()">×</button>
+      <div id="detailBody"></div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = '/api/cards';
+    let currentPage = 1;
+    let pageSize = 50;
+    let currentFilter = {};
+
+    function getToken() {
+      return localStorage.getItem('cards_admin_token') || document.getElementById('adminToken').value.trim();
+    }
+
+    function showStatus(container, message, type = 'info') {
+      const el = document.getElementById(container);
+      if (el) {
+        el.innerHTML = `<div class="status ${type}">${message}</div>`;
+      }
+    }
+
+    // Tab切换
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tab = btn.dataset.tab;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(`tab-${tab}`).classList.add('active');
+
+        // 切换到对应tab时加载数据
+        if (tab === 'overview') loadOverview();
+        if (tab === 'cards') loadCards();
+        if (tab === 'logs') loadLogs();
+        if (tab === 'system') loadSystemStatus();
+      });
+    });
+
+    // Token管理
+    document.getElementById('toggleToken').addEventListener('click', () => {
+      const el = document.getElementById('adminToken');
+      el.type = el.type === 'password' ? 'text' : 'password';
+    });
+
+    document.getElementById('saveToken').addEventListener('click', () => {
+      const token = document.getElementById('adminToken').value.trim();
+      if (token) {
+        localStorage.setItem('cards_admin_token', token);
+        alert('✅ Token已保存');
+      } else {
+        alert('请输入Token');
+      }
+    });
+
+    document.getElementById('enterAdmin').addEventListener('click', () => {
+      const token = getToken();
+      if (!token) {
+        alert('请先输入并保存Token');
+        return;
+      }
+      localStorage.setItem('cards_admin_token', token);
+      document.getElementById('guardCard').classList.add('hidden');
+      document.getElementById('adminPanel').classList.remove('hidden');
+      loadOverview();
+    });
+
+    // 加载概览数据
+    async function loadOverview() {
+      try {
+        showStatus('statsGrid', '加载中...', 'info');
+        const res = await fetch(`${API_BASE}?action=stats`, {
+          headers: { 'Authorization': `Bearer ${getToken()}` }
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          document.getElementById('totalCards').textContent = data.stats.total || 0;
+          document.getElementById('todayCards').textContent = data.stats.today || 0;
+          document.getElementById('weekCards').textContent = data.stats.week || 0;
+          document.getElementById('monthCards').textContent = data.stats.month || 0;
+
+          // 分区统计
+          const tbody = document.querySelector('#categoryStats tbody');
+          tbody.innerHTML = '';
+          Object.entries(data.stats.byCategory || {}).forEach(([category, count]) => {
+            const percentage = ((count / (data.stats.total || 1)) * 100).toFixed(1);
+            tbody.innerHTML += `
+              <tr>
+                <td>${category}</td>
+                <td>${count}</td>
+                <td>${percentage}%</td>
+              </tr>
+            `;
+          });
+        } else {
+          showStatus('statsGrid', `❌ ${data.message}`, 'error');
+        }
+      } catch (e) {
+        showStatus('statsGrid', `❌ 加载失败: ${e.message}`, 'error');
+      }
+    }
+
+    // 加载角色卡列表
+    async function loadCards(page = 1) {
+      currentPage = page;
+      const category = document.getElementById('filterCategory').value;
+      const search = document.getElementById('searchCards').value.trim();
+      pageSize = parseInt(document.getElementById('pageSize').value);
+
+      try {
+        showStatus('cardsStatus', '⏳ 加载中...', 'info');
+        const params = new URLSearchParams({
+          action: 'list',
+          page,
+          pageSize,
+          ...(category && { category }),
+          ...(search && { search })
+        });
+
+        const res = await fetch(`${API_BASE}?${params}`, {
+          headers: { 'Authorization': `Bearer ${getToken()}` }
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          renderCardsTable(data.cards);
+          renderPagination(data.pagination);
+          showStatus('cardsStatus', '');
+        } else {
+          showStatus('cardsStatus', `❌ ${data.message}`, 'error');
+        }
+      } catch (e) {
+        showStatus('cardsStatus', `❌ 加载失败: ${e.message}`, 'error');
+      }
+    }
+
+    function renderCardsTable(cards) {
+      const tbody = document.querySelector('#cardsTable tbody');
+      tbody.innerHTML = '';
+
+      if (!cards || cards.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#876;">暂无数据</td></tr>';
+        return;
+      }
+
+      cards.forEach(card => {
+        const row = document.createElement('tr');
+        const shortId = card.id.substring(0, 8);
+        const uploadTime = new Date(card.uploadedAt || card.createdAt).toLocaleString('zh-CN');
+        const categoryBadge = `<span class="badge ${card.category === '深渊' ? 'warning' : 'info'}">${card.category || '未知'}</span>`;
+        const typeBadge = card.cardType === 'multi' ? '多人' : '单人';
+        const discordLink = card.threadId 
+          ? `<a href="https://discord.com/channels/1338365085072101416/${card.threadId}" target="_blank" style="color: var(--accent);">查看</a>`
+          : '<span style="color:#876;">-</span>';
+
+        row.innerHTML = `
+          <td><code>${shortId}</code></td>
+          <td><strong>${card.cardName || '未命名'}</strong></td>
+          <td>${card.authorName || '匿名'}</td>
+          <td>${categoryBadge}</td>
+          <td>${typeBadge}</td>
+          <td style="font-size:12px;">${uploadTime}</td>
+          <td>${discordLink}</td>
+          <td>
+            <button class="btn small" onclick="viewDetail('${card.id}')">详情</button>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    function renderPagination(pagination) {
+      if (!pagination) return;
+
+      const info = document.getElementById('paginationInfo');
+      info.textContent = `显示 ${pagination.offset + 1}-${Math.min(pagination.offset + pagination.limit, pagination.total)} / 共 ${pagination.total} 条`;
+
+      const container = document.getElementById('pagination');
+      container.innerHTML = '';
+
+      const totalPages = pagination.totalPages;
+      const current = pagination.currentPage;
+
+      // 上一页
+      if (current > 1) {
+        const btn = document.createElement('button');
+        btn.className = 'btn small';
+        btn.textContent = '上一页';
+        btn.onclick = () => loadCards(current - 1);
+        container.appendChild(btn);
+      }
+
+      // 页码按钮
+      let startPage = Math.max(1, current - 2);
+      let endPage = Math.min(totalPages, current + 2);
+
+      for (let i = startPage; i <= endPage; i++) {
+        const btn = document.createElement('button');
+        btn.className = `btn small ${i === current ? 'primary' : ''}`;
+        btn.textContent = i;
+        btn.onclick = () => loadCards(i);
+        container.appendChild(btn);
+      }
+
+      // 下一页
+      if (current < totalPages) {
+        const btn = document.createElement('button');
+        btn.className = 'btn small';
+        btn.textContent = '下一页';
+        btn.onclick = () => loadCards(current + 1);
+        container.appendChild(btn);
+      }
+    }
+
+    // 查看详情
+    async function viewDetail(cardId) {
+      try {
+        const res = await fetch(`${API_BASE}?action=detail&id=${cardId}`, {
+          headers: { 'Authorization': `Bearer ${getToken()}` }
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          renderDetail(data.card);
+        } else {
+          alert(`加载失败: ${data.message}`);
+        }
+      } catch (e) {
+        alert(`加载失败: ${e.message}`);
+      }
+    }
+
+    function renderDetail(card) {
+      const modal = document.getElementById('detailModal');
+      const body = document.getElementById('detailBody');
+
+      const characters = card.characters ? JSON.parse(card.characters).join(', ') : '-';
+      const tags = card.tags ? JSON.parse(card.tags).join(', ') : '-';
+      const orientation = card.orientation ? JSON.parse(card.orientation).join(', ') : '-';
+
+      body.innerHTML = `
+        <h2>角色卡详情</h2>
+        <div class="detail-row">
+          <div class="detail-label">卡ID</div>
+          <div class="detail-value"><code>${card.id}</code></div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-label">卡名</div>
+          <div class="detail-value"><strong>${card.cardName || '未命名'}</strong></div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-label">作者</div>
+          <div class="detail-value">${card.authorName || '匿名'} ${card.isAnonymous ? '(匿名)' : '(实名)'}</div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-label">分区</div>
+          <div class="detail-value">${card.category}</div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-label">类型</div>
+          <div class="detail-value">${card.cardType === 'multi' ? '多人卡' : '单人卡'}</div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-label">角色</div>
+          <div class="detail-value">${characters}</div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-label">性向</div>
+          <div class="detail-value">${orientation}</div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-label">Tags</div>
+          <div class="detail-value">${tags}</div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-label">排雷</div>
+          <div class="detail-value">${card.warnings || '-'}</div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-label">简介</div>
+          <div class="detail-value">${card.description || '-'}</div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-label">其她</div>
+          <div class="detail-value">${card.otherInfo || '-'}</div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-label">Discord Thread</div>
+          <div class="detail-value">
+            ${card.threadId ? `<a href="https://discord.com/channels/1338365085072101416/${card.threadId}" target="_blank">查看帖子</a>` : '未发布'}
+          </div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-label">上传时间</div>
+          <div class="detail-value">${new Date(card.uploadedAt || card.createdAt).toLocaleString('zh-CN')}</div>
+        </div>
+      `;
+
+      modal.classList.add('show');
+    }
+
+    function closeDetail() {
+      document.getElementById('detailModal').classList.remove('show');
+    }
+
+    // 加载日志
+    async function loadLogs() {
+      const timeRange = document.getElementById('logTimeRange').value;
+
+      try {
+        showStatus('logsStatus', '⏳ 加载中...', 'info');
+        const res = await fetch(`${API_BASE}?action=logs&timeRange=${timeRange}`, {
+          headers: { 'Authorization': `Bearer ${getToken()}` }
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          renderLogsTable(data.logs);
+          showStatus('logsStatus', '');
+        } else {
+          showStatus('logsStatus', `❌ ${data.message}`, 'error');
+        }
+      } catch (e) {
+        showStatus('logsStatus', `❌ 加载失败: ${e.message}`, 'error');
+      }
+    }
+
+    function renderLogsTable(logs) {
+      const tbody = document.querySelector('#logsTable tbody');
+      tbody.innerHTML = '';
+
+      if (!logs || logs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#876;">暂无日志</td></tr>';
+        return;
+      }
+
+      logs.forEach(log => {
+        const time = new Date(log.uploadedAt || log.createdAt).toLocaleString('zh-CN');
+        const discordLink = log.threadId 
+          ? `<a href="https://discord.com/channels/1338365085072101416/${log.threadId}" target="_blank" style="color: var(--accent);">查看</a>`
+          : '-';
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td style="font-size:12px;">${time}</td>
+          <td>${log.authorName || '匿名'}</td>
+          <td><strong>${log.cardName || '未命名'}</strong></td>
+          <td><span class="badge info">${log.category}</span></td>
+          <td>${log.threadTitle || '-'}</td>
+          <td>${discordLink}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    // 加载系统状态
+    async function loadSystemStatus() {
+      try {
+        document.getElementById('systemStatus').innerHTML = '⏳ 加载中...';
+        const res = await fetch(`${API_BASE}?action=system`, {
+          headers: { 'Authorization': `Bearer ${getToken()}` }
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          const status = data.system;
+          document.getElementById('systemStatus').innerHTML = `
+            <div class="status success">
+              <strong>✅ 系统运行正常</strong><br>
+              <small>数据库: ${status.dbOk ? '✅' : '❌'} | R2: ${status.r2Ok ? '✅' : '❌'}</small>
+            </div>
+          `;
+        } else {
+          document.getElementById('systemStatus').innerHTML = `
+            <div class="status error">❌ ${data.message}</div>
+          `;
+        }
+      } catch (e) {
+        document.getElementById('systemStatus').innerHTML = `
+          <div class="status error">❌ 加载失败: ${e.message}</div>
+        `;
+      }
+    }
+
+    // 绑定刷新按钮
+    document.getElementById('refreshCards').addEventListener('click', () => loadCards(currentPage));
+    document.getElementById('refreshLogs').addEventListener('click', loadLogs);
+    document.getElementById('refreshSystem').addEventListener('click', loadSystemStatus);
+
+    // 绑定筛选器
+    document.getElementById('filterCategory').addEventListener('change', () => loadCards(1));
+    document.getElementById('searchCards').addEventListener('input', debounce(() => loadCards(1), 500));
+    document.getElementById('pageSize').addEventListener('change', () => loadCards(1));
+    document.getElementById('logTimeRange').addEventListener('change', loadLogs);
+
+    // 防抖函数
+    function debounce(func, wait) {
+      let timeout;
+      return function(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+      };
+    }
+
+    // 点击模态框外部关闭
+    document.getElementById('detailModal').addEventListener('click', (e) => {
+      if (e.target.id === 'detailModal') closeDetail();
+    });
+
+    // 初始化
+    (function init() {
+      const saved = localStorage.getItem('cards_admin_token');
+      if (saved) {
+        document.getElementById('adminToken').value = saved;
+        document.getElementById('guardCard').classList.add('hidden');
+        document.getElementById('adminPanel').classList.remove('hidden');
+        loadOverview();
+      }
+    })();
+  </script>
+</body>
+</html>
+

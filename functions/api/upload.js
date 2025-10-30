@@ -14,107 +14,62 @@ async function uploadFileToR2(bucket, file, folder) {
     return fileKey;
   }
 
-  // Discord发帖函数
-  async function postToDiscord(env, cardData) {
-    // 分区ID映射
-    const CHANNEL_MAPPING = {
-      '非边限': env.DISCORD_CHANNEL_FEIBIANXIAN || '1429315799146954762',
-      '边限': env.DISCORD_CHANNEL_BIANXIAN || '1429315841903558788', 
-      '深渊': env.DISCORD_CHANNEL_SHENYUAN || '1429315883368710264'
+  // 通知Discord Bot发帖
+  async function notifyDiscordBot(env, cardData) {
+    const botUrl = env.DISCORD_BOT_URL || 'https://your-bot-url.onrender.com';
+    const webhookSecret = env.WEBHOOK_SECRET || 'your-secret-token';
+    
+    console.log(`📤 通知Bot发帖: ${botUrl}/api/post-card`);
+    
+    // 准备发送给bot的数据
+    const payload = {
+      cardId: cardData.cardId,
+      cardName: cardData.cardName,
+      cardType: cardData.cardType,
+      characters: cardData.characters,
+      category: cardData.category,
+      authorName: cardData.authorName,
+      isAnonymous: cardData.isAnonymous,
+      orientation: cardData.orientation,
+      tags: cardData.tags,
+      warnings: cardData.warnings,
+      description: cardData.description,
+      threadTitle: cardData.threadTitle,
+      otherInfo: cardData.otherInfo,
+      // 完整的文件URL
+      avatarImageUrl: cardData.avatarImageKey ? `${env.R2_PUBLIC_URL}/${cardData.avatarImageKey}` : null,
+      cardFileUrl: `${env.R2_PUBLIC_URL}/${cardData.cardFileKey}`,
+      galleryImageUrls: cardData.galleryImageKeys.map(key => `${env.R2_PUBLIC_URL}/${key}`),
+      requireReaction: cardData.requireReaction || false,
+      requireComment: cardData.requireComment || false
     };
-
-    const channelId = CHANNEL_MAPPING[cardData.category];
-    if (!channelId) {
-      throw new Error(`未知的分区: ${cardData.category}`);
-    }
-
-    const botToken = env.DISCORD_BOT_TOKEN;
-    if (!botToken) {
-      throw new Error('DISCORD_BOT_TOKEN未配置');
-    }
-
-    // 获取或创建webhook
-    const webhook = await getOrCreateWebhook(channelId, botToken);
     
-    // 构建帖子内容（与预览界面一致）
-    const postContent = formatDiscordPost(cardData, env);
-    
-    // 构建头像URL（优先级：上传的头像 > PNG角色卡 > 默认头像）
-    let avatarUrl = null;
-    if (cardData.avatarImageKey) {
-      avatarUrl = `${env.R2_PUBLIC_URL}/${cardData.avatarImageKey}`;
-    } else if (cardData.cardFileKey) {
-      avatarUrl = `${env.R2_PUBLIC_URL}/${cardData.cardFileKey}`;
-    }
-
-    // 发帖
-    const response = await fetch(webhook.url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        content: postContent.main,
-        username: cardData.authorName,
-        avatar_url: avatarUrl,
-        thread_name: cardData.threadTitle || `${cardData.cardName} - ${cardData.authorName}`,
-        wait: true
-      })
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Discord发帖失败: ${response.status} ${error}`);
-    }
-
-    const message = await response.json();
-    console.log('Discord发帖成功:', message.id);
-    
-    let threadId = null;
-    let firstMessageId = message.id;
-
-    // 检查是否创建了thread
-    if (message.thread) {
-      threadId = message.thread.id;
-      // 发送附加内容
-      await sendAdditionalContent(threadId, cardData, botToken, env);
-    } else if (message.channel_id) {
-      // 如果是普通频道，message就在主频道中
-      threadId = message.channel_id;
-    }
-
-    // 保存角色卡数据到KV（包含完整URL）
     try {
-      const kvCardData = {
-        cardId: cardData.cardId,
-        cardName: cardData.cardName,
-        authorName: cardData.authorName,
-        category: cardData.category,
-        orientation: cardData.orientation,
-        tags: cardData.tags,
-        description: cardData.description,
-        warnings: cardData.warnings,
-        otherInfo: cardData.otherInfo,
-        threadId,
-        firstMessageId,
-        // 完整的文件URL
-        avatarImageUrl: cardData.avatarImageKey ? `${env.R2_PUBLIC_URL}/${cardData.avatarImageKey}` : null,
-        cardFileUrl: `${env.R2_PUBLIC_URL}/${cardData.cardFileKey}`,
-        galleryImageUrls: cardData.galleryImageKeys.map(key => `${env.R2_PUBLIC_URL}/${key}`),
-        uploadTime: new Date().toISOString()
-      };
+      const response = await fetch(`${botUrl}/api/post-card`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${webhookSecret}`
+        },
+        body: JSON.stringify(payload),
+        // 设置超时，避免长时间等待
+        signal: AbortSignal.timeout(30000) // 30秒超时
+      });
       
-      await saveCharacterCardToKV(env, kvCardData);
-    } catch (kvError) {
-      console.error('保存到KV失败:', kvError);
-      // 不影响主流程
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Bot已接收发卡请求:', result);
+        return { success: true };
+      } else {
+        const errorText = await response.text();
+        console.error('❌ Bot响应错误:', response.status, errorText);
+        throw new Error(`Bot响应错误: ${response.status} - ${errorText}`);
+      }
+    } catch (error) {
+      console.error('❌ 通知Bot失败:', error);
+      // 不抛出错误，允许降级处理
+      return { success: false, error: error.message };
     }
-
-    return {
-      threadId,
-      firstMessageId,
-      message
-    };
   }
 
   // 保存角色卡数据到KV
@@ -439,10 +394,10 @@ async function uploadFileToR2(bucket, file, folder) {
       // ALTER TABLE cards_v2 ADD COLUMN firstMessageId TEXT;
       const cardId = crypto.randomUUID();
 
-      // 5. 先发帖到Discord，获取thread信息
+      // 5. 通知Discord Bot发帖
       let discordInfo = null;
       try {
-        discordInfo = await postToDiscord(env, {
+        const notifyResult = await notifyDiscordBot(env, {
           cardId,
           cardName: formData.get("cardName") || "未命名",
           cardType: formData.get("cardType"),
@@ -458,24 +413,40 @@ async function uploadFileToR2(bucket, file, folder) {
           otherInfo: otherInfoValue,
           avatarImageKey,
           galleryImageKeys,
-          cardFileKey
+          cardFileKey,
+          requireReaction: false, // TODO: 从表单获取
+          requireComment: false   // TODO: 从表单获取
         });
 
-        // 发送日志（仅发帖成功时）
-        if (discordInfo && discordInfo.threadId) {
-          await sendUploadLog(env, {
-            displayName: authorName,
-            username: formData.get("authorId") || '未知',
-            category: formData.get("category"),
-            cardName: formData.get("cardName") || "未命名",
-            threadTitle: formData.get("threadTitle") || "",
-            threadId: discordInfo.threadId,
-            guildId: '1338365085072101416'
-          });
+        if (notifyResult.success) {
+          console.log("✅ 已通知Bot发帖");
+          // 保存角色卡数据到KV（供bot查询）
+          try {
+            await saveCharacterCardToKV(env, {
+              cardId,
+              cardName: formData.get("cardName") || "未命名",
+              authorName,
+              category: formData.get("category"),
+              orientation: JSON.parse(orientation),
+              tags: JSON.parse(tags),
+              description: formData.get("description"),
+              warnings: formData.get("warnings"),
+              otherInfo: otherInfoValue,
+              avatarImageUrl: avatarImageKey ? `${env.R2_PUBLIC_URL}/${avatarImageKey}` : null,
+              cardFileUrl: `${env.R2_PUBLIC_URL}/${cardFileKey}`,
+              galleryImageUrls: galleryImageKeys.map(key => `${env.R2_PUBLIC_URL}/${key}`),
+              uploadTime: new Date().toISOString()
+            });
+          } catch (kvError) {
+            console.error('保存到KV失败:', kvError);
+          }
+        } else {
+          console.error("❌ 通知Bot失败:", notifyResult.error);
+          // 继续保存到数据库，Bot会从数据库读取待发布的卡片
         }
       } catch (discordError) {
-        console.error("Discord发帖失败:", discordError);
-        // 继续保存到数据库，但没有Discord信息
+        console.error("通知Bot异常:", discordError);
+        // 继续保存到数据库
       }
 
       // 6. 插入数据库，包含Discord信息
