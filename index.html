@@ -446,9 +446,61 @@
     .discord-images {
       margin-top: 12px;
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
       gap: 4px;
       max-width: 400px;
+    }
+    
+    /* 根据图片数量动态调整布局 */
+    .discord-images.count-1 {
+      grid-template-columns: 1fr;
+      max-width: 400px;
+    }
+    
+    .discord-images.count-1 .discord-image {
+      aspect-ratio: auto;
+      max-height: 400px;
+    }
+    
+    .discord-images.count-1 .discord-image img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+    
+    .discord-images.count-2 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .discord-images.count-3 {
+      grid-template-columns: repeat(2, 1fr);
+      grid-auto-rows: 1fr;
+    }
+    
+    .discord-images.count-3 .discord-image:nth-child(3) {
+      grid-column: 1 / -1;
+    }
+    
+    .discord-images.count-4 {
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+    }
+    
+    .discord-images.count-5,
+    .discord-images.count-6 {
+      grid-template-columns: repeat(2, 1fr);
+      grid-auto-rows: 1fr;
+    }
+    
+    .discord-images.count-7,
+    .discord-images.count-8 {
+      grid-template-columns: repeat(2, 1fr);
+      grid-auto-rows: 1fr;
+    }
+    
+    .discord-images.count-9,
+    .discord-images.count-10 {
+      grid-template-columns: repeat(2, 1fr);
+      grid-auto-rows: 1fr;
     }
     
     .discord-image {
@@ -456,6 +508,7 @@
       overflow: hidden;
       aspect-ratio: 1;
       background: #1e1f22;
+      position: relative;
     }
     
     .discord-image img {
@@ -1900,7 +1953,7 @@
       previewLikeSection.style.display = isAbyss ? '' : 'none';
     }
     
-    // 更新主楼图片（Discord 2列网格样式）
+    // 更新主楼图片（Discord动态布局样式）
     const galleryFiles = fileStorage['galleryImages'] || [];
     const previewImagesContainer = document.getElementById('previewImagesContainer');
     const previewImages = document.getElementById('previewImages');
@@ -1910,7 +1963,19 @@
         previewImagesContainer.style.display = '';
         previewImages.innerHTML = '';
         
-        const displayCount = Math.min(4, galleryFiles.length);
+        // 根据图片数量应用对应的CSS类
+        const imageCount = galleryFiles.length;
+        previewImages.className = 'discord-images';
+        
+        // 限制显示数量，超过10张时只显示前10张（Discord通常也会限制显示数量）
+        const displayCount = Math.min(imageCount, 10);
+        
+        // 根据数量应用对应类名
+        if (imageCount <= 10) {
+          previewImages.classList.add(`count-${imageCount}`);
+        } else {
+          previewImages.classList.add('count-10');
+        }
         
         for (let index = 0; index < displayCount; index++) {
           const file = galleryFiles[index];
@@ -1921,8 +1986,8 @@
             imgDiv.innerHTML = `<img src="${e.target.result}" alt="图片${index + 1}">`;
             previewImages.appendChild(imgDiv);
             
-            // 如果是第4张且还有更多图片，覆盖显示 +N
-            if (index === 3 && galleryFiles.length > 4) {
+            // 如果有超过10张图片，在第10张上显示 +N 覆盖
+            if (index === 9 && galleryFiles.length > 10) {
               const overlay = document.createElement('div');
               overlay.style.position = 'absolute';
               overlay.style.top = '0';
@@ -1937,7 +2002,7 @@
               overlay.style.fontSize = '20px';
               overlay.style.fontWeight = 'bold';
               overlay.style.borderRadius = '4px';
-              overlay.textContent = `+${galleryFiles.length - 4}`;
+              overlay.textContent = `+${galleryFiles.length - 10}`;
               imgDiv.style.position = 'relative';
               imgDiv.appendChild(overlay);
             }
