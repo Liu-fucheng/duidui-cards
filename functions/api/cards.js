@@ -27,7 +27,7 @@ async function getStats(env) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayResult = await db.prepare(
-    'SELECT COUNT(*) as count FROM cards_v2 WHERE uploadedAt >= ?'
+    'SELECT COUNT(*) as count FROM cards_v2 WHERE createdAt >= ?'
   ).bind(today.toISOString()).first();
   
   // 本周新增
@@ -35,7 +35,7 @@ async function getStats(env) {
   weekAgo.setDate(weekAgo.getDate() - 7);
   weekAgo.setHours(0, 0, 0, 0);
   const weekResult = await db.prepare(
-    'SELECT COUNT(*) as count FROM cards_v2 WHERE uploadedAt >= ?'
+    'SELECT COUNT(*) as count FROM cards_v2 WHERE createdAt >= ?'
   ).bind(weekAgo.toISOString()).first();
   
   // 本月新增
@@ -43,7 +43,7 @@ async function getStats(env) {
   monthAgo.setMonth(monthAgo.getMonth() - 1);
   monthAgo.setHours(0, 0, 0, 0);
   const monthResult = await db.prepare(
-    'SELECT COUNT(*) as count FROM cards_v2 WHERE uploadedAt >= ?'
+    'SELECT COUNT(*) as count FROM cards_v2 WHERE createdAt >= ?'
   ).bind(monthAgo.toISOString()).first();
   
   // 按分区统计
@@ -96,7 +96,7 @@ async function getCardsList(env, params) {
   }
   
   // 排序和分页
-  query += ' ORDER BY uploadedAt DESC LIMIT ? OFFSET ?';
+  query += ' ORDER BY createdAt DESC LIMIT ? OFFSET ?';
   
   // 获取总数
   const countResult = await db.prepare(countQuery).bind(...bindings).first();
@@ -157,12 +157,12 @@ async function getLogs(env, timeRange = 'week') {
     }
     
     if (startDate) {
-      query += ' AND uploadedAt >= ?';
+      query += ' AND createdAt >= ?';
       bindings.push(startDate.toISOString());
     }
   }
   
-  query += ' ORDER BY uploadedAt DESC LIMIT 500';
+  query += ' ORDER BY createdAt DESC LIMIT 500';
   
   const result = await db.prepare(query).bind(...bindings).all();
   
