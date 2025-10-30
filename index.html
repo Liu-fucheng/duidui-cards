@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>角色卡上传</title>
+  <title>角色卡投递</title>
   
   <!-- Material UI CSS -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap">
@@ -644,7 +644,7 @@
     }
     .add-chip-btn:active { background: var(--accent-2); }
 
-    /* 文件上传区域 */
+    /* 文件投递区域 */
     .upload-zone {
       display: flex;
       flex-wrap: wrap;
@@ -765,7 +765,7 @@
   <header class="app-header">
     <div class="brand">堆堆demo</div>
     <nav class="nav-actions">
-      <a class="link" href="#upload" id="navUpload">角色卡上传</a>
+      <a class="link" href="#upload" id="navUpload">角色卡投递</a>
     </nav>
   </header>
 
@@ -781,11 +781,11 @@
     </div>
     <div class="step" data-step="3" id="step3">
       <div class="step-circle">3</div>
-      <div class="step-label">文件上传</div>
+      <div class="step-label">文件投递</div>
     </div>
   </div>
 
-  <h1 id="upload">上传你的角色卡</h1>
+  <h1 id="upload">投递角色卡</h1>
   
   <form id="uploadForm">
 
@@ -940,7 +940,7 @@
       </div>
     </div>
 
-    <button type="submit" id="submitButton" class="btn-primary ripple">上传</button>
+    <button type="submit" id="submitButton" class="btn-primary ripple">投递</button>
   </form>
 
   <div id="uploadStatus"></div>
@@ -1549,8 +1549,8 @@
     if (!token) {
         uploadStatus.innerHTML = `
           <div style="padding: 12px; background: #ffebee; border: 1px solid #f44336; border-radius: 8px; color: #c62828;">
-            <strong>❌ 禁止上传</strong><br>
-            您必须在Discord中与bot交互获得链接，从专属链接进入才能上传角色卡。
+            <strong>❌ 禁止投递</strong><br>
+            您必须在Discord中与bot交互获得链接，从专属链接进入才能投递角色卡。
           </div>
         `;
         return;
@@ -1559,13 +1559,13 @@
     const cardPngFile = document.getElementById('cardPngFile').files[0];
     const cardJsonFile = document.getElementById('cardJsonFile').files[0];
     if (!cardPngFile && !cardJsonFile) {
-        uploadStatus.textContent = "请至少上传角色卡PNG或JSON文件其中一个";
+        uploadStatus.textContent = "请至少投递角色卡PNG或JSON文件其中一个";
         return;
     }
 
     submitButton.disabled = true;
-    submitButton.textContent = "上传中...";
-    uploadStatus.textContent = "正在上传，请稍候... (大文件可能需要一些时间)";
+    submitButton.textContent = "投递中...";
+    uploadStatus.textContent = "正在投递，请稍候... (大文件可能需要一些时间)";
 
     try {
       const formData = new FormData(uploadForm);
@@ -1651,16 +1651,16 @@
         // 清除表单缓存
         clearFormCache();
         
-        // 上传成功 
+        // 投递成功 
       } else {
         uploadStatus.textContent = "失败: " + result.message;
       }
     } catch (error) {
       console.error("提交出错:", error);
-      uploadStatus.textContent = "上传失败，请检查网络连接或控制台报错。";
+      uploadStatus.textContent = "投递失败，请检查网络连接或控制台报错。";
     } finally {
       submitButton.disabled = false;
-      submitButton.textContent = "上传";
+      submitButton.textContent = "投递";
     }
   });
 
@@ -1866,7 +1866,7 @@
     if (usernameEl) usernameEl.textContent = vestName;
     if (vestEl) vestEl.textContent = vestName;
     
-    // 更新头像（优先级：上传的头像 > PNG角色卡 > Discord默认图标）
+    // 更新头像（优先级：投递的头像 > PNG角色卡 > Discord默认图标）
     const avatarElement = document.getElementById('previewAvatar');
     if (!avatarElement) return;
     
@@ -1874,7 +1874,7 @@
     const cardPngFiles = fileStorage['cardPngFile'] || [];
     
     if (avatarFiles.length > 0 && avatarFiles[0].type.startsWith('image/')) {
-      // 使用上传的头像
+      // 使用投递的头像
       const reader = new FileReader();
       reader.onload = (e) => {
         avatarElement.innerHTML = `<img src="${e.target.result}" alt="头像">`;
@@ -2281,7 +2281,7 @@
       if (!verified) {
         // Token验证失败，禁用表单
         document.getElementById('uploadForm').style.display = 'none';
-        document.getElementById('uploadStatus').textContent = '⚠️ Token验证失败，无法使用此链接上传卡片。请联系管理员获取新的发卡链接。';
+        document.getElementById('uploadStatus').textContent = '⚠️ Token验证失败，无法使用此链接投递卡片。请联系管理员获取新的发卡链接。';
         document.getElementById('uploadStatus').style.color = '#B5534E';
         return;
       }
