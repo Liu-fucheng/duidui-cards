@@ -142,11 +142,12 @@ function verifyAdminToken(request, env) {
         requireComment: false
       };
 
+      const makeUrl = (key) => (env.R2_PUBLIC_URL ? `${env.R2_PUBLIC_URL}/${key}` : null);
       const notifyResult = await notifyDiscordBot(env, {
         ...payload,
-        avatarImageUrl: payload.avatarImageKey ? `${env.R2_PUBLIC_URL}/${payload.avatarImageKey}` : null,
-        cardFileUrl: `${env.R2_PUBLIC_URL}/${payload.cardFileKey}`,
-        galleryImageUrls: payload.galleryImageKeys.map(key => `${env.R2_PUBLIC_URL}/${key}`)
+        avatarImageUrl: payload.avatarImageKey ? makeUrl(payload.avatarImageKey) : null,
+        cardFileUrl: makeUrl(payload.cardFileKey),
+        galleryImageUrls: payload.galleryImageKeys.map(key => makeUrl(key)).filter(Boolean)
       });
   
       if (notifyResult.success && notifyResult.threadId) {
