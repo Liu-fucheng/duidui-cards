@@ -366,10 +366,23 @@ async function uploadFileToR2(bucket, file, folder) {
           if (config.customSections && Array.isArray(config.customSections)) {
             // 遍历每个自定义板块，收集对应的表单数据
             config.customSections.forEach(section => {
-              const sectionKey = `section_${section.title}`;
-              const values = formData.getAll(sectionKey);
+              const title = section.title;
+              // 兼容多种命名：custom_<标题> / custom_<标题>[] / section_<标题>
+              const candidateKeys = [
+                `custom_${title}`,
+                `custom_${title}[]`,
+                `section_${title}`
+              ];
+              let values = [];
+              for (const key of candidateKeys) {
+                const arr = formData.getAll(key).filter(v => typeof v === 'string' && v.trim() !== '');
+                if (arr && arr.length > 0) {
+                  values = arr;
+                  break;
+                }
+              }
               if (values.length > 0) {
-                customSectionsData[section.title] = values;
+                customSectionsData[title] = values;
               }
             });
           }

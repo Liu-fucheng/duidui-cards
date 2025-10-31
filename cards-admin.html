@@ -712,6 +712,7 @@
       const characters = card.characters ? JSON.parse(card.characters).join(', ') : '-';
       const tags = card.tags ? JSON.parse(card.tags).join(', ') : '-';
       const orientation = card.orientation ? JSON.parse(card.orientation).join(', ') : '-';
+      const background = card.background ? JSON.parse(card.background).join(', ') : '-';
 
       body.innerHTML = `
         <h2>角色卡详情</h2>
@@ -742,6 +743,10 @@
         <div class="detail-row">
           <div class="detail-label">性向</div>
           <div class="detail-value">${orientation}</div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-label">背景</div>
+          <div class="detail-value">${background}</div>
         </div>
         <div class="detail-row">
           <div class="detail-label">Tags</div>

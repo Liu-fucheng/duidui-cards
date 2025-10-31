@@ -65,6 +65,29 @@ function verifyAdminToken(request, env) {
       return { success: false, error: error.message };
     }
   }
+
+  // --- 保存角色卡数据到KV（供Bot交互下载使用） ---
+  async function saveCharacterCardToKV(env, cardData) {
+    if (!env.CLOUDFLARE_KV_NAMESPACE) return;
+    const key = `card_${cardData.cardId}`;
+    const persist = {
+      cardId: cardData.cardId,
+      cardName: cardData.cardName,
+      authorName: cardData.authorName,
+      category: cardData.category,
+      orientation: cardData.orientation || [],
+      background: cardData.background || [],
+      tags: cardData.tags || [],
+      description: cardData.description,
+      warnings: cardData.warnings,
+      otherInfo: cardData.otherInfo,
+      avatarImageUrl: cardData.avatarImageUrl || null,
+      cardFileUrl: cardData.cardFileUrl,
+      galleryImageUrls: cardData.galleryImageUrls || [],
+      uploadTime: new Date().toISOString()
+    };
+    await env.CLOUDFLARE_KV_NAMESPACE.put(key, JSON.stringify(persist));
+  }
   
   // --- POST 请求处理器 ---
   export async function onRequestPost(context) {
@@ -96,7 +119,7 @@ function verifyAdminToken(request, env) {
       }
   
       // 3. 准备数据并通知Bot
-      const notifyResult = await notifyDiscordBot(env, {
+      const payload = {
         cardId: card.id,
         cardName: card.cardName,
         cardType: card.cardType,
@@ -117,9 +140,36 @@ function verifyAdminToken(request, env) {
         // 注意：这里的 requireReaction/Comment 字段是固定的
         requireReaction: false,
         requireComment: false
+      };
+
+      const notifyResult = await notifyDiscordBot(env, {
+        ...payload,
+        avatarImageUrl: payload.avatarImageKey ? `${env.R2_PUBLIC_URL}/${payload.avatarImageKey}` : null,
+        cardFileUrl: `${env.R2_PUBLIC_URL}/${payload.cardFileKey}`,
+        galleryImageUrls: payload.galleryImageKeys.map(key => `${env.R2_PUBLIC_URL}/${key}`)
       });
   
       if (notifyResult.success && notifyResult.threadId) {
+        // 保存到KV，供下载按钮使用
+        try {
+          await saveCharacterCardToKV(env, {
+            cardId: payload.cardId,
+            cardName: payload.cardName,
+            authorName: payload.authorName,
+            category: payload.category,
+            orientation: JSON.parse(card.orientation || '[]'),
+            background: JSON.parse(card.background || '[]'),
+            tags: JSON.parse(card.tags || '[]'),
+            description: payload.description,
+            warnings: payload.warnings,
+            otherInfo: payload.otherInfo,
+            avatarImageUrl: payload.avatarImageKey ? `${env.R2_PUBLIC_URL}/${payload.avatarImageKey}` : null,
+            cardFileUrl: `${env.R2_PUBLIC_URL}/${payload.cardFileKey}`,
+            galleryImageUrls: JSON.parse(card.galleryImageKeys || '[]').map(key => `${env.R2_PUBLIC_URL}/${key}`)
+          });
+        } catch (kvErr) {
+          console.error('保存到KV失败:', kvErr);
+        }
         // 4. 成功后，更新数据库中的 threadId
         await env.D1_DB.prepare(
           'UPDATE cards_v2 SET threadId = ?, firstMessageId = ?, updatedAt = ? WHERE id = ?'
