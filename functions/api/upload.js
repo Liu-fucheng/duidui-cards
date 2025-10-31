@@ -348,11 +348,11 @@ async function uploadFileToR2(bucket, file, folder) {
       const attachmentUploadPromises = attachmentFiles.map(file => uploadFileToR2(env.R2_BUCKET, file, "attachments"));
       const attachmentKeys = (await Promise.all(attachmentUploadPromises)).filter(Boolean);
   
-      // 3. 处理数组/JSON 数据
+      // 3. 处理数组/JSON 数据（部分字段支持从自定义板块回填）
       const characters = JSON.stringify(formData.getAll("characters").filter(c => c.trim() !== ""));
-      const orientation = JSON.stringify(formData.getAll("orientation"));
+      let orientationArr = formData.getAll("orientation");
+      let backgroundsArr = formData.getAll("background");
       const tags = JSON.stringify(formData.getAll("tags"));
-      const backgrounds = JSON.stringify(formData.getAll("background"));
       
       // 3.5. 自动收集自定义板块数据
       // 读取配置以识别自定义板块字段
@@ -379,14 +379,26 @@ async function uploadFileToR2(bucket, file, folder) {
         // 继续执行，不影响主流程
       }
       
-      // 将自定义板块数据合并到 otherInfo
+      // 将自定义板块数据合并到 otherInfo，同时回填性向/背景
       let otherInfoValue = formData.get("otherInfo") || "";
       if (Object.keys(customSectionsData).length > 0) {
+        // 回填：如果存在名为“性向”或“背景”的自定义板块，则覆盖对应字段
+        if (Array.isArray(customSectionsData['性向']) && customSectionsData['性向'].length > 0) {
+          orientationArr = customSectionsData['性向'];
+        }
+        if (Array.isArray(customSectionsData['背景']) && customSectionsData['背景'].length > 0) {
+          backgroundsArr = customSectionsData['背景'];
+        }
+
         const customDataStr = Object.entries(customSectionsData)
           .map(([key, values]) => `${key}: ${values.join(', ')}`)
           .join('\n');
         otherInfoValue = otherInfoValue ? `${otherInfoValue}\n\n${customDataStr}` : customDataStr;
       }
+
+      // 最终JSON字符串
+      const orientation = JSON.stringify(orientationArr);
+      const backgrounds = JSON.stringify(backgroundsArr);
   
       // 4. 准备插入 D1 数据库 (使用新表 cards_v2)
       // 注意：如果表中没有相关字段，需要先执行:
