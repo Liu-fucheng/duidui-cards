@@ -105,6 +105,7 @@ function verifyAdminToken(request, env) {
         authorName: card.authorName,
         isAnonymous: card.isAnonymous,
         orientation: JSON.parse(card.orientation || '[]'),
+        background: JSON.parse(card.background || '[]'),
         tags: JSON.parse(card.tags || '[]'),
         warnings: card.warnings,
         description: card.description,
