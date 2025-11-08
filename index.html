@@ -244,6 +244,13 @@
       border-color: var(--accent);
       box-shadow: inset 0 0 0 2px rgba(139,94,60,0.18);
     }
+    /* Radio button 胶囊样式（与checkbox相同） */
+    input[type="radio"].pill-input { position: absolute; opacity: 0; pointer-events: none; }
+    input[type="radio"].pill-input:checked + label.pill {
+      background: #DFCDBB;
+      border-color: var(--accent);
+      box-shadow: inset 0 0 0 2px rgba(139,94,60,0.18);
+    }
 
     /* 提交按钮 */
     .btn-primary {
