@@ -201,6 +201,80 @@ async function getSystemStatus(env) {
   return status;
 }
 
+// 删除角色卡
+async function deleteCard(env, cardId) {
+  const db = env.D1_DB;
+  const r2Bucket = env.R2_BUCKET;
+  
+  try {
+    // 1. 先获取卡片信息，以便删除相关文件
+    const card = await db.prepare(
+      'SELECT * FROM cards_v2 WHERE id = ?'
+    ).bind(cardId).first();
+    
+    if (!card) {
+      return { success: false, message: '角色卡不存在' };
+    }
+    
+    // 2. 删除R2中的文件
+    const filesToDelete = [];
+    
+    if (card.avatarImageKey) filesToDelete.push(card.avatarImageKey);
+    if (card.cardFileKey) filesToDelete.push(card.cardFileKey);
+    if (card.galleryImageKeys) {
+      try {
+        const galleryKeys = JSON.parse(card.galleryImageKeys);
+        filesToDelete.push(...galleryKeys);
+      } catch (e) {
+        console.warn('解析galleryImageKeys失败:', e);
+      }
+    }
+    if (card.attachmentKeys) {
+      try {
+        const attachmentKeys = JSON.parse(card.attachmentKeys);
+        filesToDelete.push(...attachmentKeys);
+      } catch (e) {
+        console.warn('解析attachmentKeys失败:', e);
+      }
+    }
+    // 删除简介图
+    filesToDelete.push(`intros/intro_${cardId}.png`);
+    
+    // 批量删除R2文件
+    if (r2Bucket && filesToDelete.length > 0) {
+      const deletePromises = filesToDelete
+        .filter(key => key) // 过滤空值
+        .map(key => r2Bucket.delete(key).catch(err => {
+          console.warn(`删除R2文件失败 ${key}:`, err);
+          // 继续执行，不因单个文件删除失败而中断
+        }));
+      
+      await Promise.all(deletePromises);
+      console.log(`已删除 ${filesToDelete.length} 个R2文件`);
+    }
+    
+    // 3. 删除数据库记录
+    await db.prepare(
+      'DELETE FROM cards_v2 WHERE id = ?'
+    ).bind(cardId).run();
+    
+    console.log(`✅ 已删除角色卡: ${cardId}`);
+    
+    return { 
+      success: true, 
+      message: '删除成功',
+      deletedFiles: filesToDelete.length
+    };
+    
+  } catch (error) {
+    console.error('删除角色卡失败:', error);
+    return { 
+      success: false, 
+      message: error.message || '删除失败' 
+    };
+  }
+}
+
 export async function onRequest(context) {
   const { request, env } = context;
   
@@ -272,6 +346,21 @@ export async function onRequest(context) {
         // 系统状态
         const system = await getSystemStatus(env);
         result = { success: true, system };
+        break;
+        
+      case 'delete':
+        // 删除角色卡
+        if (request.method !== 'DELETE') {
+          result = { success: false, message: '请使用DELETE方法' };
+          break;
+        }
+        const deleteCardId = url.searchParams.get('id');
+        if (!deleteCardId) {
+          result = { success: false, message: '缺少卡片ID' };
+          break;
+        }
+        const deleteResult = await deleteCard(env, deleteCardId);
+        result = deleteResult;
         break;
         
       default:

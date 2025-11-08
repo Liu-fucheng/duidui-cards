@@ -2335,25 +2335,35 @@
         
         // 根据分区决定默认作者类型
         const isAbyss = TOKEN_DATA.category === '深渊';
+        const realRadio = document.querySelector('input[name="authorType"][value="real"]');
+        const anonymousRadio = document.querySelector('input[name="authorType"][value="anonymous"]');
         
         if (isAbyss) {
-          // 深渊区：默认匿名，解锁作者名
-          document.querySelector('input[name="authorType"][value="anonymous"]').checked = true;
+          // 深渊区：默认匿名，禁用实名选项
+          anonymousRadio.checked = true;
+          realRadio.disabled = true;
+          realRadio.parentElement.style.opacity = '0.5';
+          realRadio.parentElement.style.cursor = 'not-allowed';
+          realRadio.parentElement.title = '深渊区禁止实名投递';
+          
           authorNameInput.value = ''; // 清空，让用户填写马甲
           authorNameInput.readOnly = false;
           authorNameInput.placeholder = '马甲 (不填默认匿名)';
           authorNameInput.dataset.tokenLocked = 'false';
         } else {
           // 非深渊区：默认实名并锁定
-          document.querySelector('input[name="authorType"][value="real"]').checked = true;
+          realRadio.checked = true;
+          realRadio.disabled = false;
+          realRadio.parentElement.style.opacity = '1';
+          realRadio.parentElement.style.cursor = '';
+          realRadio.parentElement.title = '';
+          
           authorNameInput.value = TOKEN_DATA.display_name || TOKEN_DATA.username;
           authorNameInput.readOnly = true;
           authorNameInput.classList.add('locked');
           authorNameInput.dataset.tokenLocked = 'true';
-        }
-        
-        // 监听作者类型切换（仅非深渊区）
-        if (!isAbyss) {
+          
+          // 监听作者类型切换（仅非深渊区）
           document.querySelectorAll('input[name="authorType"]').forEach(radio => {
             radio.addEventListener('change', (e) => {
               if (authorNameInput.dataset.tokenLocked === 'true') {
@@ -2375,14 +2385,13 @@
           });
         }
         
-        // 显示提示信息
+        // 显示提示信息（移除深渊区警告提示）
         const statusDiv = document.getElementById('uploadStatus');
-        const abyssNote = isAbyss ? '<br><small style="color: #856404; background: #FFF3CD; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 4px;">⚠️ 深渊区禁止实名，仅支持匿名投递</small>' : '';
         statusDiv.innerHTML = `
           <div style="padding: 12px; background: #E8F5E9; border: 1px solid #4CAF50; border-radius: 8px; margin-bottom: 16px;">
             <strong>✅ 已通过Discord验证</strong><br>
             用户: ${TOKEN_DATA.display_name || TOKEN_DATA.username}<br>
-            分区: ${TOKEN_DATA.category}${abyssNote}<br>
+            分区: ${TOKEN_DATA.category}<br>
             <small style="color: #666;">您的信息已自动填写${isAbyss ? '' : '并锁定'}，请继续填写其他信息。</small>
           </div>
         `;

@@ -637,7 +637,8 @@
           <td>${discordLink}</td>
           <td>
             <button class="btn small" onclick="viewDetail('${card.id}')">详情</button>
-            ${(card.threadId ? '' : `<button class='btn small danger' onclick="retryPostToDiscord('${card.id}')">重发到 Discord</button>`) }
+            <button class="btn small" onclick="retryPostToDiscord('${card.id}')" title="重新发送到Discord">🔄 重发</button>
+            <button class="btn small danger" onclick="deleteCard('${card.id}')" title="删除角色卡">🗑️ 删除</button>
           </td>
         `;
         tbody.appendChild(row);
@@ -909,13 +910,34 @@
         });
         const data = await res.json();
         if (data.success) {
-          showStatus('cardsStatus', '重发成功，刷新后查看状态', 'success');
-          loadCards(currentPage);
+          showStatus('cardsStatus', '✅ 重发成功，刷新后查看状态', 'success');
+          setTimeout(() => loadCards(currentPage), 1000);
         } else {
-          showStatus('cardsStatus', '重发失败: ' + (data.message || ''), 'error');
+          showStatus('cardsStatus', '❌ 重发失败: ' + (data.message || ''), 'error');
         }
       } catch (e) {
-        showStatus('cardsStatus', '重发失败: ' + e.message, 'error');
+        showStatus('cardsStatus', '❌ 重发失败: ' + e.message, 'error');
+      }
+    }
+
+    async function deleteCard(cardId) {
+      if (!confirm('⚠️ 确定要删除这个角色卡吗？\n\n此操作不可恢复，将删除数据库记录和相关文件！')) return;
+      const token = getToken();
+      showStatus('cardsStatus', '⏳ 正在删除...', 'info');
+      try {
+        const res = await fetch(`/api/cards?action=delete&id=${cardId}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success) {
+          showStatus('cardsStatus', '✅ 删除成功', 'success');
+          setTimeout(() => loadCards(currentPage), 1000);
+        } else {
+          showStatus('cardsStatus', '❌ 删除失败: ' + (data.message || ''), 'error');
+        }
+      } catch (e) {
+        showStatus('cardsStatus', '❌ 删除失败: ' + e.message, 'error');
       }
     }
   </script>
