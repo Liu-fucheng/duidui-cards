@@ -710,10 +710,41 @@
       const modal = document.getElementById('detailModal');
       const body = document.getElementById('detailBody');
 
-      const characters = card.characters ? JSON.parse(card.characters).join(', ') : '-';
-      const tags = card.tags ? JSON.parse(card.tags).join(', ') : '-';
-      const orientation = card.orientation ? JSON.parse(card.orientation).join(', ') : '-';
-      const background = card.background ? JSON.parse(card.background).join(', ') : '-';
+      // 安全解析JSON字段，处理null、空字符串、无效JSON等情况
+      function safeParseJSON(value, defaultValue = '-') {
+        if (value === null || value === undefined || value === '' || value === 'null') return defaultValue;
+        try {
+          const parsed = JSON.parse(value);
+          if (Array.isArray(parsed)) {
+            return parsed.length > 0 ? parsed.join(', ') : defaultValue;
+          }
+          return parsed || defaultValue;
+        } catch (e) {
+          console.warn('JSON解析失败:', value, e);
+          return defaultValue;
+        }
+      }
+
+      // 调试：打印原始数据
+      console.log('卡片原始数据:', {
+        characters: card.characters,
+        tags: card.tags,
+        orientation: card.orientation,
+        background: card.background
+      });
+
+      const characters = safeParseJSON(card.characters);
+      const tags = safeParseJSON(card.tags);
+      const orientation = safeParseJSON(card.orientation);
+      const background = safeParseJSON(card.background);
+      
+      // 调试：打印解析结果
+      console.log('解析后的数据:', {
+        characters,
+        tags,
+        orientation,
+        background
+      });
 
       body.innerHTML = `
         <h2>角色卡详情</h2>
