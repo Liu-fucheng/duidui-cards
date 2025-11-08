@@ -1246,9 +1246,21 @@
     
     // 公共分类来自 tagPartitions.common
     const common = Array.isArray(partitions.common) ? partitions.common : [];
-    const extra = key && Array.isArray(partitions[key]) ? partitions[key] : [];
     
-    console.log('公共分类:', common.length, '专属分类:', extra.length);
+    // 根据分区决定显示哪些分类
+    let extra = [];
+    if (raw === '深渊') {
+      // 深渊区：显示公共 + 边限 + 深渊
+      const bianxian = Array.isArray(partitions.bianxian) ? partitions.bianxian : [];
+      const shenyuan = Array.isArray(partitions.shenyuan) ? partitions.shenyuan : [];
+      extra = [...bianxian, ...shenyuan];
+      console.log('公共分类:', common.length, '边限分类:', bianxian.length, '深渊分类:', shenyuan.length);
+    } else {
+      // 其他分区：只显示公共 + 专属
+      extra = key && Array.isArray(partitions[key]) ? partitions[key] : [];
+      console.log('公共分类:', common.length, '专属分类:', extra.length);
+    }
+    
     return mergeCategoriesByName(common, extra);
   }
 

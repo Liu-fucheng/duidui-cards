@@ -36,6 +36,7 @@ function verifyAdminToken(request, env) {
       avatarImageUrl: cardData.avatarImageKey ? `${env.R2_PUBLIC_URL}/${cardData.avatarImageKey}` : null,
       cardFileUrl: `${env.R2_PUBLIC_URL}/${cardData.cardFileKey}`,
       galleryImageUrls: cardData.galleryImageKeys.map(key => `${env.R2_PUBLIC_URL}/${key}`),
+      downloadRequirements: cardData.downloadRequirements || [],
       requireReaction: cardData.requireReaction || false,
       requireComment: cardData.requireComment || false
     };
@@ -118,6 +119,18 @@ function verifyAdminToken(request, env) {
         return new Response(JSON.stringify({ success: false, message: '卡片不存在' }), { status: 404 });
       }
   
+      // 3. 从 otherInfo 中解析下载要求
+      let downloadRequirements = [];
+      if (card.otherInfo) {
+        // 查找 "下载要求: xxx, yyy" 格式
+        const match = card.otherInfo.match(/下载要求:\s*([^\n]+)/);
+        if (match) {
+          downloadRequirements = match[1].split(',').map(s => s.trim()).filter(Boolean);
+        }
+      }
+      const requireLike = downloadRequirements.includes('点赞') || downloadRequirements.includes('like');
+      const requireComment = downloadRequirements.includes('评论') || downloadRequirements.includes('comment');
+      
       // 3. 准备数据并通知Bot
       const payload = {
         cardId: card.id,
@@ -137,9 +150,9 @@ function verifyAdminToken(request, env) {
         avatarImageKey: card.avatarImageKey,
         galleryImageKeys: JSON.parse(card.galleryImageKeys || '[]'),
         cardFileKey: card.cardFileKey,
-        // 注意：这里的 requireReaction/Comment 字段是固定的
-        requireReaction: false,
-        requireComment: false
+        downloadRequirements: downloadRequirements,
+        requireReaction: requireLike,
+        requireComment: requireComment
       };
 
       const makeUrl = (key) => (env.R2_PUBLIC_URL ? `${env.R2_PUBLIC_URL}/${key}` : null);
@@ -147,7 +160,8 @@ function verifyAdminToken(request, env) {
         ...payload,
         avatarImageUrl: payload.avatarImageKey ? makeUrl(payload.avatarImageKey) : null,
         cardFileUrl: makeUrl(payload.cardFileKey),
-        galleryImageUrls: payload.galleryImageKeys.map(key => makeUrl(key)).filter(Boolean)
+        galleryImageUrls: payload.galleryImageKeys.map(key => makeUrl(key)).filter(Boolean),
+        forceRegenerate: true  // 重发时强制重新生成简介图片
       });
   
       if (notifyResult.success && notifyResult.threadId) {

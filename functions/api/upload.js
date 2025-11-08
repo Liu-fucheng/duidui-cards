@@ -41,7 +41,8 @@ async function uploadFileToR2(bucket, file, folder) {
       avatarImageUrl: cardData.avatarImageKey ? `${env.R2_PUBLIC_URL}/${cardData.avatarImageKey}` : null,
       cardFileUrl: `${env.R2_PUBLIC_URL}/${cardData.cardFileKey}`,
       galleryImageUrls: cardData.galleryImageKeys.map(key => `${env.R2_PUBLIC_URL}/${key}`),
-      requireReaction: cardData.requireReaction || false,
+      downloadRequirements: cardData.downloadRequirements || [], // 下载要求列表
+      requireReaction: cardData.requireReaction || false, // 兼容旧字段
       requireComment: cardData.requireComment || false
     };
     
@@ -424,6 +425,11 @@ async function uploadFileToR2(bucket, file, folder) {
       // ALTER TABLE cards_v2 ADD COLUMN firstMessageId TEXT;
       const cardId = crypto.randomUUID();
 
+      // 5. 提取下载要求（从自定义板块）
+      const downloadRequirements = customSectionsData['下载要求'] || [];
+      const requireLike = downloadRequirements.includes('点赞') || downloadRequirements.includes('like');
+      const requireComment = downloadRequirements.includes('评论') || downloadRequirements.includes('comment');
+      
       // 5. 通知Discord Bot发帖
       let discordInfo = null;
       try {
@@ -445,8 +451,9 @@ async function uploadFileToR2(bucket, file, folder) {
           avatarImageKey,
           galleryImageKeys,
           cardFileKey,
-          requireReaction: false, // TODO: 从表单获取
-          requireComment: false   // TODO: 从表单获取
+          downloadRequirements: downloadRequirements, // 传递下载要求列表
+          requireReaction: requireLike, // 兼容旧字段
+          requireComment: requireComment
         });
 
         if (notifyResult.success) {
