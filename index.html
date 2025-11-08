@@ -244,13 +244,6 @@
       border-color: var(--accent);
       box-shadow: inset 0 0 0 2px rgba(139,94,60,0.18);
     }
-    /* Radio button 胶囊样式（与checkbox相同） */
-    input[type="radio"].pill-input { position: absolute; opacity: 0; pointer-events: none; }
-    input[type="radio"].pill-input:checked + label.pill {
-      background: #DFCDBB;
-      border-color: var(--accent);
-      box-shadow: inset 0 0 0 2px rgba(139,94,60,0.18);
-    }
 
     /* 提交按钮 */
     .btn-primary {
@@ -1145,9 +1138,6 @@
       
       // 绑定依赖与互斥逻辑
       bindConditionalLogic();
-      
-      // 渲染性向和背景的主要展示tag选择器
-      renderPrimaryTagSelectors();
     }
 
     // Tags 初次渲染
@@ -1268,7 +1258,7 @@
     } else {
       // 其他分区：只显示公共 + 专属
       extra = key && Array.isArray(partitions[key]) ? partitions[key] : [];
-      console.log('公共分类:', common.length, '专属分类:', extra.length);
+    console.log('公共分类:', common.length, '专属分类:', extra.length);
     }
     
     return mergeCategoriesByName(common, extra);
@@ -1321,162 +1311,9 @@
   function bindConditionalLogic() {
     // 监听所有 checkbox/radio 变化，动态显示/禁用板块和选项
     document.querySelectorAll('input[type="checkbox"], input[type="radio"]').forEach(input => {
-      input.addEventListener('change', () => {
-        updateConditionalUI();
-        updatePrimaryTagSelectors(); // 更新主要展示tag选择器
-      });
+      input.addEventListener('change', updateConditionalUI);
     });
     updateConditionalUI();
-    updatePrimaryTagSelectors(); // 初始化主要展示tag选择器
-  }
-  
-  // 渲染性向和背景的主要展示tag选择器
-  function renderPrimaryTagSelectors() {
-    const secHost = document.getElementById('customSectionsHost');
-    if (!secHost) return;
-    
-    // 检查是否已存在选择器，如果存在则移除
-    const existingOrientation = document.getElementById('primaryOrientationSelector');
-    const existingBackground = document.getElementById('primaryBackgroundSelector');
-    if (existingOrientation) existingOrientation.remove();
-    if (existingBackground) existingBackground.remove();
-    
-    // 性向选择器容器
-    const orientationSelector = document.createElement('div');
-    orientationSelector.id = 'primaryOrientationSelector';
-    orientationSelector.className = 'field';
-    orientationSelector.style.display = 'none';
-    orientationSelector.innerHTML = `
-      <label class="group-label">选择在首页展示的性向tag:</label>
-      <div class="pill-group" id="primaryOrientationPills"></div>
-    `;
-    
-    // 背景选择器容器
-    const backgroundSelector = document.createElement('div');
-    backgroundSelector.id = 'primaryBackgroundSelector';
-    backgroundSelector.className = 'field';
-    backgroundSelector.style.display = 'none';
-    backgroundSelector.innerHTML = `
-      <label class="group-label">选择在首页展示的背景tag:</label>
-      <div class="pill-group" id="primaryBackgroundPills"></div>
-    `;
-    
-    // 找到性向和背景板块，在它们后面插入选择器
-    const orientationSection = document.getElementById('section_性向');
-    const backgroundSection = document.getElementById('section_背景');
-    
-    if (orientationSection && orientationSection.parentNode) {
-      orientationSection.parentNode.insertBefore(orientationSelector, orientationSection.nextSibling);
-    } else {
-      secHost.appendChild(orientationSelector);
-    }
-    
-    if (backgroundSection && backgroundSection.parentNode) {
-      backgroundSection.parentNode.insertBefore(backgroundSelector, backgroundSection.nextSibling);
-    } else {
-      secHost.appendChild(backgroundSelector);
-    }
-    
-    // 初始化更新
-    updatePrimaryTagSelectors();
-  }
-  
-  // 更新主要展示tag选择器的显示状态和选项
-  function updatePrimaryTagSelectors() {
-    // 检查性向是否多选
-    const orientationInputs = document.querySelectorAll('input[name="custom_性向[]"]:checked, input[name="custom_性向"]:checked');
-    const orientationSelector = document.getElementById('primaryOrientationSelector');
-    const orientationPills = document.getElementById('primaryOrientationPills');
-    
-    if (orientationSelector && orientationPills) {
-      if (orientationInputs.length > 1) {
-        // 多选：显示选择器
-        orientationSelector.style.display = '';
-        
-        // 保存当前选中的值（在重新渲染前）
-        const currentSelected = document.querySelector('input[name="primaryOrientation"]:checked')?.value;
-        
-        // 获取所有选中的性向值
-        const selectedOrientations = Array.from(orientationInputs).map(input => {
-          const value = input.value;
-          // 找到对应的label文本
-          const label = input.closest('label')?.textContent?.trim() || value;
-          return { value, label };
-        });
-        
-        // 确定应该选中哪个（优先使用之前选中的，如果还在选项中）
-        let selectedIndex = 0;
-        if (currentSelected) {
-          const foundIndex = selectedOrientations.findIndex(item => item.value === currentSelected);
-          if (foundIndex >= 0) {
-            selectedIndex = foundIndex;
-          }
-        }
-        
-        // 渲染胶囊选择器
-        orientationPills.innerHTML = selectedOrientations.map((item, index) => {
-          const id = `primary_orientation_${index}`;
-          const isChecked = index === selectedIndex;
-          return `
-            <input class="pill-input" type="radio" name="primaryOrientation" id="${id}" value="${item.value}" ${isChecked ? 'checked' : ''}>
-            <label class="pill ripple" for="${id}">${item.label}</label>
-          `;
-        }).join('');
-      } else {
-        // 单选或未选：隐藏选择器
-        orientationSelector.style.display = 'none';
-      }
-    }
-    
-    // 检查背景是否多选
-    const backgroundInputs = document.querySelectorAll('input[name="custom_背景[]"]:checked, input[name="custom_背景"]:checked');
-    const backgroundSelector = document.getElementById('primaryBackgroundSelector');
-    const backgroundPills = document.getElementById('primaryBackgroundPills');
-    
-    if (backgroundSelector && backgroundPills) {
-      if (backgroundInputs.length > 1) {
-        // 多选：显示选择器
-        backgroundSelector.style.display = '';
-        
-        // 保存当前选中的值（在重新渲染前）
-        const currentSelected = document.querySelector('input[name="primaryBackground"]:checked')?.value;
-        
-        // 获取所有选中的背景值
-        const selectedBackgrounds = Array.from(backgroundInputs).map(input => {
-          const value = input.value;
-          // 找到对应的label文本
-          const label = input.closest('label')?.textContent?.trim() || value;
-          return { value, label };
-        });
-        
-        // 确定应该选中哪个（优先使用之前选中的，如果还在选项中）
-        let selectedIndex = 0;
-        if (currentSelected) {
-          const foundIndex = selectedBackgrounds.findIndex(item => item.value === currentSelected);
-          if (foundIndex >= 0) {
-            selectedIndex = foundIndex;
-          }
-        }
-        
-        // 渲染胶囊选择器
-        backgroundPills.innerHTML = selectedBackgrounds.map((item, index) => {
-          const id = `primary_background_${index}`;
-          const isChecked = index === selectedIndex;
-          return `
-            <input class="pill-input" type="radio" name="primaryBackground" id="${id}" value="${item.value}" ${isChecked ? 'checked' : ''}>
-            <label class="pill ripple" for="${id}">${item.label}</label>
-          `;
-        }).join('');
-      } else {
-        // 单选或未选：隐藏选择器
-        backgroundSelector.style.display = 'none';
-      }
-    }
-    
-    // 更新Discord预览
-    if (window.updateDiscordPreview) {
-      window.updateDiscordPreview();
-    }
   }
 
   function updateConditionalUI() {
@@ -1803,16 +1640,6 @@
         formData.delete('secondaryWarning');
       }
       formData.delete('secondaryWarningToggle');
-      
-      // 添加主要展示的性向和背景tag信息
-      const primaryOrientation = document.querySelector('input[name="primaryOrientation"]:checked')?.value;
-      const primaryBackground = document.querySelector('input[name="primaryBackground"]:checked')?.value;
-      if (primaryOrientation) {
-        formData.append('primaryOrientation', primaryOrientation);
-      }
-      if (primaryBackground) {
-        formData.append('primaryBackground', primaryBackground);
-      }
 
       const response = await fetch("/api/upload", {
         method: "POST",
@@ -2172,11 +1999,6 @@
     }
     
     // 更新 Tags（文字格式：xx/xx/xx）
-    // 获取主要展示的性向和背景tag（如果多选且已选择）
-    const primaryOrientation = document.querySelector('input[name="primaryOrientation"]:checked')?.value;
-    const primaryBackground = document.querySelector('input[name="primaryBackground"]:checked')?.value;
-    
-    // 获取所有选中的tags
     const selectedTags = [];
     document.querySelectorAll('input[type="checkbox"].pill-input:checked').forEach(cb => {
       const label = document.querySelector(`label[for="${cb.id}"]`);
@@ -2185,64 +2007,12 @@
       }
     });
     
-    // 构建最终tags列表：主要展示tag在前，其他tags在后
-    const finalTags = [];
-    
-    // 添加主要展示的性向tag（如果存在且不在tags列表中）
-    if (primaryOrientation) {
-      // 找到对应的label文本
-      const orientationInput = document.querySelector(`input[name="custom_性向[]"][value="${primaryOrientation}"], input[name="custom_性向"][value="${primaryOrientation}"]`);
-      if (orientationInput) {
-        const orientationLabel = orientationInput.closest('label')?.textContent?.trim() || primaryOrientation;
-        if (!finalTags.includes(orientationLabel)) {
-          finalTags.push(orientationLabel);
-        }
-      }
-    } else {
-      // 如果没有选择主要展示tag，使用第一个选中的性向
-      const firstOrientation = document.querySelector('input[name="custom_性向[]"]:checked, input[name="custom_性向"]:checked');
-      if (firstOrientation) {
-        const orientationLabel = firstOrientation.closest('label')?.textContent?.trim() || firstOrientation.value;
-        if (!finalTags.includes(orientationLabel)) {
-          finalTags.push(orientationLabel);
-        }
-      }
-    }
-    
-    // 添加主要展示的背景tag（如果存在且不在tags列表中）
-    if (primaryBackground) {
-      // 找到对应的label文本
-      const backgroundInput = document.querySelector(`input[name="custom_背景[]"][value="${primaryBackground}"], input[name="custom_背景"][value="${primaryBackground}"]`);
-      if (backgroundInput) {
-        const backgroundLabel = backgroundInput.closest('label')?.textContent?.trim() || primaryBackground;
-        if (!finalTags.includes(backgroundLabel)) {
-          finalTags.push(backgroundLabel);
-        }
-      }
-    } else {
-      // 如果没有选择主要展示tag，使用第一个选中的背景
-      const firstBackground = document.querySelector('input[name="custom_背景[]"]:checked, input[name="custom_背景"]:checked');
-      if (firstBackground) {
-        const backgroundLabel = firstBackground.closest('label')?.textContent?.trim() || firstBackground.value;
-        if (!finalTags.includes(backgroundLabel)) {
-          finalTags.push(backgroundLabel);
-        }
-      }
-    }
-    
-    // 添加其他tags（排除已添加的主要展示tag）
-    selectedTags.forEach(tag => {
-      if (!finalTags.includes(tag)) {
-        finalTags.push(tag);
-      }
-    });
-    
     const previewTagsField = document.getElementById('previewTagsField');
     const previewTags = document.getElementById('previewTags');
     if (previewTagsField && previewTags) {
-      if (finalTags.length > 0) {
+      if (selectedTags.length > 0) {
         previewTagsField.style.display = '';
-        previewTags.textContent = finalTags.join(' / ');
+        previewTags.textContent = selectedTags.join(' / ');
       } else {
         previewTagsField.style.display = 'none';
       }
@@ -2606,25 +2376,25 @@
           authorNameInput.dataset.tokenLocked = 'true';
           
           // 监听作者类型切换（仅非深渊区）
-          document.querySelectorAll('input[name="authorType"]').forEach(radio => {
-            radio.addEventListener('change', (e) => {
-              if (authorNameInput.dataset.tokenLocked === 'true') {
-                if (e.target.value === 'anonymous') {
-                  // 切换到匿名：解锁，允许修改为马甲名
-                  authorNameInput.readOnly = false;
-                  authorNameInput.classList.remove('locked');
-                  authorNameInput.placeholder = '马甲 (不填默认匿名)';
-                  authorNameInput.value = ''; // 清空，让用户填写马甲
-                } else {
-                  // 切换到实名：锁定，恢复Discord名字
-                  authorNameInput.readOnly = true;
-                  authorNameInput.classList.add('locked');
-                  authorNameInput.placeholder = '实名';
-                  authorNameInput.value = TOKEN_DATA.display_name || TOKEN_DATA.username;
-                }
+        document.querySelectorAll('input[name="authorType"]').forEach(radio => {
+          radio.addEventListener('change', (e) => {
+            if (authorNameInput.dataset.tokenLocked === 'true') {
+              if (e.target.value === 'anonymous') {
+                // 切换到匿名：解锁，允许修改为马甲名
+                authorNameInput.readOnly = false;
+                authorNameInput.classList.remove('locked');
+                authorNameInput.placeholder = '马甲 (不填默认匿名)';
+                authorNameInput.value = ''; // 清空，让用户填写马甲
+              } else {
+                // 切换到实名：锁定，恢复Discord名字
+                authorNameInput.readOnly = true;
+                authorNameInput.classList.add('locked');
+                authorNameInput.placeholder = '实名';
+                authorNameInput.value = TOKEN_DATA.display_name || TOKEN_DATA.username;
               }
-            });
+            }
           });
+        });
         }
         
         // 显示提示信息（移除深渊区警告提示）
@@ -2783,8 +2553,6 @@
     document.addEventListener('change', (e) => {
       if (e.target.classList.contains('pill-input') || 
           e.target.name?.startsWith('custom_') ||
-          e.target.name === 'primaryOrientation' ||
-          e.target.name === 'primaryBackground' ||
           e.target.type === 'checkbox') {
         window.updateDiscordPreview();
       }

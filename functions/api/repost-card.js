@@ -130,7 +130,7 @@ function verifyAdminToken(request, env) {
       }
       const requireLike = downloadRequirements.includes('点赞') || downloadRequirements.includes('like');
       const requireComment = downloadRequirements.includes('评论') || downloadRequirements.includes('comment');
-      
+  
       // 3. 准备数据并通知Bot
       const payload = {
         cardId: card.id,

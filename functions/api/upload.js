@@ -408,56 +408,8 @@ async function uploadFileToR2(bucket, file, folder) {
         backgroundsArr = formData.getAll("background").filter(v => v && v.trim() !== '');
       }
       
-      // 最终JSON字符串
-      const orientation = JSON.stringify(orientationArr);
-      const backgrounds = JSON.stringify(backgroundsArr);
-      
-      // Tags：从表单字段获取，并将主要展示的性向和背景tag放在最前面
-      const primaryOrientation = formData.get("primaryOrientation");
-      const primaryBackground = formData.get("primaryBackground");
-      
-      // 获取所有选中的tags
-      let tagsArray = formData.getAll("tags").filter(v => v && v.trim() !== '');
-      
-      // 构建最终tags列表：主要展示tag在前，其他tags在后
-      const finalTagsArray = [];
-      
-      // 添加主要展示的性向tag（如果存在）
-      if (primaryOrientation && orientationArr.includes(primaryOrientation)) {
-        // 使用性向的值作为tag（因为tag的值就是性向的值）
-        if (!finalTagsArray.includes(primaryOrientation)) {
-          finalTagsArray.push(primaryOrientation);
-        }
-      } else if (orientationArr.length > 0) {
-        // 如果没有选择主要展示tag，使用第一个性向
-        const firstOrientation = orientationArr[0];
-        if (!finalTagsArray.includes(firstOrientation)) {
-          finalTagsArray.push(firstOrientation);
-        }
-      }
-      
-      // 添加主要展示的背景tag（如果存在）
-      if (primaryBackground && backgroundsArr.includes(primaryBackground)) {
-        // 使用背景的值作为tag（因为tag的值就是背景的值）
-        if (!finalTagsArray.includes(primaryBackground)) {
-          finalTagsArray.push(primaryBackground);
-        }
-      } else if (backgroundsArr.length > 0) {
-        // 如果没有选择主要展示tag，使用第一个背景
-        const firstBackground = backgroundsArr[0];
-        if (!finalTagsArray.includes(firstBackground)) {
-          finalTagsArray.push(firstBackground);
-        }
-      }
-      
-      // 添加其他tags（排除已添加的主要展示tag）
-      tagsArray.forEach(tag => {
-        if (!finalTagsArray.includes(tag)) {
-          finalTagsArray.push(tag);
-        }
-      });
-      
-      const tags = JSON.stringify(finalTagsArray);
+      // Tags：从表单字段获取
+      const tags = JSON.stringify(formData.getAll("tags").filter(v => v && v.trim() !== ''));
       
       // 将自定义板块数据合并到 otherInfo（排除性向和背景，因为它们已单独存储）
       let otherInfoValue = formData.get("otherInfo") || "";
@@ -472,6 +424,10 @@ async function uploadFileToR2(bucket, file, folder) {
           otherInfoValue = otherInfoValue ? `${otherInfoValue}\n\n${customDataStr}` : customDataStr;
         }
       }
+
+      // 最终JSON字符串
+      const orientation = JSON.stringify(orientationArr);
+      const backgrounds = JSON.stringify(backgroundsArr);
   
       // 4. 准备插入 D1 数据库 (使用新表 cards_v2)
       // 注意：如果表中没有相关字段，需要先执行:
@@ -484,7 +440,7 @@ async function uploadFileToR2(bucket, file, folder) {
       const downloadRequirements = customSectionsData['下载要求'] || [];
       const requireLike = downloadRequirements.includes('点赞') || downloadRequirements.includes('like');
       const requireComment = downloadRequirements.includes('评论') || downloadRequirements.includes('comment');
-      
+
       // 5. 通知Discord Bot发帖
       let discordInfo = null;
       try {
