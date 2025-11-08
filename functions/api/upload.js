@@ -404,9 +404,13 @@ async function uploadFileToR2(bucket, file, folder) {
         }
 
         const customDataStr = Object.entries(customSectionsData)
-          .map(([key, values]) => `${key}: ${values.join(', ')}`)
-          .join('\n');
-        otherInfoValue = otherInfoValue ? `${otherInfoValue}\n\n${customDataStr}` : customDataStr;
+        .filter(([key, _]) => key !== '性向' && key !== '背景') 
+        .map(([key, values]) => `${key}: ${values.join(', ')}`)
+        .join('\n');
+      
+        if (customDataStr) { // 仅当有内容时才添加
+          otherInfoValue = otherInfoValue ? `${otherInfoValue}\n\n${customDataStr}` : customDataStr;
+        }
       }
 
       // 最终JSON字符串
