@@ -472,10 +472,6 @@ async function uploadFileToR2(bucket, file, folder) {
           otherInfoValue = otherInfoValue ? `${otherInfoValue}\n\n${customDataStr}` : customDataStr;
         }
       }
-
-      // 最终JSON字符串
-      const orientation = JSON.stringify(orientationArr);
-      const backgrounds = JSON.stringify(backgroundsArr);
   
       // 4. 准备插入 D1 数据库 (使用新表 cards_v2)
       // 注意：如果表中没有相关字段，需要先执行:
