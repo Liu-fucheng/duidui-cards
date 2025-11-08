@@ -1393,6 +1393,9 @@
         // 多选：显示选择器
         orientationSelector.style.display = '';
         
+        // 保存当前选中的值（在重新渲染前）
+        const currentSelected = document.querySelector('input[name="primaryOrientation"]:checked')?.value;
+        
         // 获取所有选中的性向值
         const selectedOrientations = Array.from(orientationInputs).map(input => {
           const value = input.value;
@@ -1401,22 +1404,24 @@
           return { value, label };
         });
         
+        // 确定应该选中哪个（优先使用之前选中的，如果还在选项中）
+        let selectedIndex = 0;
+        if (currentSelected) {
+          const foundIndex = selectedOrientations.findIndex(item => item.value === currentSelected);
+          if (foundIndex >= 0) {
+            selectedIndex = foundIndex;
+          }
+        }
+        
         // 渲染胶囊选择器
         orientationPills.innerHTML = selectedOrientations.map((item, index) => {
           const id = `primary_orientation_${index}`;
-          const isChecked = index === 0; // 默认选中第一个
+          const isChecked = index === selectedIndex;
           return `
             <input class="pill-input" type="radio" name="primaryOrientation" id="${id}" value="${item.value}" ${isChecked ? 'checked' : ''}>
             <label class="pill ripple" for="${id}">${item.label}</label>
           `;
         }).join('');
-        
-        // 如果没有已选中的，默认选中第一个
-        const checkedPrimary = document.querySelector('input[name="primaryOrientation"]:checked');
-        if (!checkedPrimary && selectedOrientations.length > 0) {
-          const firstRadio = document.getElementById('primary_orientation_0');
-          if (firstRadio) firstRadio.checked = true;
-        }
       } else {
         // 单选或未选：隐藏选择器
         orientationSelector.style.display = 'none';
@@ -1433,6 +1438,9 @@
         // 多选：显示选择器
         backgroundSelector.style.display = '';
         
+        // 保存当前选中的值（在重新渲染前）
+        const currentSelected = document.querySelector('input[name="primaryBackground"]:checked')?.value;
+        
         // 获取所有选中的背景值
         const selectedBackgrounds = Array.from(backgroundInputs).map(input => {
           const value = input.value;
@@ -1441,22 +1449,24 @@
           return { value, label };
         });
         
+        // 确定应该选中哪个（优先使用之前选中的，如果还在选项中）
+        let selectedIndex = 0;
+        if (currentSelected) {
+          const foundIndex = selectedBackgrounds.findIndex(item => item.value === currentSelected);
+          if (foundIndex >= 0) {
+            selectedIndex = foundIndex;
+          }
+        }
+        
         // 渲染胶囊选择器
         backgroundPills.innerHTML = selectedBackgrounds.map((item, index) => {
           const id = `primary_background_${index}`;
-          const isChecked = index === 0; // 默认选中第一个
+          const isChecked = index === selectedIndex;
           return `
             <input class="pill-input" type="radio" name="primaryBackground" id="${id}" value="${item.value}" ${isChecked ? 'checked' : ''}>
             <label class="pill ripple" for="${id}">${item.label}</label>
           `;
         }).join('');
-        
-        // 如果没有已选中的，默认选中第一个
-        const checkedPrimary = document.querySelector('input[name="primaryBackground"]:checked');
-        if (!checkedPrimary && selectedBackgrounds.length > 0) {
-          const firstRadio = document.getElementById('primary_background_0');
-          if (firstRadio) firstRadio.checked = true;
-        }
       } else {
         // 单选或未选：隐藏选择器
         backgroundSelector.style.display = 'none';
