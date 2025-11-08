@@ -30,12 +30,9 @@ export async function onRequestGet(context) {
       });
     }
     
-    // 从D1查询
+    // 从D1查询（返回所有字段）
     const result = await env.D1_DB.prepare(
-      `SELECT id, cardName, category, description, avatarImageKey, cardFileKey, 
-              threadId, firstMessageId, createdAt
-       FROM cards_v2 
-       WHERE id = ?`
+      `SELECT * FROM cards_v2 WHERE id = ?`
     ).bind(cardId).first();
     
     if (!result) {
@@ -51,14 +48,26 @@ export async function onRequestGet(context) {
     // 生成公开URL
     const r2PublicUrl = env.R2_PUBLIC_URL || 'http://r2.liuyaocheng.org';
     
+    // 解析JSON字段
     const cardData = {
       cardId: result.id,
       cardName: result.cardName,
+      cardType: result.cardType,
+      characters: result.characters ? JSON.parse(result.characters) : [],
       category: result.category,
+      authorName: result.authorName,
+      isAnonymous: result.isAnonymous,
+      orientation: result.orientation ? JSON.parse(result.orientation) : [],
+      background: result.background ? JSON.parse(result.background) : [],
+      tags: result.tags ? JSON.parse(result.tags) : [],
+      warnings: result.warnings,
       description: result.description,
+      threadTitle: result.threadTitle,
+      otherInfo: result.otherInfo,
       introImageUrl: `${r2PublicUrl}/intros/intro_${result.id}.png`, // 简介图URL
       avatarImageUrl: result.avatarImageKey ? `${r2PublicUrl}/${result.avatarImageKey}` : null,
       cardFileUrl: result.cardFileKey ? `${r2PublicUrl}/${result.cardFileKey}` : null,
+      galleryImageUrls: result.galleryImageKeys ? JSON.parse(result.galleryImageKeys).map(key => `${r2PublicUrl}/${key}`) : [],
       threadId: result.threadId,
       firstMessageId: result.firstMessageId,
       createdAt: result.createdAt

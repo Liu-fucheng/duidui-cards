@@ -349,13 +349,7 @@ async function uploadFileToR2(bucket, file, folder) {
       const attachmentUploadPromises = attachmentFiles.map(file => uploadFileToR2(env.R2_BUCKET, file, "attachments"));
       const attachmentKeys = (await Promise.all(attachmentUploadPromises)).filter(Boolean);
   
-      // 3. 处理数组/JSON 数据（部分字段支持从自定义板块回填）
-      const characters = JSON.stringify(formData.getAll("characters").filter(c => c.trim() !== ""));
-      let orientationArr = formData.getAll("orientation");
-      let backgroundsArr = formData.getAll("background");
-      const tags = JSON.stringify(formData.getAll("tags"));
-      
-      // 3.5. 自动收集自定义板块数据
+      // 3.5. 自动收集自定义板块数据（先收集，用于回填性向/背景）
       // 读取配置以识别自定义板块字段
       let customSectionsData = {};
       try {
@@ -393,16 +387,33 @@ async function uploadFileToR2(bucket, file, folder) {
         // 继续执行，不影响主流程
       }
       
-      // 将自定义板块数据合并到 otherInfo，同时回填性向/背景
+      // 3. 处理数组/JSON 数据（支持从自定义板块回填）
+      const characters = JSON.stringify(formData.getAll("characters").filter(c => c.trim() !== ""));
+      
+      // 性向：优先从自定义板块获取，否则从表单字段获取
+      let orientationArr = [];
+      if (Array.isArray(customSectionsData['性向']) && customSectionsData['性向'].length > 0) {
+        orientationArr = customSectionsData['性向'];
+      } else {
+        // 尝试从表单字段获取（兼容旧字段名）
+        orientationArr = formData.getAll("orientation").filter(v => v && v.trim() !== '');
+      }
+      
+      // 背景：优先从自定义板块获取，否则从表单字段获取
+      let backgroundsArr = [];
+      if (Array.isArray(customSectionsData['背景']) && customSectionsData['背景'].length > 0) {
+        backgroundsArr = customSectionsData['背景'];
+      } else {
+        // 尝试从表单字段获取（兼容旧字段名）
+        backgroundsArr = formData.getAll("background").filter(v => v && v.trim() !== '');
+      }
+      
+      // Tags：从表单字段获取
+      const tags = JSON.stringify(formData.getAll("tags").filter(v => v && v.trim() !== ''));
+      
+      // 将自定义板块数据合并到 otherInfo（排除性向和背景，因为它们已单独存储）
       let otherInfoValue = formData.get("otherInfo") || "";
       if (Object.keys(customSectionsData).length > 0) {
-        // 回填：如果存在名为“性向”或“背景”的自定义板块，则覆盖对应字段
-        if (Array.isArray(customSectionsData['性向']) && customSectionsData['性向'].length > 0) {
-          orientationArr = customSectionsData['性向'];
-        }
-        if (Array.isArray(customSectionsData['背景']) && customSectionsData['背景'].length > 0) {
-          backgroundsArr = customSectionsData['背景'];
-        }
 
         const customDataStr = Object.entries(customSectionsData)
         .filter(([key, _]) => key !== '性向' && key !== '背景') 
