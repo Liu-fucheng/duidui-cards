@@ -2152,7 +2152,19 @@
   });
 
   // --- 自动缓存功能 ---
-  const CACHE_KEY = 'duidui_card_form_cache';
+  const CACHE_KEY = 'cardFormCache';
+  
+  // 获取当前的缓存key（如果有token，使用token相关的key）
+  function getCacheKey() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    if (token && TOKEN_DATA) {
+      // 有token时，使用token+用户ID作为缓存key，确保不同token独立
+      return `${CACHE_KEY}_${TOKEN_DATA.user_id}_${TOKEN_DATA.category}`;
+    }
+    // 无token时使用默认key
+    return CACHE_KEY;
+  }
   
   // 保存表单数据到 localStorage
   function saveFormCache() {
@@ -2203,7 +2215,7 @@
         }
       });
       
-      localStorage.setItem(CACHE_KEY, JSON.stringify(formData));
+      localStorage.setItem(getCacheKey(), JSON.stringify(formData));
     } catch (e) {
       console.warn('保存表单缓存失败:', e);
     }
@@ -2212,7 +2224,7 @@
   // 从 localStorage 恢复表单数据
   function restoreFormCache() {
     try {
-      const cached = localStorage.getItem(CACHE_KEY);
+      const cached = localStorage.getItem(getCacheKey());
       if (!cached) return false;
       
       const formData = JSON.parse(cached);
@@ -2322,7 +2334,7 @@
   // 清除缓存
   function clearFormCache() {
     try {
-      localStorage.removeItem(CACHE_KEY);
+      localStorage.removeItem(getCacheKey());
       console.log('✅ 已清除表单缓存');
     } catch (e) {
       console.warn('清除表单缓存失败:', e);
@@ -2830,12 +2842,6 @@
       if (verifyResult.used) {
         // Token已使用，显示提示，恢复缓存，禁用投递按钮
         const uploadStatus = document.getElementById('uploadStatus');
-        uploadStatus.innerHTML = `
-          <div style="padding: 16px; background: #FFF3E0; border: 1px solid #FF9800; border-radius: 8px; margin-bottom: 16px;">
-            ⚠️ <strong>此Token已使用</strong><br>
-            <small>表单内容已从缓存恢复，您可以查看之前填写的内容并复制文本，但无法再次投递。</small>
-          </div>
-        `;
         
         // 禁用投递按钮
         const submitButton = document.getElementById('submitButton');
@@ -2851,12 +2857,40 @@
         restoreFormCache();
         
         // 添加复制按钮（如果缓存中有数据）
-        const cachedData = localStorage.getItem('cardFormCache');
+        const cachedData = localStorage.getItem(getCacheKey());
         if (cachedData) {
           try {
             const formData = JSON.parse(cachedData);
+            
+            // 检查是否为实名投递
+            const isRealName = formData.authorType === 'real';
+            const cardName = formData.cardName || '未命名';
+            const category = formData.category || TOKEN_DATA?.category || '';
+            
+            if (isRealName) {
+              // 实名投递：显示详细提示框
+              uploadStatus.innerHTML = `
+                <div style="padding: 16px; background: #FFF3E0; border: 1px solid #FF9800; border-radius: 8px; margin-top: 16px;">
+                  <strong>✅ 角色卡已保存成功！</strong><br><br>
+                  <div style="background: #fff; padding: 10px; border-radius: 4px; margin: 8px 0; font-family: monospace; color: #8B5E3C;">
+                    卡名: ${cardName}
+                  </div>
+                  <strong>📝 下一步操作：</strong><br>
+                  1️⃣ 请您自己前往 <strong>${category}</strong> 分区发帖<br>
+                </div>
+              `;
+            } else {
+              // 匿名投递：简单提示
+              uploadStatus.innerHTML = `
+                <div style="padding: 16px; background: #FFF3E0; border: 1px solid #FF9800; border-radius: 8px; margin-bottom: 16px;">
+                  ⚠️ <strong>此Token已使用</strong><br>
+                  <small>表单内容已从缓存恢复，您可以查看之前填写的内容并复制文本，但无法再次投递。</small>
+                </div>
+              `;
+            }
+            
             const copyButtonsHtml = `
-              <div style="display: flex; gap: 10px; margin-top: 12px;">
+              <div style="display: flex; gap: 10px; margin: 12px 0;">
                 <button id="cachedCopyTitleBtn" style="flex: 1; padding: 10px; border: 1px solid #8B5E3C; border-radius: 8px; background: #fff; color: #8B5E3C; cursor: pointer; font-weight: 500; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;" onmouseover="this.style.background='#8B5E3C'; this.style.color='#fff';" onmouseout="if(!this.classList.contains('copied')) { this.style.background='#fff'; this.style.color='#8B5E3C'; }">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -2873,7 +2907,19 @@
                 </button>
               </div>
             `;
-            uploadStatus.innerHTML += copyButtonsHtml;
+            
+            if (isRealName) {
+              uploadStatus.innerHTML += `
+                ${copyButtonsHtml}
+                <div style="margin-top: 8px;">
+                  2️⃣ 在您的帖子中使用命令：<code style="background: #f5f5f5; padding: 2px 6px; border-radius: 3px;">/发卡 卡名:${cardName}</code><br>
+                  3️⃣ Bot会在您的帖子中发送角色卡按钮<br><br>
+                  <small style="color: #666;">此Token已使用，链接已失效。您可以关闭此页面。</small>
+                </div>
+              `;
+            } else {
+              uploadStatus.innerHTML += copyButtonsHtml;
+            }
             
             // 绑定复制按钮事件
             setTimeout(() => {
@@ -3028,8 +3074,12 @@
     initCharacterList();
     
     // 在tags渲染完成后恢复缓存
-    // 即使有token，也恢复其他字段（分区和作者名会被restoreFormCache内部判断跳过）
+    // 如果有有效的token（未使用），不恢复缓存，让表单保持空白（只有token预填的字段）
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasValidToken = urlParams.get('token') && TOKEN_DATA;
+    if (!hasValidToken) {
       restoreFormCache();
+    }
 
     // 文件预览（第4个参数表示是否支持多文件累积）
     setupFilePreview('avatarImage', 'avatarPreviews', true, false);     // 头像，单文件
@@ -3209,7 +3259,7 @@
     // === 刷新后恢复复制按钮 ===
     // 在页面加载完成后，检查是否有缓存数据，如果有则显示复制按钮
     function showCopyButtonsFromCache() {
-      const cachedData = localStorage.getItem('cardFormCache');
+      const cachedData = localStorage.getItem(getCacheKey());
       const uploadStatus = document.getElementById('uploadStatus');
       
       // 有缓存数据就显示复制按钮（无论 Token 状态如何）
