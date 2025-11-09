@@ -737,7 +737,6 @@
       const tags = safeParseJSON(card.tags);
       const orientation = safeParseJSON(card.orientation);
       const background = safeParseJSON(card.background);
-      const primaryTags = safeParseJSON(card.primaryTags);
       
       // 单人卡同名处理：如果是单人卡且角色名=卡名，显示角色名
       let charactersDisplay = characters;
@@ -774,7 +773,6 @@
         tags,
         orientation,
         background,
-        primaryTags,
         charactersDisplay,
         submitterInfo
       });
@@ -816,10 +814,6 @@
         <div class="detail-row">
           <div class="detail-label">Tags</div>
           <div class="detail-value">${tags}</div>
-        </div>
-        <div class="detail-row">
-          <div class="detail-label">主要标签</div>
-          <div class="detail-value">${primaryTags}</div>
         </div>
         <div class="detail-row">
           <div class="detail-label">排雷</div>

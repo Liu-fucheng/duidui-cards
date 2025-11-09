@@ -750,22 +750,6 @@
     .tag-category .pill-group { margin-left: 8px; }
     .tag-category.hidden { display: none; }
 
-    /* 主要标签选择胶囊 */
-    .primary-tag-pill {
-      cursor: pointer;
-      opacity: 0.6;
-      transition: all 0.2s ease;
-    }
-    .primary-tag-pill:hover {
-      opacity: 0.8;
-      transform: translateY(-1px);
-    }
-    .primary-tag-pill.active {
-      opacity: 1;
-      background: var(--accent);
-      color: white;
-    }
-
     /* 锁定样式 */
     .locked { 
       background: #F0EAE3 !important; 
@@ -865,12 +849,6 @@
         <!-- 自定义板块将通过 JavaScript 动态添加 -->
       </div>
     </div>
-    
-    <!-- Discord标签数量提示 -->
-    <div id="tagCountWarning" style="display: none;"></div>
-    
-    <!-- 隐藏的input用于保存选中的primary_tags -->
-    <input type="hidden" id="primaryTagsHidden" name="primaryTags">
 
     <div class="field">
       <div class="tags-header">
@@ -1153,23 +1131,6 @@
           const fieldId = `section_${title.replace(/\s/g,'_')}`;
           const showIf = sec.showIf ? `data-showif="${sec.showIf}"` : '';
           htmls.push(`<div class="field" id="${fieldId}" ${showIf}><label class="group-label">${sec.title}:</label><div class="inline-options">${items}</div></div>`);
-          
-          // 在性向或背景后面插入首页展示选择
-          if (title === '性向') {
-            htmls.push(`
-              <div class="field" id="primaryOrientationSection" style="display: none; margin-top: -8px;">
-                <div style="font-size: 12px; color: #876; margin-bottom: 6px;">首页展示性向（优先显示在Discord标签中）：</div>
-                <div id="primaryOrientationContainer" class="pill-group"></div>
-              </div>
-            `);
-          } else if (title === '背景') {
-            htmls.push(`
-              <div class="field" id="primaryBackgroundSection" style="display: none; margin-top: -8px;">
-                <div style="font-size: 12px; color: #876; margin-bottom: 6px;">首页展示背景（优先显示在Discord标签中）：</div>
-                <div id="primaryBackgroundContainer" class="pill-group"></div>
-              </div>
-            `);
-          }
         }
       });
       secHost.innerHTML = htmls.join('');
@@ -1353,120 +1314,6 @@
     });
     updateConditionalUI();
   }
-  
-  // 更新主要标签选择区域
-  function updatePrimaryTags() {
-    const orientationContainer = document.getElementById('primaryOrientationContainer');
-    const orientationSection = document.getElementById('primaryOrientationSection');
-    const backgroundContainer = document.getElementById('primaryBackgroundContainer');
-    const backgroundSection = document.getElementById('primaryBackgroundSection');
-    const hiddenInput = document.getElementById('primaryTagsHidden');
-    
-    if (!orientationContainer || !backgroundContainer || !hiddenInput) return;
-    
-    // 收集所有选中的性向和背景（兼容多选[]格式）
-    const orientations = Array.from(document.querySelectorAll('input[name="custom_性向"]:checked, input[name="custom_性向[]"]:checked')).map(i => i.value);
-    const backgrounds = Array.from(document.querySelectorAll('input[name="custom_背景"]:checked, input[name="custom_背景[]"]:checked')).map(i => i.value);
-    
-    // 获取当前已选中的主要标签
-    const currentSelected = hiddenInput.value ? JSON.parse(hiddenInput.value) : [];
-    
-    // 处理性向
-    if (orientations.length > 1) {
-      // 多选时才显示
-      orientationSection.style.display = '';
-      orientationContainer.innerHTML = orientations.map(value => {
-        const isSelected = currentSelected.includes(value);
-        return `<span class="pill primary-tag-pill ${isSelected ? 'active' : ''}" data-value="${value}" data-type="orientation">${value}</span>`;
-      }).join('');
-      
-      // 绑定点击事件
-      orientationContainer.querySelectorAll('.primary-tag-pill').forEach(pill => {
-        pill.addEventListener('click', () => {
-          const isActive = pill.classList.contains('active');
-          if (!isActive) {
-            // 单选：先取消其他性向
-            orientationContainer.querySelectorAll('.primary-tag-pill').forEach(p => p.classList.remove('active'));
-            pill.classList.add('active');
-          } else {
-            pill.classList.remove('active');
-          }
-          savePrimaryTags();
-        });
-      });
-    } else {
-      orientationSection.style.display = 'none';
-      orientationContainer.innerHTML = '';
-    }
-    
-    // 处理背景
-    if (backgrounds.length > 1) {
-      // 多选时才显示
-      backgroundSection.style.display = '';
-      backgroundContainer.innerHTML = backgrounds.map(value => {
-        const isSelected = currentSelected.includes(value);
-        return `<span class="pill primary-tag-pill ${isSelected ? 'active' : ''}" data-value="${value}" data-type="background">${value}</span>`;
-      }).join('');
-      
-      // 绑定点击事件
-      backgroundContainer.querySelectorAll('.primary-tag-pill').forEach(pill => {
-        pill.addEventListener('click', () => {
-          const isActive = pill.classList.contains('active');
-          if (!isActive) {
-            // 单选：先取消其他背景
-            backgroundContainer.querySelectorAll('.primary-tag-pill').forEach(p => p.classList.remove('active'));
-            pill.classList.add('active');
-          } else {
-            pill.classList.remove('active');
-          }
-          savePrimaryTags();
-        });
-      });
-    } else {
-      backgroundSection.style.display = 'none';
-      backgroundContainer.innerHTML = '';
-    }
-    
-    // 检查标签总数
-    checkTagCount();
-  }
-  
-  // 保存主要标签到隐藏input（按顺序：性向→背景）
-  function savePrimaryTags() {
-    const orientationContainer = document.getElementById('primaryOrientationContainer');
-    const backgroundContainer = document.getElementById('primaryBackgroundContainer');
-    const hiddenInput = document.getElementById('primaryTagsHidden');
-    if (!hiddenInput) return;
-    
-    // 分别收集性向和背景，保持顺序：性向在前，背景在后
-    const selectedOrientation = orientationContainer 
-      ? Array.from(orientationContainer.querySelectorAll('.primary-tag-pill.active')).map(pill => pill.dataset.value)
-      : [];
-    const selectedBackground = backgroundContainer
-      ? Array.from(backgroundContainer.querySelectorAll('.primary-tag-pill.active')).map(pill => pill.dataset.value)
-      : [];
-    const selected = [...selectedOrientation, ...selectedBackground];
-    
-    hiddenInput.value = JSON.stringify(selected);
-  }
-  
-  // 检查标签总数
-  function checkTagCount() {
-    const orientations = Array.from(document.querySelectorAll('input[name="custom_性向"]:checked, input[name="custom_性向[]"]:checked')).length;
-    const backgrounds = Array.from(document.querySelectorAll('input[name="custom_背景"]:checked, input[name="custom_背景[]"]:checked')).length;
-    const total = orientations + backgrounds;
-    
-    const warningDiv = document.getElementById('tagCountWarning');
-    if (!warningDiv) return;
-    
-    if (total > 5) {
-      warningDiv.style.cssText = 'display: block; color: #B5534E; font-size: 12px; margin: 8px 0; padding: 8px; background: #FFF3F3; border-radius: 4px; border: 1px solid #FFC9C9;';
-      warningDiv.textContent = `⚠️ Discord最多只能显示5个标签，当前已选${total}个（性向${orientations}个+背景${backgrounds}个），只有前5个会在Discord中显示。`;
-    } else {
-      warningDiv.style.display = 'none';
-      warningDiv.textContent = '';
-    }
-  }
 
   function updateConditionalUI() {
     const formData = new FormData(document.getElementById('uploadForm'));
@@ -1501,9 +1348,6 @@
         }
       });
     });
-    
-    // 更新主要标签选择
-    updatePrimaryTags();
   }
 
   function checkCondition(cond, selected) {
@@ -1891,9 +1735,6 @@
         // Tags
         tags: Array.from(document.querySelectorAll('input[name="tags"]:checked')).map(i => i.id),
         
-        // 主要标签
-        primaryTags: document.getElementById('primaryTagsHidden')?.value || '',
-        
         // 自定义板块
         customSections: {},
         
@@ -2012,15 +1853,6 @@
               if (input) input.checked = true;
             });
           });
-        }
-        
-        // 恢复主要标签
-        if (formData.primaryTags) {
-          const hiddenInput = document.getElementById('primaryTagsHidden');
-          if (hiddenInput) {
-            hiddenInput.value = formData.primaryTags;
-            updatePrimaryTags(); // 刷新UI显示
-          }
         }
         
         // 触发UI更新

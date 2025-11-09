@@ -200,11 +200,10 @@ function verifyAdminToken(request, env) {
         }
         // 4. 成功后，更新数据库中的 threadId
         await env.D1_DB.prepare(
-          'UPDATE cards_v2 SET threadId = ?, firstMessageId = ?, updatedAt = ? WHERE id = ?'
+          'UPDATE cards_v2 SET threadId = ?, firstMessageId = ? WHERE id = ?'
         ).bind(
           notifyResult.threadId,
           notifyResult.firstMessageId || null,
-          new Date().toISOString(),
           cardId
         ).run();
         
