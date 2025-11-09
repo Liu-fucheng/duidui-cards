@@ -28,6 +28,7 @@ function verifyAdminToken(request, env) {
       authorName: cardData.authorName,
       isAnonymous: cardData.isAnonymous,
       orientation: cardData.orientation,
+      background: cardData.background,
       tags: cardData.tags,
       warnings: cardData.warnings,
       description: cardData.description,
@@ -38,7 +39,13 @@ function verifyAdminToken(request, env) {
       galleryImageUrls: cardData.galleryImageKeys.map(key => `${env.R2_PUBLIC_URL}/${key}`),
       downloadRequirements: cardData.downloadRequirements || [],
       requireReaction: cardData.requireReaction || false,
-      requireComment: cardData.requireComment || false
+      requireComment: cardData.requireComment || false,
+      // 提交者信息
+      submitterUserId: cardData.submitterUserId,
+      submitterUsername: cardData.submitterUsername,
+      submitterDisplayName: cardData.submitterDisplayName,
+      // 主要标签
+      primaryTags: cardData.primaryTags || []
     };
     
     try {
@@ -136,7 +143,6 @@ function verifyAdminToken(request, env) {
         cardId: card.id,
         cardName: card.cardName,
         cardType: card.cardType,
-        nameRelation: card.nameRelation || 'same',
         characters: JSON.parse(card.characters || '[]'),
         category: card.category,
         authorName: card.authorName,
@@ -144,8 +150,6 @@ function verifyAdminToken(request, env) {
         orientation: JSON.parse(card.orientation || '[]'),
         background: JSON.parse(card.background || '[]'),
         tags: JSON.parse(card.tags || '[]'),
-        primaryOrientation: card.primaryOrientation || null,
-        primaryBackground: card.primaryBackground || null,
         warnings: card.warnings,
         description: card.description,
         threadTitle: card.threadTitle,
@@ -156,8 +160,12 @@ function verifyAdminToken(request, env) {
         downloadRequirements: downloadRequirements,
         requireReaction: requireLike,
         requireComment: requireComment,
-        submitterUserId: card.submitterUserId || null, // 发卡人用户ID（重发时保留原发卡人信息）
-        submitterUsername: card.submitterUsername || null // 发卡人用户名（重发时保留原发卡人信息）
+        // 提交者信息
+        submitterUserId: card.submitterUserId,
+        submitterUsername: card.submitterUsername,
+        submitterDisplayName: card.submitterDisplayName,
+        // 主要标签
+        primaryTags: JSON.parse(card.primaryTags || '[]')
       };
 
       const makeUrl = (key) => (env.R2_PUBLIC_URL ? `${env.R2_PUBLIC_URL}/${key}` : null);

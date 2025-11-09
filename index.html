@@ -244,37 +244,6 @@
       border-color: var(--accent);
       box-shadow: inset 0 0 0 2px rgba(139,94,60,0.18);
     }
-    
-    /* 主要tag选择胶囊（无checkbox，直接点击） */
-    .primary-tag-pill {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      height: 36px;
-      padding: 0 14px;
-      border-radius: 999px;
-      border: 1px solid var(--muted);
-      background: var(--pill-bg);
-      color: var(--text);
-      cursor: pointer;
-      transition: background 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
-      user-select: none;
-    }
-    .primary-tag-pill:hover {
-      border-color: var(--accent);
-    }
-    .primary-tag-pill.selected {
-      background: #DFCDBB;
-      border-color: var(--accent);
-      box-shadow: inset 0 0 0 2px rgba(139,94,60,0.18);
-    }
-    .primary-tag-group {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-top: 8px;
-    }
 
     /* 提交按钮 */
     .btn-primary {
@@ -781,6 +750,22 @@
     .tag-category .pill-group { margin-left: 8px; }
     .tag-category.hidden { display: none; }
 
+    /* 主要标签选择胶囊 */
+    .primary-tag-pill {
+      cursor: pointer;
+      opacity: 0.6;
+      transition: all 0.2s ease;
+    }
+    .primary-tag-pill:hover {
+      opacity: 0.8;
+      transform: translateY(-1px);
+    }
+    .primary-tag-pill.active {
+      opacity: 1;
+      background: var(--accent);
+      color: white;
+    }
+
     /* 锁定样式 */
     .locked { 
       background: #F0EAE3 !important; 
@@ -894,6 +879,13 @@
     </div>
     </div>
     
+    <!-- 主要标签选择 -->
+    <div class="field" id="primaryTagsSection" style="display: none;">
+      <label class="group-label">首页展示标签 (从性向和背景中选择):</label>
+      <div id="primaryTagsContainer" class="pill-group"></div>
+      <!-- 隐藏的input用于保存选中的primary_tags -->
+      <input type="hidden" id="primaryTagsHidden" name="primaryTags">
+    </div>
 
     <div class="field">
       <label class="group-label" for="warnings">排雷:</label>
@@ -1162,18 +1154,13 @@
           }).join('');
           const fieldId = `section_${title.replace(/\s/g,'_')}`;
           const showIf = sec.showIf ? `data-showif="${sec.showIf}"` : '';
-          // 添加主要tag选择容器（仅当multiple为true且是性向或背景时显示）
-          const primaryTagHtml = (sec.multiple !== false && (title === '性向' || title === '背景')) ? `<div class="primary-tag-selector" id="primary_${title.replace(/\s/g,'_')}" style="display:none;"><label class="group-label" style="font-size:13px; color:#876; margin-top:8px;">主要${title}:</label><div class="primary-tag-group" id="primary_${title.replace(/\s/g,'_')}_group"></div></div>` : '';
-          htmls.push(`<div class="field" id="${fieldId}" ${showIf}><label class="group-label">${sec.title}:</label><div class="inline-options">${items}</div>${primaryTagHtml}</div>`);
+          htmls.push(`<div class="field" id="${fieldId}" ${showIf}><label class="group-label">${sec.title}:</label><div class="inline-options">${items}</div></div>`);
         }
       });
       secHost.innerHTML = htmls.join('');
       
       // 绑定依赖与互斥逻辑
       bindConditionalLogic();
-      
-      // 绑定主要tag选择逻辑（仅对性向和背景）
-      bindPrimaryTagSelection();
     }
 
     // Tags 初次渲染
@@ -1350,100 +1337,64 @@
       input.addEventListener('change', updateConditionalUI);
     });
     updateConditionalUI();
-  }
-
-  // 绑定主要tag选择逻辑
-  function bindPrimaryTagSelection() {
-    // 监听性向和背景的变化
-    ['性向', '背景'].forEach(title => {
-      const sectionId = `section_${title.replace(/\s/g,'_')}`;
-      const section = document.getElementById(sectionId);
-      if (!section) return;
-      
-      // 获取所有checkbox/radio
-      const inputs = section.querySelectorAll('input[type="checkbox"], input[type="radio"]');
-      const primarySelector = document.getElementById(`primary_${title.replace(/\s/g,'_')}`);
-      const primaryGroup = document.getElementById(`primary_${title.replace(/\s/g,'_')}_group`);
-      
-      if (!primarySelector || !primaryGroup) return;
-      
-      // 监听选择变化
-      function updatePrimaryTagSelector() {
-        // 获取所有选中的值
-        const checkedInputs = Array.from(inputs).filter(i => i.checked);
-        const checkedCount = checkedInputs.length;
-        
-        // 如果选择了多个，显示主要tag选择器
-        if (checkedCount > 1) {
-          primarySelector.style.display = 'block';
-          
-          // 生成主要tag选择胶囊
-          primaryGroup.innerHTML = '';
-          checkedInputs.forEach(input => {
-            // 获取label文本
-            const label = input.closest('label');
-            let labelText = input.value;
-            if (label) {
-              // 获取label中的文本，去除input的value
-              const labelClone = label.cloneNode(true);
-              const inputClone = labelClone.querySelector('input');
-              if (inputClone) inputClone.remove();
-              labelText = labelClone.textContent.trim() || input.value;
-            }
-            
-            const pill = document.createElement('div');
-            pill.className = 'primary-tag-pill';
-            pill.textContent = labelText;
-            pill.dataset.value = input.value;
-            pill.dataset.field = `primary_${title}`;
-            
-            // 检查是否已选择为主要tag
-            const hiddenInput = document.querySelector(`input[name="primary_${title}"][value="${input.value}"]`);
-            if (hiddenInput) {
-              pill.classList.add('selected');
-            }
-            
-            // 点击选择/取消选择
-            pill.addEventListener('click', () => {
-              // 取消其他选择
-              primaryGroup.querySelectorAll('.primary-tag-pill').forEach(p => p.classList.remove('selected'));
-              // 移除旧的hidden input
-              document.querySelectorAll(`input[name="primary_${title}"]`).forEach(inp => inp.remove());
-              
-              // 选择当前
-              pill.classList.add('selected');
-              const hidden = document.createElement('input');
-              hidden.type = 'hidden';
-              hidden.name = `primary_${title}`;
-              hidden.value = input.value;
-              section.appendChild(hidden);
-            });
-            
-            primaryGroup.appendChild(pill);
-          });
-          
-          // 如果没有选择主要tag，默认选择第一个
-          if (!document.querySelector(`input[name="primary_${title}"]`)) {
-            const firstPill = primaryGroup.querySelector('.primary-tag-pill');
-            if (firstPill) {
-              firstPill.click();
-            }
-          }
-        } else {
-          primarySelector.style.display = 'none';
-          // 移除hidden input
-          document.querySelectorAll(`input[name="primary_${title}"]`).forEach(inp => inp.remove());
-        }
-      }
-      
-      // 绑定change事件
-      inputs.forEach(input => {
-        input.addEventListener('change', updatePrimaryTagSelector);
-      });
-      
-      // 初始化
-      updatePrimaryTagSelector();
+    
+    // 监听性向和背景变化，更新主要标签选择
+    document.querySelectorAll('input[name^="custom_性向"], input[name^="custom_背景"]').forEach(input => {
+      input.addEventListener('change', updatePrimaryTags);
     });
+    updatePrimaryTags();
+  }
+  
+  // 更新主要标签选择区域
+  function updatePrimaryTags() {
+    const container = document.getElementById('primaryTagsContainer');
+    const section = document.getElementById('primaryTagsSection');
+    const hiddenInput = document.getElementById('primaryTagsHidden');
+    
+    if (!container || !section || !hiddenInput) return;
+    
+    // 收集所有选中的性向和背景
+    const orientations = Array.from(document.querySelectorAll('input[name^="custom_性向"]:checked')).map(i => i.value);
+    const backgrounds = Array.from(document.querySelectorAll('input[name^="custom_背景"]:checked')).map(i => i.value);
+    const allTags = [...orientations, ...backgrounds];
+    
+    // 如果没有性向或背景，隐藏section
+    if (allTags.length === 0) {
+      section.style.display = 'none';
+      container.innerHTML = '';
+      hiddenInput.value = '';
+      return;
+    }
+    
+    // 显示section
+    section.style.display = '';
+    
+    // 获取当前已选中的主要标签
+    const currentSelected = hiddenInput.value ? JSON.parse(hiddenInput.value) : [];
+    
+    // 生成胶囊标签
+    container.innerHTML = allTags.map(tag => {
+      const isSelected = currentSelected.includes(tag);
+      return `<span class="pill primary-tag-pill ${isSelected ? 'active' : ''}" data-value="${tag}">${tag}</span>`;
+    }).join('');
+    
+    // 绑定点击事件
+    container.querySelectorAll('.primary-tag-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        pill.classList.toggle('active');
+        savePrimaryTags();
+      });
+    });
+  }
+  
+  // 保存主要标签到隐藏input
+  function savePrimaryTags() {
+    const container = document.getElementById('primaryTagsContainer');
+    const hiddenInput = document.getElementById('primaryTagsHidden');
+    if (!container || !hiddenInput) return;
+    
+    const selected = Array.from(container.querySelectorAll('.primary-tag-pill.active')).map(pill => pill.dataset.value);
+    hiddenInput.value = JSON.stringify(selected);
   }
 
   function updateConditionalUI() {
@@ -1770,6 +1721,13 @@
         formData.delete('secondaryWarning');
       }
       formData.delete('secondaryWarningToggle');
+      
+      // 添加用户信息（从TOKEN_DATA）
+      if (TOKEN_DATA) {
+        formData.append('submitterUserId', TOKEN_DATA.user_id || '');
+        formData.append('submitterUsername', TOKEN_DATA.username || '');
+        formData.append('submitterDisplayName', TOKEN_DATA.display_name || '');
+      }
 
       const response = await fetch("/api/upload", {
         method: "POST",
@@ -1858,6 +1816,9 @@
         
         // Tags
         tags: Array.from(document.querySelectorAll('input[name="tags"]:checked')).map(i => i.id),
+        
+        // 主要标签
+        primaryTags: document.getElementById('primaryTagsHidden')?.value || '',
         
         // 自定义板块
         customSections: {},
@@ -1973,6 +1934,15 @@
               if (input) input.checked = true;
             });
           });
+        }
+        
+        // 恢复主要标签
+        if (formData.primaryTags) {
+          const hiddenInput = document.getElementById('primaryTagsHidden');
+          if (hiddenInput) {
+            hiddenInput.value = formData.primaryTags;
+            updatePrimaryTags(); // 刷新UI显示
+          }
         }
         
         // 触发UI更新

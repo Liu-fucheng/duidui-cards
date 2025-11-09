@@ -733,23 +733,40 @@
         background: card.background
       });
 
-      // 角色名：单人同名卡使用卡名，其他使用characters
-      let characters = '-';
-      const cardType = card.cardType;
-      const nameRelation = card.nameRelation || 'same';
-      if (cardType === 'single' && nameRelation === 'same') {
-        characters = card.cardName || '未命名';
-      } else {
-        characters = safeParseJSON(card.characters);
-      }
-      
+      const characters = safeParseJSON(card.characters);
       const tags = safeParseJSON(card.tags);
       const orientation = safeParseJSON(card.orientation);
       const background = safeParseJSON(card.background);
+      const primaryTags = safeParseJSON(card.primaryTags);
       
-      // 主要tag
-      const primaryOrientation = card.primaryOrientation || '-';
-      const primaryBackground = card.primaryBackground || '-';
+      // 单人卡同名处理：如果是单人卡且角色名=卡名，显示角色名
+      let charactersDisplay = characters;
+      if (card.cardType === 'single') {
+        try {
+          const charsArray = JSON.parse(card.characters || '[]');
+          if (charsArray.length === 0 || (charsArray.length === 1 && charsArray[0] === card.cardName)) {
+            charactersDisplay = card.cardName; // 显示卡名作为角色名
+          }
+        } catch (e) {
+          // 解析失败，保持原样
+        }
+      }
+      
+      // 提交者信息格式化：马甲（@username：display_name）
+      let submitterInfo = card.authorName || '匿名';
+      if (card.submitterUsername || card.submitterDisplayName) {
+        submitterInfo += ' (';
+        if (card.submitterUsername) {
+          submitterInfo += `@${card.submitterUsername}`;
+        }
+        if (card.submitterDisplayName) {
+          submitterInfo += submitterInfo.includes('@') ? `：${card.submitterDisplayName}` : card.submitterDisplayName;
+        }
+        submitterInfo += ')';
+      }
+      if (card.isAnonymous) {
+        submitterInfo += ' [匿名]';
+      }
       
       // 调试：打印解析结果
       console.log('解析后的数据:', {
@@ -757,8 +774,9 @@
         tags,
         orientation,
         background,
-        primaryOrientation,
-        primaryBackground
+        primaryTags,
+        charactersDisplay,
+        submitterInfo
       });
 
       body.innerHTML = `
@@ -772,8 +790,8 @@
           <div class="detail-value"><strong>${card.cardName || '未命名'}</strong></div>
         </div>
         <div class="detail-row">
-          <div class="detail-label">作者</div>
-          <div class="detail-value">${card.authorName || '匿名'} ${card.isAnonymous ? '(匿名)' : '(实名)'}</div>
+          <div class="detail-label">提交者</div>
+          <div class="detail-value">${submitterInfo}</div>
         </div>
         <div class="detail-row">
           <div class="detail-label">分区</div>
@@ -785,19 +803,23 @@
         </div>
         <div class="detail-row">
           <div class="detail-label">角色</div>
-          <div class="detail-value">${characters}</div>
+          <div class="detail-value">${charactersDisplay}</div>
         </div>
         <div class="detail-row">
           <div class="detail-label">性向</div>
-          <div class="detail-value">${orientation}${primaryOrientation !== '-' ? ` <span style="color:#876;">(主要: ${primaryOrientation})</span>` : ''}</div>
+          <div class="detail-value">${orientation}</div>
         </div>
         <div class="detail-row">
           <div class="detail-label">背景</div>
-          <div class="detail-value">${background}${primaryBackground !== '-' ? ` <span style="color:#876;">(主要: ${primaryBackground})</span>` : ''}</div>
+          <div class="detail-value">${background}</div>
         </div>
         <div class="detail-row">
           <div class="detail-label">Tags</div>
           <div class="detail-value">${tags}</div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-label">主要标签</div>
+          <div class="detail-value">${primaryTags}</div>
         </div>
         <div class="detail-row">
           <div class="detail-label">排雷</div>
@@ -821,12 +843,6 @@
           <div class="detail-label">上传时间</div>
           <div class="detail-value">${new Date(card.createdAt).toLocaleString('zh-CN')}</div>
         </div>
-        ${card.submitterUsername ? `
-        <div class="detail-row">
-          <div class="detail-label">发卡人</div>
-          <div class="detail-value">${card.submitterUsername} (ID: ${card.submitterUserId || '-'})</div>
-        </div>
-        ` : ''}
       `;
 
       modal.classList.add('show');
