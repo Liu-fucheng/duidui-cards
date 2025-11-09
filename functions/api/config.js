@@ -118,6 +118,7 @@ function sanitizeConfig(input) {
       .map(s => ({
         title: s.title,
         multiple: s.multiple !== false,
+        required: s.required !== false, // 默认必填
         showIf: typeof s.showIf === 'string' ? s.showIf : undefined,
         items: (Array.isArray(s.items) ? s.items : [])
           .filter(it => it && (typeof it.label === 'string' || typeof it.value === 'string'))

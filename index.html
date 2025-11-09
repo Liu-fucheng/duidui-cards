@@ -874,7 +874,7 @@
 
     <div class="field">
       <div class="tags-header">
-        <label class="group-label">Tags</label>
+        <label class="group-label">Tags<span style="color: red;">*</span></label>
         <div class="tags-search-wrapper">
           <span class="tags-search-icon material-icons">search</span>
           <input type="text" class="tags-search" id="tagsSearch" placeholder="搜索...">
@@ -886,8 +886,8 @@
     </div>
 
     <div class="field">
-      <label class="group-label" for="warnings">排雷:</label>
-      <textarea id="warnings" name="warnings" placeholder="请务必详细填写所有可能的雷点，此板块将会在主楼展示。
+      <label class="group-label" for="warnings">排雷<span style="color: red;">*</span>:</label>
+      <textarea id="warnings" name="warnings" required placeholder="请务必详细填写所有可能的雷点，此板块将会在主楼展示。
 如有违反底线的【涉毒/涉政/同妻/代孕/幼童】要素，请勿投递。（如果认为自己的卡只是有相关要素，但不违背主流价值观，比如凌虐毒枭等，可以与管理组沟通再发卡）
 含有char/user霸凌要素，请投递深渊区。
 含有背德/sm等边缘限制级要素，请投递边限。
@@ -895,8 +895,8 @@
     </div>
 
     <div class="field">
-      <label class="group-label" for="description">简介:</label>
-      <textarea id="description" name="description" placeholder="请在此处填写简介，非边限/边限会在主楼展示。深渊区只有交互才能查看简介。"></textarea>
+      <label class="group-label" for="description">简介<span style="color: red;">*</span>:</label>
+      <textarea id="description" name="description" required placeholder="请在此处填写简介，非边限/边限会在主楼展示。深渊区只有交互才能查看简介。"></textarea>
     </div>
 
     <div class="field">
@@ -912,7 +912,7 @@
       </div>
     </div>
     <div id="secondaryWarningContainer" class="field hidden">
-      <label class="group-label" for="secondaryWarning">二次排雷内容:</label>
+      <label class="group-label" for="secondaryWarning">二次排雷内容<span style="color: red;">*</span>:</label>
       <textarea id="secondaryWarning" name="secondaryWarning"></textarea>
     </div>
 
@@ -935,7 +935,7 @@
     </div>
 
     <div class="field">
-      <label class="group-label">角色卡 PNG (.png，二选一):</label>
+      <label class="group-label">角色卡 PNG<span style="color: red;">*</span> (.png，二选一必填):</label>
       <input type="file" id="cardPngFile" name="cardPngFile" accept=".png" />
       <div class="upload-zone">
         <button type="button" class="upload-btn" onclick="document.getElementById('cardPngFile').click()">+ 选择PNG文件</button>
@@ -944,7 +944,7 @@
     </div>
 
     <div class="field">
-      <label class="group-label">角色卡 JSON (.json，二选一):</label>
+      <label class="group-label">角色卡 JSON<span style="color: red;">*</span> (.json，二选一必填):</label>
       <input type="file" id="cardJsonFile" name="cardJsonFile" accept=".json" />
       <div class="upload-zone">
         <button type="button" class="upload-btn" onclick="document.getElementById('cardJsonFile').click()">+ 选择JSON文件</button>
@@ -1155,7 +1155,8 @@
           }).join('');
           const fieldId = `section_${title.replace(/\s/g,'_')}`;
           const showIf = sec.showIf ? `data-showif="${sec.showIf}"` : '';
-          htmls.push(`<div class="field" id="${fieldId}" ${showIf}><label class="group-label">${sec.title}:</label><div class="inline-options">${items}</div></div>`);
+          const requiredMark = sec.required !== false ? '<span style="color: red;">*</span>' : '';
+          htmls.push(`<div class="field" id="${fieldId}" ${showIf} data-required="${sec.required !== false}"><label class="group-label">${sec.title}${requiredMark}:</label><div class="inline-options">${items}</div></div>`);
         }
       });
       secHost.innerHTML = htmls.join('');
@@ -1624,11 +1625,87 @@
         return;
     }
     
+    // 验证必填字段：Tags
+    const selectedTags = document.querySelectorAll('input[name="tags"]:checked');
+    if (selectedTags.length === 0) {
+        uploadStatus.innerHTML = `
+          <div style="padding: 12px; background: #ffebee; border: 1px solid #f44336; border-radius: 8px; color: #c62828;">
+            ❌ 请至少选择一个Tag
+          </div>
+        `;
+        document.getElementById('tagsOptions').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+    }
+    
+    // 验证必填字段：排雷
+    const warnings = document.getElementById('warnings').value.trim();
+    if (!warnings) {
+        uploadStatus.innerHTML = `
+          <div style="padding: 12px; background: #ffebee; border: 1px solid #f44336; border-radius: 8px; color: #c62828;">
+            ❌ 请填写排雷内容
+          </div>
+        `;
+        document.getElementById('warnings').focus();
+        return;
+    }
+    
+    // 验证必填字段：简介
+    const description = document.getElementById('description').value.trim();
+    if (!description) {
+        uploadStatus.innerHTML = `
+          <div style="padding: 12px; background: #ffebee; border: 1px solid #f44336; border-radius: 8px; color: #c62828;">
+            ❌ 请填写简介内容
+          </div>
+        `;
+        document.getElementById('description').focus();
+        return;
+    }
+    
+    // 验证必填字段：二次排雷（如果选择了"是"）
+    const secondaryWarningToggle = document.querySelector('input[name="secondaryWarningToggle"]:checked')?.value;
+    if (secondaryWarningToggle === 'yes') {
+        const secondaryWarning = document.getElementById('secondaryWarning').value.trim();
+        if (!secondaryWarning) {
+            uploadStatus.innerHTML = `
+              <div style="padding: 12px; background: #ffebee; border: 1px solid #f44336; border-radius: 8px; color: #c62828;">
+                ❌ 请填写二次排雷内容
+              </div>
+            `;
+            document.getElementById('secondaryWarning').focus();
+            return;
+        }
+    }
+    
+    // 验证必填字段：角色卡（二选一）
     const cardPngFile = document.getElementById('cardPngFile').files[0];
     const cardJsonFile = document.getElementById('cardJsonFile').files[0];
     if (!cardPngFile && !cardJsonFile) {
-        uploadStatus.textContent = "请至少投递角色卡PNG或JSON文件其中一个";
+        uploadStatus.innerHTML = `
+          <div style="padding: 12px; background: #ffebee; border: 1px solid #f44336; border-radius: 8px; color: #c62828;">
+            ❌ 请至少上传角色卡PNG或JSON文件其中一个
+          </div>
+        `;
         return;
+    }
+    
+    // 验证自定义必填板块
+    const requiredSections = document.querySelectorAll('[id^="section_"][data-required="true"]');
+    for (const section of requiredSections) {
+        // 跳过隐藏的板块（showIf条件不满足）
+        if (section.classList.contains('hidden') || section.style.display === 'none') continue;
+        
+        const label = section.querySelector('.group-label')?.textContent.replace('*', '').replace(':', '').trim();
+        const checkedInputs = section.querySelectorAll('input:checked');
+        
+        if (checkedInputs.length === 0) {
+            uploadStatus.innerHTML = `
+              <div style="padding: 12px; background: #ffebee; border: 1px solid #f44336; border-radius: 8px; color: #c62828;">
+                ❌ 请选择${label}
+              </div>
+            `;
+            section.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+        }
     }
 
     submitButton.disabled = true;
@@ -2609,7 +2686,7 @@
       
       // 作者
       const authorName = document.getElementById('authorName')?.value.trim() || '未填写';
-      text += `**作者：**${authorName}\n\n`;
+      text += `**作者：**${authorName}\n`;
       
       // 卡名
       const cardName = document.getElementById('cardName')?.value.trim() || '未填写';
