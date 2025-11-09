@@ -53,6 +53,7 @@ export async function onRequestGet(context) {
       cardId: result.id,
       cardName: result.cardName,
       cardType: result.cardType,
+      nameRelation: result.nameRelation || 'same',
       characters: result.characters ? JSON.parse(result.characters) : [],
       category: result.category,
       authorName: result.authorName,
@@ -60,6 +61,8 @@ export async function onRequestGet(context) {
       orientation: result.orientation ? JSON.parse(result.orientation) : [],
       background: result.background ? JSON.parse(result.background) : [],
       tags: result.tags ? JSON.parse(result.tags) : [],
+      primaryOrientation: result.primaryOrientation || null,
+      primaryBackground: result.primaryBackground || null,
       warnings: result.warnings,
       description: result.description,
       threadTitle: result.threadTitle,
@@ -70,6 +73,8 @@ export async function onRequestGet(context) {
       galleryImageUrls: result.galleryImageKeys ? JSON.parse(result.galleryImageKeys).map(key => `${r2PublicUrl}/${key}`) : [],
       threadId: result.threadId,
       firstMessageId: result.firstMessageId,
+      submitterUserId: result.submitterUserId || null,
+      submitterUsername: result.submitterUsername || null,
       createdAt: result.createdAt
     };
     

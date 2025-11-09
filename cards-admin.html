@@ -733,17 +733,32 @@
         background: card.background
       });
 
-      const characters = safeParseJSON(card.characters);
+      // 角色名：单人同名卡使用卡名，其他使用characters
+      let characters = '-';
+      const cardType = card.cardType;
+      const nameRelation = card.nameRelation || 'same';
+      if (cardType === 'single' && nameRelation === 'same') {
+        characters = card.cardName || '未命名';
+      } else {
+        characters = safeParseJSON(card.characters);
+      }
+      
       const tags = safeParseJSON(card.tags);
       const orientation = safeParseJSON(card.orientation);
       const background = safeParseJSON(card.background);
+      
+      // 主要tag
+      const primaryOrientation = card.primaryOrientation || '-';
+      const primaryBackground = card.primaryBackground || '-';
       
       // 调试：打印解析结果
       console.log('解析后的数据:', {
         characters,
         tags,
         orientation,
-        background
+        background,
+        primaryOrientation,
+        primaryBackground
       });
 
       body.innerHTML = `
@@ -774,11 +789,11 @@
         </div>
         <div class="detail-row">
           <div class="detail-label">性向</div>
-          <div class="detail-value">${orientation}</div>
+          <div class="detail-value">${orientation}${primaryOrientation !== '-' ? ` <span style="color:#876;">(主要: ${primaryOrientation})</span>` : ''}</div>
         </div>
         <div class="detail-row">
           <div class="detail-label">背景</div>
-          <div class="detail-value">${background}</div>
+          <div class="detail-value">${background}${primaryBackground !== '-' ? ` <span style="color:#876;">(主要: ${primaryBackground})</span>` : ''}</div>
         </div>
         <div class="detail-row">
           <div class="detail-label">Tags</div>
@@ -806,6 +821,12 @@
           <div class="detail-label">上传时间</div>
           <div class="detail-value">${new Date(card.createdAt).toLocaleString('zh-CN')}</div>
         </div>
+        ${card.submitterUsername ? `
+        <div class="detail-row">
+          <div class="detail-label">发卡人</div>
+          <div class="detail-value">${card.submitterUsername} (ID: ${card.submitterUserId || '-'})</div>
+        </div>
+        ` : ''}
       `;
 
       modal.classList.add('show');

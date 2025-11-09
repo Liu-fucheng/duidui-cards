@@ -136,6 +136,7 @@ function verifyAdminToken(request, env) {
         cardId: card.id,
         cardName: card.cardName,
         cardType: card.cardType,
+        nameRelation: card.nameRelation || 'same',
         characters: JSON.parse(card.characters || '[]'),
         category: card.category,
         authorName: card.authorName,
@@ -143,6 +144,8 @@ function verifyAdminToken(request, env) {
         orientation: JSON.parse(card.orientation || '[]'),
         background: JSON.parse(card.background || '[]'),
         tags: JSON.parse(card.tags || '[]'),
+        primaryOrientation: card.primaryOrientation || null,
+        primaryBackground: card.primaryBackground || null,
         warnings: card.warnings,
         description: card.description,
         threadTitle: card.threadTitle,
@@ -152,7 +155,9 @@ function verifyAdminToken(request, env) {
         cardFileKey: card.cardFileKey,
         downloadRequirements: downloadRequirements,
         requireReaction: requireLike,
-        requireComment: requireComment
+        requireComment: requireComment,
+        submitterUserId: card.submitterUserId || null, // 发卡人用户ID（重发时保留原发卡人信息）
+        submitterUsername: card.submitterUsername || null // 发卡人用户名（重发时保留原发卡人信息）
       };
 
       const makeUrl = (key) => (env.R2_PUBLIC_URL ? `${env.R2_PUBLIC_URL}/${key}` : null);

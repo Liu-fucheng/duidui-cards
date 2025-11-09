@@ -43,7 +43,9 @@ async function uploadFileToR2(bucket, file, folder) {
       galleryImageUrls: cardData.galleryImageKeys.map(key => `${env.R2_PUBLIC_URL}/${key}`),
       downloadRequirements: cardData.downloadRequirements || [], // 下载要求列表
       requireReaction: cardData.requireReaction || false, // 兼容旧字段
-      requireComment: cardData.requireComment || false
+      requireComment: cardData.requireComment || false,
+      submitterUserId: cardData.submitterUserId || null, // 发卡人用户ID
+      submitterUsername: cardData.submitterUsername || null // 发卡人用户名
     };
     
     try {
@@ -310,6 +312,31 @@ async function uploadFileToR2(bucket, file, folder) {
       }
       
       const formData = await request.formData();
+      
+      // 0. 从URL获取token并查询发卡人信息
+      const url = new URL(request.url);
+      const token = url.searchParams.get('token');
+      let submitterUserId = null;
+      let submitterUsername = null;
+      
+      if (token) {
+        try {
+          const tokenRow = await env.D1_DB.prepare(
+            'SELECT user_id, username, display_name FROM card_tokens WHERE token = ? AND used = 0'
+          ).bind(token).first();
+          
+          if (tokenRow) {
+            submitterUserId = tokenRow.user_id;
+            submitterUsername = tokenRow.username;
+            // 标记token为已使用
+            await env.D1_DB.prepare(
+              'UPDATE card_tokens SET used = 1, used_at = ? WHERE token = ?'
+            ).bind(new Date().toISOString(), token).run();
+          }
+        } catch (tokenError) {
+          console.error('查询token失败:', tokenError);
+        }
+      }
   
       // 1. 处理作者逻辑
       const authorType = formData.get("authorType"); // 'real' 或 'anonymous'
@@ -428,6 +455,10 @@ async function uploadFileToR2(bucket, file, folder) {
       // 最终JSON字符串
       const orientation = JSON.stringify(orientationArr);
       const backgrounds = JSON.stringify(backgroundsArr);
+      
+      // 获取主要tag（性向和背景）
+      const primaryOrientation = formData.get("primary_性向") || (orientationArr.length > 0 ? orientationArr[0] : null);
+      const primaryBackground = formData.get("primary_背景") || (backgroundsArr.length > 0 ? backgroundsArr[0] : null);
   
       // 4. 准备插入 D1 数据库 (使用新表 cards_v2)
       // 注意：如果表中没有相关字段，需要先执行:
@@ -464,7 +495,9 @@ async function uploadFileToR2(bucket, file, folder) {
           cardFileKey,
           downloadRequirements: downloadRequirements, // 传递下载要求列表
           requireReaction: requireLike, // 兼容旧字段
-          requireComment: requireComment
+          requireComment: requireComment,
+          submitterUserId: submitterUserId, // 发卡人用户ID
+          submitterUsername: submitterUsername // 发卡人用户名
         });
 
         if (notifyResult.success) {
@@ -501,11 +534,17 @@ async function uploadFileToR2(bucket, file, folder) {
       }
 
       // 6. 插入数据库，包含Discord信息
+      // 注意：如果表中没有相关字段，需要先执行:
+      // ALTER TABLE cards_v2 ADD COLUMN primaryOrientation TEXT;
+      // ALTER TABLE cards_v2 ADD COLUMN primaryBackground TEXT;
+      // ALTER TABLE cards_v2 ADD COLUMN submitterUserId TEXT;
+      // ALTER TABLE cards_v2 ADD COLUMN submitterUsername TEXT;
       const stmt = env.D1_DB.prepare(
         `INSERT INTO cards_v2 (id, cardName, cardType, characters, category, authorName, authorId, isAnonymous, 
           orientation, background, tags, userLimit, warnings, description, secondaryWarning, threadTitle, otherInfo,
-          avatarImageKey, galleryImageKeys, cardFileKey, attachmentKeys, threadId, firstMessageId)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          avatarImageKey, galleryImageKeys, cardFileKey, attachmentKeys, threadId, firstMessageId,
+          primaryOrientation, primaryBackground, submitterUserId, submitterUsername)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).bind(
         cardId,
         formData.get("cardName") || "未命名",
@@ -529,7 +568,11 @@ async function uploadFileToR2(bucket, file, folder) {
         cardFileKey,
         JSON.stringify(attachmentKeys), // JSON string
         discordInfo?.threadId || null, // Discord thread ID
-        discordInfo?.firstMessageId || null // Discord首楼消息 ID
+        discordInfo?.firstMessageId || null, // Discord首楼消息 ID
+        primaryOrientation, // 主要性向
+        primaryBackground, // 主要背景
+        submitterUserId, // 发卡人用户ID
+        submitterUsername // 发卡人用户名
       );
 
       await stmt.run();
