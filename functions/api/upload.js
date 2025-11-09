@@ -370,15 +370,30 @@ async function uploadFileToR2(bucket, file, folder) {
       const submitterDisplayName = formData.get("submitterDisplayName") || "";
   
       // 2. 处理文件上传 (并行)
-      const cardFile = formData.get("cardFile");
-      if (!cardFile || cardFile.size === 0) {
-        return new Response(JSON.stringify({ success: false, message: "必须上传角色卡文件" }), { status: 400 });
+      const cardFile = formData.get("cardFile");  // PNG文件
+      const cardJsonFile = formData.get("cardJsonFile");  // JSON文件
+      
+      // 至少要有一个文件
+      if ((!cardFile || cardFile.size === 0) && (!cardJsonFile || cardJsonFile.size === 0)) {
+        return new Response(JSON.stringify({ success: false, message: "必须上传至少一个角色卡文件（PNG或JSON）" }), { status: 400 });
       }
   
-      // 上传主卡片
-      const cardFileKey = await uploadFileToR2(env.R2_BUCKET, cardFile, "cards");
-      if (!cardFileKey) {
-          return new Response(JSON.stringify({ success: false, message: "主卡片文件上传失败" }), { status: 400 });
+      // 上传PNG卡片（如果有）
+      let cardFileKey = null;
+      if (cardFile && cardFile.size > 0) {
+        cardFileKey = await uploadFileToR2(env.R2_BUCKET, cardFile, "cards");
+        if (!cardFileKey) {
+          return new Response(JSON.stringify({ success: false, message: "PNG卡片文件上传失败" }), { status: 400 });
+        }
+      }
+      
+      // 上传JSON卡片（如果有）
+      let cardJsonFileKey = null;
+      if (cardJsonFile && cardJsonFile.size > 0) {
+        cardJsonFileKey = await uploadFileToR2(env.R2_BUCKET, cardJsonFile, "cards");
+        if (!cardJsonFileKey) {
+          return new Response(JSON.stringify({ success: false, message: "JSON卡片文件上传失败" }), { status: 400 });
+        }
       }
 
       // 上传头像 (单文件，选填)
@@ -575,18 +590,62 @@ async function uploadFileToR2(bucket, file, folder) {
       }
 
       // 6. 插入数据库，包含Discord信息
-      // 检查表结构，如果没有新字段则使用旧的INSERT语句
+      // 检查表结构
       let hasDownloadRequirements = false;
+      let hasCardJsonFileKey = false;
       try {
         const tableInfo = await env.D1_DB.prepare('PRAGMA table_info(cards_v2)').all();
         hasDownloadRequirements = tableInfo.results && tableInfo.results.some(col => col.name === 'downloadRequirements');
+        hasCardJsonFileKey = tableInfo.results && tableInfo.results.some(col => col.name === 'cardJsonFileKey');
       } catch (e) {
         console.error('检查表结构失败:', e);
       }
       
       let stmt;
-      if (hasDownloadRequirements) {
-        // 新版本：包含下载要求字段
+      if (hasDownloadRequirements && hasCardJsonFileKey) {
+        // 最新版本：包含下载要求和JSON文件字段
+        stmt = env.D1_DB.prepare(
+          `INSERT INTO cards_v2 (id, cardName, cardType, characters, category, authorName, authorId, isAnonymous, 
+            orientation, background, tags, userLimit, warnings, description, secondaryWarning, threadTitle, otherInfo,
+            avatarImageKey, galleryImageKeys, cardFileKey, cardJsonFileKey, attachmentKeys, threadId, firstMessageId,
+            submitterUserId, submitterUsername, submitterDisplayName, primaryTags,
+            downloadRequirements, requireReaction, requireComment)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ).bind(
+          cardId,
+          formData.get("cardName") || "未命名",
+          formData.get("cardType"), // 'single' or 'multi'
+          characters, // JSON string
+          formData.get("category"),
+          authorName,
+          authorId, // Discord 用户ID（已废弃，保留兼容）
+          isAnonymous,
+          orientation, // JSON string
+          backgrounds, // JSON string
+          tags, // JSON string
+          JSON.stringify(formData.getAll("userLimit").filter(v => v && v.trim() !== "")) || "[]",
+          formData.get("warnings"),
+          formData.get("description"),
+          formData.get("secondaryWarning"), // 二次排雷
+          formData.get("threadTitle") || "",
+          otherInfoValue,
+          avatarImageKey, // 头像文件 key
+          JSON.stringify(galleryImageKeys), // JSON string
+          cardFileKey, // PNG文件 key
+          cardJsonFileKey, // JSON文件 key
+          JSON.stringify(attachmentKeys), // JSON string
+          discordInfo?.threadId || null, // Discord thread ID
+          discordInfo?.firstMessageId || null, // Discord首楼消息 ID
+          submitterUserId, // 提交者Discord用户ID
+          submitterUsername, // 提交者Discord用户名
+          submitterDisplayName, // 提交者Discord显示名（服务器昵称）
+          JSON.stringify(primaryTags), // 主要标签（JSON数组）
+          JSON.stringify(downloadRequirements), // 下载要求列表（JSON数组）
+          requireLike ? 1 : 0, // 是否需要点赞/反应
+          requireComment ? 1 : 0 // 是否需要评论
+        );
+      } else if (hasDownloadRequirements) {
+        // 旧版本（有下载要求但没有JSON字段）
         stmt = env.D1_DB.prepare(
           `INSERT INTO cards_v2 (id, cardName, cardType, characters, category, authorName, authorId, isAnonymous, 
             orientation, background, tags, userLimit, warnings, description, secondaryWarning, threadTitle, otherInfo,

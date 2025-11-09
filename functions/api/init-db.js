@@ -30,6 +30,7 @@ const CORE_TABLES = {
       avatarImageKey TEXT,
       galleryImageKeys TEXT,
       cardFileKey TEXT,
+      cardJsonFileKey TEXT,
       attachmentKeys TEXT,
       threadId TEXT,
       firstMessageId TEXT,
@@ -173,6 +174,21 @@ const MIGRATIONS = [
       await db.prepare('ALTER TABLE cards_v2 ADD COLUMN downloadRequirements TEXT').run();
       await db.prepare('ALTER TABLE cards_v2 ADD COLUMN requireReaction INTEGER DEFAULT 0').run();
       await db.prepare('ALTER TABLE cards_v2 ADD COLUMN requireComment INTEGER DEFAULT 0').run();
+    }
+  },
+  {
+    name: 'add_card_json_file_key_to_cards_v2',
+    check: async (db) => {
+      try {
+        const result = await db.prepare('PRAGMA table_info(cards_v2)').all();
+        return result.results && !result.results.some(col => col.name === 'cardJsonFileKey');
+      } catch (e) {
+        return false;
+      }
+    },
+    run: async (db) => {
+      // 添加 JSON 格式角色卡字段
+      await db.prepare('ALTER TABLE cards_v2 ADD COLUMN cardJsonFileKey TEXT').run();
     }
   }
 ];

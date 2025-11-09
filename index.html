@@ -2044,7 +2044,7 @@
     try {
       const formData = new FormData(uploadForm);
 
-      // 处理角色卡文件字段名统一（PNG或JSON -> cardFile）
+      // 处理角色卡文件（同时保留PNG和JSON，如果都有的话）
       const cardPngFile = formData.get('cardPngFile');
       const cardJsonFile = formData.get('cardJsonFile');
       
@@ -2052,11 +2052,14 @@
       formData.delete('cardPngFile');
       formData.delete('cardJsonFile');
       
-      // 添加统一的字段名（优先PNG，其次JSON）
+      // PNG文件（如果有）
       if (cardPngFile && cardPngFile.size > 0) {
         formData.append('cardFile', cardPngFile);
-      } else if (cardJsonFile && cardJsonFile.size > 0) {
-        formData.append('cardFile', cardJsonFile);
+      }
+      
+      // JSON文件（如果有）
+      if (cardJsonFile && cardJsonFile.size > 0) {
+        formData.append('cardJsonFile', cardJsonFile);
       }
 
       if (formData.get('cardType') === 'single') {
