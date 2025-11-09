@@ -366,6 +366,10 @@
     .discord-thread-title {
       padding: 12px 16px;
       font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
       font-weight: 600;
       color: #f2f3f5;
       border-bottom: 1px solid #1e1f22;
@@ -426,6 +430,46 @@
       font-size: 14px;
       line-height: 1.5;
       margin-left: 52px;
+      position: relative;
+    }
+    
+    /* 复制按钮样式 */
+    .copy-button {
+      background: transparent;
+      border: none;
+      color: #b5bac1;
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    
+    .copy-button:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #ffffff;
+    }
+    
+    .copy-button:active {
+      transform: scale(0.95);
+    }
+    
+    .copy-button.copied {
+      color: #23a55a;
+    }
+    
+    .copy-button svg {
+      width: 18px;
+      height: 18px;
+    }
+    
+    .content-copy-button {
+      position: absolute;
+      top: 0;
+      right: 0;
     }
     
     .discord-field {
@@ -972,8 +1016,14 @@
   <div class="discord-preview">
     <h3>Discord 发帖预览</h3>
     <div class="discord-thread">
-      <div class="discord-thread-title" id="previewThreadTitle">
-        <span class="preview-placeholder">未填写帖子标题</span>
+      <div class="discord-thread-title">
+        <span id="previewThreadTitle"><span class="preview-placeholder">未填写帖子标题</span></span>
+        <button class="copy-button" id="copyTitleButton" title="复制标题">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+        </button>
       </div>
       <div class="discord-message">
           <div class="discord-author">
@@ -986,6 +1036,14 @@
             </div>
           </div>
         <div class="discord-content">
+          <!-- 复制内容按钮 -->
+          <button class="copy-button content-copy-button" id="copyContentButton" title="复制主楼内容">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+          </button>
+          
           <!-- 赞数（仅深渊） -->
           <div class="discord-field" id="previewLikeSection" style="display: none;">
             <span class="discord-like-count">
@@ -3121,6 +3179,79 @@
     
     // 延迟执行，确保页面完全加载
     setTimeout(showCopyButtonsFromCache, 500);
+    
+    // === 预览中的复制按钮 ===
+    // 复制标题按钮
+    const copyTitleBtn = document.getElementById('copyTitleButton');
+    if (copyTitleBtn) {
+      copyTitleBtn.addEventListener('click', async () => {
+        const title = generateThreadTitle();
+        if (!title) {
+          alert('请先填写帖子标题');
+          return;
+        }
+        
+        try {
+          await navigator.clipboard.writeText(title);
+          // 更换图标为对勾
+          copyTitleBtn.classList.add('copied');
+          copyTitleBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          `;
+          
+          // 2秒后恢复
+          setTimeout(() => {
+            copyTitleBtn.classList.remove('copied');
+            copyTitleBtn.innerHTML = `
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+            `;
+          }, 2000);
+        } catch (err) {
+          alert('复制失败：' + err.message);
+        }
+      });
+    }
+    
+    // 复制内容按钮
+    const copyContentBtn = document.getElementById('copyContentButton');
+    if (copyContentBtn) {
+      copyContentBtn.addEventListener('click', async () => {
+        const content = generatePreviewText();
+        if (!content) {
+          alert('请先填写表单内容');
+          return;
+        }
+        
+        try {
+          await navigator.clipboard.writeText(content);
+          // 更换图标为对勾
+          copyContentBtn.classList.add('copied');
+          copyContentBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          `;
+          
+          // 2秒后恢复
+          setTimeout(() => {
+            copyContentBtn.classList.remove('copied');
+            copyContentBtn.innerHTML = `
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+            `;
+          }, 2000);
+        } catch (err) {
+          alert('复制失败：' + err.message);
+        }
+      });
+    }
   });
 </script>
 
