@@ -866,14 +866,23 @@
       </div>
     </div>
     
-    <!-- 主要标签选择 -->
-    <div class="field" id="primaryTagsSection" style="display: none;">
-      <label class="group-label">首页展示标签 (从性向和背景中选择):</label>
-      <div style="font-size: 12px; color: #876; margin-bottom: 8px;">性向和背景各选一个，将优先显示在Discord标签中</div>
-      <div id="primaryTagsContainer" class="pill-group"></div>
-      <!-- 隐藏的input用于保存选中的primary_tags -->
-      <input type="hidden" id="primaryTagsHidden" name="primaryTags">
+    <!-- 性向首页展示标签选择 -->
+    <div class="field" id="primaryOrientationSection" style="display: none; margin-top: -8px;">
+      <div style="font-size: 12px; color: #876; margin-bottom: 6px;">首页展示性向（优先显示在Discord标签中）：</div>
+      <div id="primaryOrientationContainer" class="pill-group"></div>
     </div>
+    
+    <!-- 背景首页展示标签选择 -->
+    <div class="field" id="primaryBackgroundSection" style="display: none; margin-top: -8px;">
+      <div style="font-size: 12px; color: #876; margin-bottom: 6px;">首页展示背景（优先显示在Discord标签中）：</div>
+      <div id="primaryBackgroundContainer" class="pill-group"></div>
+    </div>
+    
+    <!-- Discord标签数量提示 -->
+    <div id="tagCountWarning" style="display: none;"></div>
+    
+    <!-- 隐藏的input用于保存选中的primary_tags -->
+    <input type="hidden" id="primaryTagsHidden" name="primaryTags">
 
     <div class="field">
       <div class="tags-header">
@@ -1342,90 +1351,98 @@
   
   // 更新主要标签选择区域
   function updatePrimaryTags() {
-    const container = document.getElementById('primaryTagsContainer');
-    const section = document.getElementById('primaryTagsSection');
+    const orientationContainer = document.getElementById('primaryOrientationContainer');
+    const orientationSection = document.getElementById('primaryOrientationSection');
+    const backgroundContainer = document.getElementById('primaryBackgroundContainer');
+    const backgroundSection = document.getElementById('primaryBackgroundSection');
     const hiddenInput = document.getElementById('primaryTagsHidden');
     
-    if (!container || !section || !hiddenInput) return;
+    if (!orientationContainer || !backgroundContainer || !hiddenInput) return;
     
     // 收集所有选中的性向和背景（兼容多选[]格式）
-    const orientations = Array.from(document.querySelectorAll('input[name="custom_性向"]:checked, input[name="custom_性向[]"]:checked')).map(i => ({ type: 'orientation', value: i.value }));
-    const backgrounds = Array.from(document.querySelectorAll('input[name="custom_背景"]:checked, input[name="custom_背景[]"]:checked')).map(i => ({ type: 'background', value: i.value }));
-    
-    // 如果没有性向或背景，隐藏section
-    if (orientations.length === 0 && backgrounds.length === 0) {
-      section.style.display = 'none';
-      container.innerHTML = '';
-      hiddenInput.value = '';
-      return;
-    }
-    
-    // 显示section
-    section.style.display = '';
+    const orientations = Array.from(document.querySelectorAll('input[name="custom_性向"]:checked, input[name="custom_性向[]"]:checked')).map(i => i.value);
+    const backgrounds = Array.from(document.querySelectorAll('input[name="custom_背景"]:checked, input[name="custom_背景[]"]:checked')).map(i => i.value);
     
     // 获取当前已选中的主要标签
     const currentSelected = hiddenInput.value ? JSON.parse(hiddenInput.value) : [];
     
-    // 生成胶囊标签（分两组显示）
-    let html = '';
-    if (orientations.length > 0) {
-      html += '<div style="margin-bottom: 8px;"><span style="font-size: 12px; color: #876; margin-right: 8px;">性向：</span>';
-      html += orientations.map(tag => {
-        const isSelected = currentSelected.includes(tag.value);
-        return `<span class="pill primary-tag-pill ${isSelected ? 'active' : ''}" data-value="${tag.value}" data-type="orientation">${tag.value}</span>`;
+    // 处理性向
+    if (orientations.length > 1) {
+      // 多选时才显示
+      orientationSection.style.display = '';
+      orientationContainer.innerHTML = orientations.map(value => {
+        const isSelected = currentSelected.includes(value);
+        return `<span class="pill primary-tag-pill ${isSelected ? 'active' : ''}" data-value="${value}" data-type="orientation">${value}</span>`;
       }).join('');
-      html += '</div>';
-    }
-    if (backgrounds.length > 0) {
-      html += '<div><span style="font-size: 12px; color: #876; margin-right: 8px;">背景：</span>';
-      html += backgrounds.map(tag => {
-        const isSelected = currentSelected.includes(tag.value);
-        return `<span class="pill primary-tag-pill ${isSelected ? 'active' : ''}" data-value="${tag.value}" data-type="background">${tag.value}</span>`;
-      }).join('');
-      html += '</div>';
-    }
-    container.innerHTML = html;
-    
-    // 绑定点击事件
-    container.querySelectorAll('.primary-tag-pill').forEach(pill => {
-      pill.addEventListener('click', () => {
-        const type = pill.dataset.type;
-        const value = pill.dataset.value;
-        
-        // 检查是否已选中
-        const isActive = pill.classList.contains('active');
-        
-        if (!isActive) {
-          // 要选中这个标签：先取消同类型的其他标签
-          container.querySelectorAll(`.primary-tag-pill[data-type="${type}"]`).forEach(p => {
-            p.classList.remove('active');
-          });
-          pill.classList.add('active');
-        } else {
-          // 取消选中
-          pill.classList.remove('active');
-        }
-        
-        savePrimaryTags();
+      
+      // 绑定点击事件
+      orientationContainer.querySelectorAll('.primary-tag-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+          const isActive = pill.classList.contains('active');
+          if (!isActive) {
+            // 单选：先取消其他性向
+            orientationContainer.querySelectorAll('.primary-tag-pill').forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+          } else {
+            pill.classList.remove('active');
+          }
+          savePrimaryTags();
+        });
       });
-    });
+    } else {
+      orientationSection.style.display = 'none';
+      orientationContainer.innerHTML = '';
+    }
+    
+    // 处理背景
+    if (backgrounds.length > 1) {
+      // 多选时才显示
+      backgroundSection.style.display = '';
+      backgroundContainer.innerHTML = backgrounds.map(value => {
+        const isSelected = currentSelected.includes(value);
+        return `<span class="pill primary-tag-pill ${isSelected ? 'active' : ''}" data-value="${value}" data-type="background">${value}</span>`;
+      }).join('');
+      
+      // 绑定点击事件
+      backgroundContainer.querySelectorAll('.primary-tag-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+          const isActive = pill.classList.contains('active');
+          if (!isActive) {
+            // 单选：先取消其他背景
+            backgroundContainer.querySelectorAll('.primary-tag-pill').forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+          } else {
+            pill.classList.remove('active');
+          }
+          savePrimaryTags();
+        });
+      });
+    } else {
+      backgroundSection.style.display = 'none';
+      backgroundContainer.innerHTML = '';
+    }
+    
+    // 检查标签总数
+    checkTagCount();
   }
   
   // 保存主要标签到隐藏input（按顺序：性向→背景）
   function savePrimaryTags() {
-    const container = document.getElementById('primaryTagsContainer');
+    const orientationContainer = document.getElementById('primaryOrientationContainer');
+    const backgroundContainer = document.getElementById('primaryBackgroundContainer');
     const hiddenInput = document.getElementById('primaryTagsHidden');
-    if (!container || !hiddenInput) return;
+    if (!hiddenInput) return;
     
     // 分别收集性向和背景，保持顺序：性向在前，背景在后
-    const selectedOrientation = Array.from(container.querySelectorAll('.primary-tag-pill.active[data-type="orientation"]')).map(pill => pill.dataset.value);
-    const selectedBackground = Array.from(container.querySelectorAll('.primary-tag-pill.active[data-type="background"]')).map(pill => pill.dataset.value);
+    const selectedOrientation = orientationContainer 
+      ? Array.from(orientationContainer.querySelectorAll('.primary-tag-pill.active')).map(pill => pill.dataset.value)
+      : [];
+    const selectedBackground = backgroundContainer
+      ? Array.from(backgroundContainer.querySelectorAll('.primary-tag-pill.active')).map(pill => pill.dataset.value)
+      : [];
     const selected = [...selectedOrientation, ...selectedBackground];
     
     hiddenInput.value = JSON.stringify(selected);
-    
-    // 检查总标签数是否超过5个
-    checkTagCount();
   }
   
   // 检查标签总数
@@ -1434,19 +1451,15 @@
     const backgrounds = Array.from(document.querySelectorAll('input[name="custom_背景"]:checked, input[name="custom_背景[]"]:checked')).length;
     const total = orientations + backgrounds;
     
-    const section = document.getElementById('primaryTagsSection');
-    if (!section) return;
-    
-    // 移除旧提示
-    const oldWarning = section.querySelector('.tag-count-warning');
-    if (oldWarning) oldWarning.remove();
+    const warningDiv = document.getElementById('tagCountWarning');
+    if (!warningDiv) return;
     
     if (total > 5) {
-      const warning = document.createElement('div');
-      warning.className = 'tag-count-warning';
-      warning.style.cssText = 'color: #B5534E; font-size: 12px; margin-top: 8px; padding: 8px; background: #FFF3F3; border-radius: 4px; border: 1px solid #FFC9C9;';
-      warning.textContent = `⚠️ Discord最多只能显示5个标签，当前已选${total}个（性向${orientations}个+背景${backgrounds}个），只有前5个会在Discord中显示。`;
-      section.appendChild(warning);
+      warningDiv.style.cssText = 'display: block; color: #B5534E; font-size: 12px; margin: 8px 0; padding: 8px; background: #FFF3F3; border-radius: 4px; border: 1px solid #FFC9C9;';
+      warningDiv.textContent = `⚠️ Discord最多只能显示5个标签，当前已选${total}个（性向${orientations}个+背景${backgrounds}个），只有前5个会在Discord中显示。`;
+    } else {
+      warningDiv.style.display = 'none';
+      warningDiv.textContent = '';
     }
   }
 
