@@ -575,50 +575,95 @@ async function uploadFileToR2(bucket, file, folder) {
       }
 
       // 6. 插入数据库，包含Discord信息
-      // 注意：如果表中没有相关字段，需要先执行:
-      // ALTER TABLE cards_v2 ADD COLUMN submitterUserId TEXT;
-      // ALTER TABLE cards_v2 ADD COLUMN submitterUsername TEXT;
-      // ALTER TABLE cards_v2 ADD COLUMN submitterDisplayName TEXT;
-      // ALTER TABLE cards_v2 ADD COLUMN primaryTags TEXT;
-      const stmt = env.D1_DB.prepare(
-        `INSERT INTO cards_v2 (id, cardName, cardType, characters, category, authorName, authorId, isAnonymous, 
-          orientation, background, tags, userLimit, warnings, description, secondaryWarning, threadTitle, otherInfo,
-          avatarImageKey, galleryImageKeys, cardFileKey, attachmentKeys, threadId, firstMessageId,
-          submitterUserId, submitterUsername, submitterDisplayName, primaryTags,
-          downloadRequirements, requireReaction, requireComment)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      ).bind(
-        cardId,
-        formData.get("cardName") || "未命名",
-        formData.get("cardType"), // 'single' or 'multi'
-        characters, // JSON string
-        formData.get("category"),
-        authorName,
-        authorId, // Discord 用户ID（已废弃，保留兼容）
-        isAnonymous,
-        orientation, // JSON string
-        backgrounds, // JSON string
-        tags, // JSON string
-        JSON.stringify(formData.getAll("userLimit").filter(v => v && v.trim() !== "")) || "[]",
-        formData.get("warnings"),
-        formData.get("description"),
-        formData.get("secondaryWarning"), // 二次排雷
-        formData.get("threadTitle") || "",
-        otherInfoValue,
-        avatarImageKey, // 头像文件 key
-        JSON.stringify(galleryImageKeys), // JSON string
-        cardFileKey,
-        JSON.stringify(attachmentKeys), // JSON string
-        discordInfo?.threadId || null, // Discord thread ID
-        discordInfo?.firstMessageId || null, // Discord首楼消息 ID
-        submitterUserId, // 提交者Discord用户ID
-        submitterUsername, // 提交者Discord用户名
-        submitterDisplayName, // 提交者Discord显示名（服务器昵称）
-        JSON.stringify(primaryTags), // 主要标签（JSON数组）
-        JSON.stringify(downloadRequirements), // 下载要求列表（JSON数组）
-        requireLike ? 1 : 0, // 是否需要点赞/反应
-        requireComment ? 1 : 0 // 是否需要评论
-      );
+      // 检查表结构，如果没有新字段则使用旧的INSERT语句
+      let hasDownloadRequirements = false;
+      try {
+        const tableInfo = await env.D1_DB.prepare('PRAGMA table_info(cards_v2)').all();
+        hasDownloadRequirements = tableInfo.results && tableInfo.results.some(col => col.name === 'downloadRequirements');
+      } catch (e) {
+        console.error('检查表结构失败:', e);
+      }
+      
+      let stmt;
+      if (hasDownloadRequirements) {
+        // 新版本：包含下载要求字段
+        stmt = env.D1_DB.prepare(
+          `INSERT INTO cards_v2 (id, cardName, cardType, characters, category, authorName, authorId, isAnonymous, 
+            orientation, background, tags, userLimit, warnings, description, secondaryWarning, threadTitle, otherInfo,
+            avatarImageKey, galleryImageKeys, cardFileKey, attachmentKeys, threadId, firstMessageId,
+            submitterUserId, submitterUsername, submitterDisplayName, primaryTags,
+            downloadRequirements, requireReaction, requireComment)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ).bind(
+          cardId,
+          formData.get("cardName") || "未命名",
+          formData.get("cardType"), // 'single' or 'multi'
+          characters, // JSON string
+          formData.get("category"),
+          authorName,
+          authorId, // Discord 用户ID（已废弃，保留兼容）
+          isAnonymous,
+          orientation, // JSON string
+          backgrounds, // JSON string
+          tags, // JSON string
+          JSON.stringify(formData.getAll("userLimit").filter(v => v && v.trim() !== "")) || "[]",
+          formData.get("warnings"),
+          formData.get("description"),
+          formData.get("secondaryWarning"), // 二次排雷
+          formData.get("threadTitle") || "",
+          otherInfoValue,
+          avatarImageKey, // 头像文件 key
+          JSON.stringify(galleryImageKeys), // JSON string
+          cardFileKey,
+          JSON.stringify(attachmentKeys), // JSON string
+          discordInfo?.threadId || null, // Discord thread ID
+          discordInfo?.firstMessageId || null, // Discord首楼消息 ID
+          submitterUserId, // 提交者Discord用户ID
+          submitterUsername, // 提交者Discord用户名
+          submitterDisplayName, // 提交者Discord显示名（服务器昵称）
+          JSON.stringify(primaryTags), // 主要标签（JSON数组）
+          JSON.stringify(downloadRequirements), // 下载要求列表（JSON数组）
+          requireLike ? 1 : 0, // 是否需要点赞/反应
+          requireComment ? 1 : 0 // 是否需要评论
+        );
+      } else {
+        // 旧版本：不包含下载要求字段
+        stmt = env.D1_DB.prepare(
+          `INSERT INTO cards_v2 (id, cardName, cardType, characters, category, authorName, authorId, isAnonymous, 
+            orientation, background, tags, userLimit, warnings, description, secondaryWarning, threadTitle, otherInfo,
+            avatarImageKey, galleryImageKeys, cardFileKey, attachmentKeys, threadId, firstMessageId,
+            submitterUserId, submitterUsername, submitterDisplayName, primaryTags)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ).bind(
+          cardId,
+          formData.get("cardName") || "未命名",
+          formData.get("cardType"), // 'single' or 'multi'
+          characters, // JSON string
+          formData.get("category"),
+          authorName,
+          authorId, // Discord 用户ID（已废弃，保留兼容）
+          isAnonymous,
+          orientation, // JSON string
+          backgrounds, // JSON string
+          tags, // JSON string
+          JSON.stringify(formData.getAll("userLimit").filter(v => v && v.trim() !== "")) || "[]",
+          formData.get("warnings"),
+          formData.get("description"),
+          formData.get("secondaryWarning"), // 二次排雷
+          formData.get("threadTitle") || "",
+          otherInfoValue,
+          avatarImageKey, // 头像文件 key
+          JSON.stringify(galleryImageKeys), // JSON string
+          cardFileKey,
+          JSON.stringify(attachmentKeys), // JSON string
+          discordInfo?.threadId || null, // Discord thread ID
+          discordInfo?.firstMessageId || null, // Discord首楼消息 ID
+          submitterUserId, // 提交者Discord用户ID
+          submitterUsername, // 提交者Discord用户名
+          submitterDisplayName, // 提交者Discord显示名（服务器昵称）
+          JSON.stringify(primaryTags) // 主要标签（JSON数组）
+        );
+      }
 
       await stmt.run();
 

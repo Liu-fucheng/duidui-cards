@@ -1879,6 +1879,94 @@
         return;
     }
     
+    // 验证必填字段：作者
+    const authorName = document.getElementById('authorName').value.trim();
+    if (!authorName) {
+        uploadStatus.innerHTML = `
+          <div style="padding: 12px; background: #ffebee; border: 1px solid #f44336; border-radius: 8px; color: #c62828;">
+            ❌ 请填写作者名称
+          </div>
+        `;
+        document.getElementById('authorName').focus();
+        document.getElementById('authorName').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+    }
+    
+    // 验证必填字段：卡名
+    const cardName = document.getElementById('cardName').value.trim();
+    if (!cardName) {
+        uploadStatus.innerHTML = `
+          <div style="padding: 12px; background: #ffebee; border: 1px solid #f44336; border-radius: 8px; color: #c62828;">
+            ❌ 请填写卡名
+          </div>
+        `;
+        document.getElementById('cardName').focus();
+        document.getElementById('cardName').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+    }
+    
+    // 验证必填字段：帖子标题
+    const threadTitle = document.getElementById('threadTitle').value.trim();
+    if (!threadTitle) {
+        uploadStatus.innerHTML = `
+          <div style="padding: 12px; background: #ffebee; border: 1px solid #f44336; border-radius: 8px; color: #c62828;">
+            ❌ 请填写帖子标题
+          </div>
+        `;
+        document.getElementById('threadTitle').focus();
+        document.getElementById('threadTitle').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+    }
+    
+    // 验证必填字段：角色与卡同名/不同名
+    const nameRelation = document.querySelector('input[name="nameRelation"]:checked');
+    if (!nameRelation) {
+        uploadStatus.innerHTML = `
+          <div style="padding: 12px; background: #ffebee; border: 1px solid #f44336; border-radius: 8px; color: #c62828;">
+            ❌ 请选择角色与卡名的关系（同名/不同名）
+          </div>
+        `;
+        document.querySelector('input[name="nameRelation"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+    }
+    
+    // 验证必填字段：角色（如果不同名或多人卡）
+    const cardType = document.querySelector('input[name="cardType"]:checked')?.value;
+    if (cardType === 'multi') {
+        // 多人卡：至少需要一个角色
+        const characters = document.querySelectorAll('input[name="characters"]');
+        let hasCharacter = false;
+        for (const input of characters) {
+            if (input.value.trim()) {
+                hasCharacter = true;
+                break;
+            }
+        }
+        if (!hasCharacter) {
+            uploadStatus.innerHTML = `
+              <div style="padding: 12px; background: #ffebee; border: 1px solid #f44336; border-radius: 8px; color: #c62828;">
+                ❌ 多人卡请至少填写一个角色名
+              </div>
+            `;
+            characters[0]?.focus();
+            characters[0]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+        }
+    } else if (cardType === 'single' && nameRelation?.value === 'different') {
+        // 单人卡不同名：需要填写角色名
+        const singleCharacterName = document.getElementById('singleCharacterName').value.trim();
+        if (!singleCharacterName) {
+            uploadStatus.innerHTML = `
+              <div style="padding: 12px; background: #ffebee; border: 1px solid #f44336; border-radius: 8px; color: #c62828;">
+                ❌ 请填写角色名
+              </div>
+            `;
+            document.getElementById('singleCharacterName').focus();
+            document.getElementById('singleCharacterName').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+        }
+    }
+    
     // 验证必填字段：Tags
     const selectedTags = document.querySelectorAll('input[name="tags"]:checked');
     if (selectedTags.length === 0) {
