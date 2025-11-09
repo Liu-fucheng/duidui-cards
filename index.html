@@ -2202,8 +2202,9 @@
       console.log('✅ 已恢复表单缓存');
       
       // 显示恢复提示（灰色半透明胶囊）
+      // 注意：如果 uploadStatus 已经有内容（比如 Token 已使用的提示和复制按钮），则不覆盖
       const statusDiv = document.getElementById('uploadStatus');
-      if (statusDiv) {
+      if (statusDiv && !statusDiv.innerHTML.trim()) {
         statusDiv.innerHTML = `
           <div style="display: inline-block; padding: 8px 16px; background: rgba(128, 128, 128, 0.15); border-radius: 20px; margin-bottom: 16px; color: #666; font-size: 14px;">
             已恢复上次未提交的表单内容
