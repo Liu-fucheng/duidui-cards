@@ -1337,12 +1337,6 @@
       input.addEventListener('change', updateConditionalUI);
     });
     updateConditionalUI();
-    
-    // 监听性向和背景变化，更新主要标签选择
-    document.querySelectorAll('input[name^="custom_性向"], input[name^="custom_背景"]').forEach(input => {
-      input.addEventListener('change', updatePrimaryTags);
-    });
-    updatePrimaryTags();
   }
   
   // 更新主要标签选择区域
@@ -1353,9 +1347,9 @@
     
     if (!container || !section || !hiddenInput) return;
     
-    // 收集所有选中的性向和背景
-    const orientations = Array.from(document.querySelectorAll('input[name^="custom_性向"]:checked')).map(i => i.value);
-    const backgrounds = Array.from(document.querySelectorAll('input[name^="custom_背景"]:checked')).map(i => i.value);
+    // 收集所有选中的性向和背景（兼容多选[]格式）
+    const orientations = Array.from(document.querySelectorAll('input[name="custom_性向"]:checked, input[name="custom_性向[]"]:checked')).map(i => i.value);
+    const backgrounds = Array.from(document.querySelectorAll('input[name="custom_背景"]:checked, input[name="custom_背景[]"]:checked')).map(i => i.value);
     const allTags = [...orientations, ...backgrounds];
     
     // 如果没有性向或背景，隐藏section
@@ -1430,6 +1424,9 @@
         }
       });
     });
+    
+    // 更新主要标签选择
+    updatePrimaryTags();
   }
 
   function checkCondition(cond, selected) {
