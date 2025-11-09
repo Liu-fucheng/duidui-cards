@@ -106,7 +106,7 @@ export async function onRequestPost(context) {
   }
 }
 
-// GET: 获取统计数据
+// GET: 获取统计数据或查询用户操作记录
 export async function onRequestGet(context) {
   try {
     const { request, env } = context;
@@ -123,6 +123,8 @@ export async function onRequestGet(context) {
 
     const url = new URL(request.url);
     const card_id = url.searchParams.get('card_id');
+    const user_id = url.searchParams.get('user_id');
+    const action_type = url.searchParams.get('action_type');
 
     if (!card_id) {
       return new Response(JSON.stringify({ 
@@ -134,7 +136,29 @@ export async function onRequestGet(context) {
       });
     }
 
-    // 查询统计数据
+    // 如果提供了 user_id 和 action_type，查询特定用户的操作记录
+    if (user_id && action_type) {
+      const records = await env.D1_DB.prepare(`
+        SELECT id, card_id, action_type, user_id, username, display_name, timestamp
+        FROM card_actions
+        WHERE card_id = ? AND user_id = ? AND action_type = ?
+        ORDER BY timestamp DESC
+        LIMIT 10
+      `).bind(card_id, user_id, action_type).all();
+
+      return new Response(JSON.stringify({ 
+        success: true,
+        actions: records.results || []
+      }), {
+        status: 200,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store'
+        }
+      });
+    }
+
+    // 否则，查询统计数据（原有逻辑）
     const stats = await env.D1_DB.prepare(`
       SELECT 
         action_type,

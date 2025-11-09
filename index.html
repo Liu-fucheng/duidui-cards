@@ -1088,16 +1088,23 @@
       if (data.success) {
         TOKEN_DATA = data.data;
         console.log('Token验证成功:', TOKEN_DATA);
-        return true;
+        return { valid: true, used: false };
       } else {
         console.error('Token验证失败:', data.message);
-        alert(`Token验证失败: ${data.message}\n请联系管理员获取新的发卡链接。`);
-        return false;
+        // 检查是否为"Token已使用"的情况
+        if (data.message && data.message.includes('已被使用')) {
+          // Token已使用，返回特殊状态
+          return { valid: false, used: true, message: data.message };
+        } else {
+          // 其他错误（无效、过期等）
+          alert(`Token验证失败: ${data.message}\n请联系管理员获取新的发卡链接。`);
+          return { valid: false, used: false, message: data.message };
+        }
       }
     } catch (error) {
       console.error('Token验证错误:', error);
       alert('Token验证失败，请检查网络连接或联系管理员。');
-      return false;
+      return { valid: false, used: false, message: error.message };
     }
   }
 
@@ -2050,6 +2057,17 @@
     }
   }
 
+  // 将Markdown格式转换为HTML（**粗体, *斜体）
+  function markdownToHtml(text) {
+    if (!text) return text;
+    // 先处理 ** （粗体），再处理 * （斜体）
+    // 使用非贪婪匹配，避免跨行匹配
+    let html = text
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') // **粗体**
+      .replace(/\*(.+?)\*/g, '<em>$1</em>'); // *斜体*
+    return html;
+  }
+  
   // --- Discord预览更新函数（全局） ---
   window.updateDiscordPreview = function() {
     // 更新帖子标题
@@ -2211,13 +2229,15 @@
           sectionValues.push(input.value);
         });
         
-        // 如果有选中项，显示该板块
+        // 如果有选中项，显示该板块（应用Markdown渲染）
         if (sectionValues.length > 0) {
           const fieldDiv = document.createElement('div');
           fieldDiv.className = 'discord-field';
+          const valuesText = sectionValues.join(' / ');
+          const valuesHtml = markdownToHtml(valuesText);
           fieldDiv.innerHTML = `
             <span class="discord-field-label">${sectionTitle}：</span>
-            <span class="discord-field-value">${sectionValues.join(' / ')}</span>
+            <span class="discord-field-value">${valuesHtml}</span>
           `;
           customSectionsContainer.appendChild(fieldDiv);
       }
@@ -2228,25 +2248,29 @@
     const category = document.getElementById('category')?.value.trim();
     const isAbyss = category === '深渊';
     
-    // 更新简介（仅非深渊分区显示）
+    // 更新简介（仅非深渊分区显示，应用Markdown渲染）
     const description = document.getElementById('description')?.value || '';
     const previewDescriptionField = document.getElementById('previewDescriptionField');
     const previewDescription = document.getElementById('previewDescription');
     if (previewDescriptionField && previewDescription) {
       if (!isAbyss && description.trim()) {
         previewDescriptionField.style.display = '';
-        previewDescription.textContent = description;
+        // 将换行转换为<br>，应用Markdown渲染
+        const descriptionHtml = markdownToHtml(description).replace(/\n/g, '<br>');
+        previewDescription.innerHTML = descriptionHtml;
       } else {
         previewDescriptionField.style.display = 'none';
       }
     }
     
-    // 更新排雷（保留换行）
+    // 更新排雷（保留换行，应用Markdown渲染）
     const warnings = document.getElementById('warnings')?.value || '';
     const previewWarnings = document.getElementById('previewWarnings');
     if (previewWarnings) {
       if (warnings.trim()) {
-        previewWarnings.textContent = warnings;
+        // 将换行转换为<br>，应用Markdown渲染
+        const warningsHtml = markdownToHtml(warnings).replace(/\n/g, '<br>');
+        previewWarnings.innerHTML = warningsHtml;
       } else {
         previewWarnings.innerHTML = '<span class="preview-placeholder">未填写</span>';
       }
@@ -2285,7 +2309,9 @@
         
         if (filteredLines.length > 0) {
           previewOtherInfoField.style.display = '';
-          previewOtherInfo.textContent = filteredLines.join('\n');
+          // 应用Markdown渲染，将换行转换为<br>
+          const otherInfoHtml = markdownToHtml(filteredLines.join('\n')).replace(/\n/g, '<br>');
+          previewOtherInfo.innerHTML = otherInfoHtml;
         } else {
           previewOtherInfoField.style.display = 'none';
         }
@@ -2519,17 +2545,93 @@
     
     // 如果有token，先验证
     if (token) {
-      const verified = await verifyToken(token);
-      if (!verified) {
-        // Token验证失败，禁用表单
+      const verifyResult = await verifyToken(token);
+      
+      if (!verifyResult.valid && !verifyResult.used) {
+        // Token验证失败（无效或过期），禁用表单
         document.getElementById('uploadForm').style.display = 'none';
         document.getElementById('uploadStatus').textContent = '⚠️ Token验证失败，无法使用此链接投递卡片。请联系管理员获取新的发卡链接。';
         document.getElementById('uploadStatus').style.color = '#B5534E';
         return;
       }
       
-      // Token验证成功，预填信息
-      if (TOKEN_DATA) {
+      if (verifyResult.used) {
+        // Token已使用，显示提示，恢复缓存，禁用投递按钮
+        const uploadStatus = document.getElementById('uploadStatus');
+        uploadStatus.innerHTML = `
+          <div style="padding: 16px; background: #FFF3E0; border: 1px solid #FF9800; border-radius: 8px; margin-bottom: 16px;">
+            ⚠️ <strong>此Token已使用</strong><br>
+            <small>表单内容已从缓存恢复，您可以查看之前填写的内容并复制文本，但无法再次投递。</small>
+          </div>
+        `;
+        
+        // 禁用投递按钮
+        const submitButton = document.getElementById('submitButton');
+        if (submitButton) {
+          submitButton.disabled = true;
+          submitButton.textContent = 'Token已使用';
+          submitButton.style.background = '#ccc';
+          submitButton.style.cursor = 'not-allowed';
+        }
+        
+        // 恢复缓存
+        await loadConfig();
+        restoreFormCache();
+        
+        // 添加复制按钮（如果缓存中有数据）
+        const cachedData = localStorage.getItem('cardFormCache');
+        if (cachedData) {
+          try {
+            const formData = JSON.parse(cachedData);
+            const copyButtonsHtml = `
+              <div style="display: flex; gap: 10px; margin-top: 12px;">
+                <button id="cachedCopyTitleBtn" style="flex: 1; padding: 10px; border: 1px solid #8B5E3C; border-radius: 8px; background: #fff; color: #8B5E3C; cursor: pointer; font-weight: 500; transition: all 0.2s;" onmouseover="this.style.background='#8B5E3C'; this.style.color='#fff';" onmouseout="if(!this.textContent.includes('✅')) { this.style.background='#fff'; this.style.color='#8B5E3C'; }">📋 复制标题</button>
+                <button id="cachedCopyContentBtn" style="flex: 1; padding: 10px; border: 1px solid #8B5E3C; border-radius: 8px; background: #fff; color: #8B5E3C; cursor: pointer; font-weight: 500; transition: all 0.2s;" onmouseover="this.style.background='#8B5E3C'; this.style.color='#fff';" onmouseout="if(!this.textContent.includes('✅')) { this.style.background='#fff'; this.style.color='#8B5E3C'; }">📋 复制主楼内容</button>
+              </div>
+            `;
+            uploadStatus.innerHTML += copyButtonsHtml;
+            
+            // 绑定复制按钮事件
+            setTimeout(() => {
+              const titleBtn = document.getElementById('cachedCopyTitleBtn');
+              const contentBtn = document.getElementById('cachedCopyContentBtn');
+              
+              if (titleBtn) {
+                titleBtn.onclick = async () => {
+                  const title = generateThreadTitle();
+                  try {
+                    await navigator.clipboard.writeText(title);
+                    titleBtn.textContent = '✅ 已复制';
+                    setTimeout(() => { titleBtn.textContent = '📋 复制标题'; }, 2000);
+                  } catch (err) {
+                    alert('复制失败：' + err.message);
+                  }
+                };
+              }
+              
+              if (contentBtn) {
+                contentBtn.onclick = async () => {
+                  const content = generatePreviewText();
+                  try {
+                    await navigator.clipboard.writeText(content);
+                    contentBtn.textContent = '✅ 已复制';
+                    setTimeout(() => { contentBtn.textContent = '📋 复制主楼内容'; }, 2000);
+                  } catch (err) {
+                    alert('复制失败：' + err.message);
+                  }
+                };
+              }
+            }, 100);
+          } catch (e) {
+            console.error('解析缓存失败:', e);
+          }
+        }
+        
+        // 不return，继续执行，让表单正常显示
+      }
+      
+      // Token验证成功且未使用，预填信息
+      if (verifyResult.valid && TOKEN_DATA) {
         // 预填分区
         const categoryInput = document.getElementById('category');
         categoryInput.value = TOKEN_DATA.category;
