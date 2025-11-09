@@ -1079,6 +1079,177 @@
   let CONFIG = {};
   let TOKEN_DATA = null; // 存储Token验证后的用户数据
 
+  // 生成帖子标题
+  function generateThreadTitle(formDataObj) {
+    // 如果提供了 formData 对象，从中读取；否则从表单读取
+    let threadTitle;
+    if (formDataObj) {
+      threadTitle = formDataObj.get('threadTitle');
+    } else {
+      threadTitle = document.getElementById('threadTitle')?.value.trim();
+    }
+    return threadTitle || '';
+  }
+  
+  // 生成纯文本预览内容（主楼内容）
+  function generatePreviewText(formDataObj) {
+    let text = '';
+    
+    // 如果提供了 formData 对象，使用它；否则从 DOM 读取
+    const getValue = (id) => {
+      if (formDataObj) {
+        return formDataObj.get(id) || '';
+      }
+      return document.getElementById(id)?.value.trim() || '';
+    };
+    
+    const getCheckedValue = (name) => {
+      if (formDataObj) {
+        return formDataObj.get(name) || '';
+      }
+      return document.querySelector(`input[name="${name}"]:checked`)?.value || '';
+    };
+    
+    // 作者
+    const authorName = getValue('authorName') || '未填写';
+    text += `**作者：**${authorName}\n`;
+    
+    // 卡名
+    const cardName = getValue('cardName') || '未填写';
+    text += `**卡名：**${cardName}\n`;
+    
+    // 角色名（仅不同名或多人卡显示）
+    const cardType = getCheckedValue('cardType');
+    const nameRelation = getCheckedValue('nameRelation');
+    const characters = [];
+    
+    if (cardType === 'multi') {
+      if (formDataObj) {
+        // 从 FormData 获取
+        const charValues = formDataObj.getAll('characters');
+        charValues.forEach(val => {
+          if (val && val.trim()) characters.push(val.trim());
+        });
+      } else {
+        // 从 DOM 获取
+        document.querySelectorAll('input[name="characters"]').forEach(input => {
+          const val = input.value.trim();
+          if (val) characters.push(val);
+        });
+      }
+    } else if (cardType === 'single' && nameRelation === 'different') {
+      const singleChar = getValue('singleCharacterName');
+      if (singleChar) characters.push(singleChar);
+    }
+    
+    if (characters.length > 0) {
+      text += `**角色：**${characters.join(' / ')}\n`;
+    }
+    
+    // 性向
+    const orientations = [];
+    if (formDataObj) {
+      const orientValues = formDataObj.getAll('custom_性向') || formDataObj.getAll('custom_性向[]') || [];
+      orientValues.forEach(val => {
+        if (val) orientations.push(val);
+      });
+    } else {
+      document.querySelectorAll('input[name="custom_性向"]:checked, input[name="custom_性向[]"]:checked').forEach(cb => {
+        orientations.push(cb.value);
+      });
+    }
+    if (orientations.length > 0) {
+      text += `**性向：**${orientations.join(' / ')}\n`;
+    }
+    
+    // Tags
+    const selectedTags = [];
+    if (formDataObj) {
+      const tagValues = formDataObj.getAll('tags') || [];
+      selectedTags.push(...tagValues);
+    } else {
+      document.querySelectorAll('input[type="checkbox"].pill-input:checked').forEach(cb => {
+        const label = document.querySelector(`label[for="${cb.id}"]`);
+        if (label && cb.name === 'tags') {
+          selectedTags.push(label.textContent.trim());
+        }
+      });
+    }
+    if (selectedTags.length > 0) {
+      text += `**Tags：**${selectedTags.join(' / ')}\n`;
+    }
+    
+    // 自定义板块（除了性向）
+    if (formDataObj) {
+      // 从 otherInfo 解析自定义板块
+      const otherInfo = getValue('otherInfo');
+      if (otherInfo) {
+        const lines = otherInfo.split('\n');
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          // 匹配格式："{title}: {value1}, {value2}"
+          const match = trimmed.match(/^([^：:]+)[：:]\s*(.+)$/);
+          if (match) {
+            let title = match[1].trim().replace(/\*/g, '').trim();
+            const values = match[2].trim();
+            // 跳过已单独显示的字段
+            if (title !== '下载要求' && title !== '性向' && title !== '背景') {
+              // 将逗号分隔的值转换为 " / " 分隔
+              const valueList = values.split(/[,，、]/).map(v => v.trim()).filter(v => v);
+              if (valueList.length > 0) {
+                text += `**${title}：**${valueList.join(' / ')}\n`;
+              }
+            }
+          }
+        }
+      }
+    } else {
+      // 从 DOM 读取自定义板块
+      document.querySelectorAll('[id^="section_"]').forEach(section => {
+        const labelEl = section.querySelector('.group-label');
+        if (!labelEl) return;
+        // 从 label 提取纯标题（移除 HTML 中的 * 和 : 标记）
+        let sectionTitle = labelEl.textContent.replace(/\*/g, '').replace(':', '').trim();
+        
+        // 跳过性向（已单独显示）
+        if (sectionTitle === '性向') return;
+        
+        const sectionValues = [];
+        section.querySelectorAll('input:checked').forEach(input => {
+          sectionValues.push(input.value);
+        });
+        
+        if (sectionValues.length > 0) {
+          text += `**${sectionTitle}：**${sectionValues.join(' / ')}\n`;
+        }
+      });
+    }
+    
+    // 排雷
+    const warnings = getValue('warnings');
+    if (warnings) {
+      text += `\n**排雷：**\n${warnings}\n`;
+    }
+    
+    // 简介（检查是否为深渊分区）
+    const category = getValue('category');
+    const isAbyss = category === '深渊';
+    const description = getValue('description');
+    
+    if (!isAbyss && description) {
+      text += `\n**简介：**\n${description}\n`;
+    }
+    
+    // 其她
+    const otherInfo = getValue('otherInfo');
+    if (otherInfo) {
+      text += `\n**其她：**\n${otherInfo}\n`;
+    }
+    
+    return text;
+  }
+
   // 验证Token并获取用户信息
   async function verifyToken(token) {
     try {
@@ -2850,177 +3021,6 @@
     });
     });
     
-    // 生成帖子标题
-    function generateThreadTitle(formDataObj) {
-      // 如果提供了 formData 对象，从中读取；否则从表单读取
-      let threadTitle;
-      if (formDataObj) {
-        threadTitle = formDataObj.get('threadTitle');
-      } else {
-        threadTitle = document.getElementById('threadTitle')?.value.trim();
-      }
-      return threadTitle || '';
-    }
-    
-    // 生成纯文本预览内容（主楼内容）
-    function generatePreviewText(formDataObj) {
-      let text = '';
-      
-      // 如果提供了 formData 对象，使用它；否则从 DOM 读取
-      const getValue = (id) => {
-        if (formDataObj) {
-          return formDataObj.get(id) || '';
-        }
-        return document.getElementById(id)?.value.trim() || '';
-      };
-      
-      const getCheckedValue = (name) => {
-        if (formDataObj) {
-          return formDataObj.get(name) || '';
-        }
-        return document.querySelector(`input[name="${name}"]:checked`)?.value || '';
-      };
-      
-      // 作者
-      const authorName = getValue('authorName') || '未填写';
-      text += `**作者：**${authorName}\n`;
-      
-      // 卡名
-      const cardName = getValue('cardName') || '未填写';
-      text += `**卡名：**${cardName}\n`;
-      
-      // 角色名（仅不同名或多人卡显示）
-      const cardType = getCheckedValue('cardType');
-      const nameRelation = getCheckedValue('nameRelation');
-      const characters = [];
-      
-      if (cardType === 'multi') {
-        if (formDataObj) {
-          // 从 FormData 获取
-          const charValues = formDataObj.getAll('characters');
-          charValues.forEach(val => {
-            if (val && val.trim()) characters.push(val.trim());
-          });
-        } else {
-          // 从 DOM 获取
-          document.querySelectorAll('input[name="characters"]').forEach(input => {
-            const val = input.value.trim();
-            if (val) characters.push(val);
-          });
-        }
-      } else if (cardType === 'single' && nameRelation === 'different') {
-        const singleChar = getValue('singleCharacterName');
-        if (singleChar) characters.push(singleChar);
-      }
-      
-      if (characters.length > 0) {
-        text += `**角色：**${characters.join(' / ')}\n`;
-      }
-      
-      // 性向
-      const orientations = [];
-      if (formDataObj) {
-        const orientValues = formDataObj.getAll('custom_性向') || formDataObj.getAll('custom_性向[]') || [];
-        orientValues.forEach(val => {
-          if (val) orientations.push(val);
-        });
-      } else {
-        document.querySelectorAll('input[name="custom_性向"]:checked, input[name="custom_性向[]"]:checked').forEach(cb => {
-          orientations.push(cb.value);
-        });
-      }
-      if (orientations.length > 0) {
-        text += `**性向：**${orientations.join(' / ')}\n`;
-      }
-      
-      // Tags
-      const selectedTags = [];
-      if (formDataObj) {
-        const tagValues = formDataObj.getAll('tags') || [];
-        selectedTags.push(...tagValues);
-      } else {
-        document.querySelectorAll('input[type="checkbox"].pill-input:checked').forEach(cb => {
-          const label = document.querySelector(`label[for="${cb.id}"]`);
-          if (label && cb.name === 'tags') {
-            selectedTags.push(label.textContent.trim());
-          }
-        });
-      }
-      if (selectedTags.length > 0) {
-        text += `**Tags：**${selectedTags.join(' / ')}\n`;
-      }
-      
-      // 自定义板块（除了性向）
-      if (formDataObj) {
-        // 从 otherInfo 解析自定义板块
-        const otherInfo = getValue('otherInfo');
-        if (otherInfo) {
-          const lines = otherInfo.split('\n');
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed) continue;
-            // 匹配格式："{title}: {value1}, {value2}"
-            const match = trimmed.match(/^([^：:]+)[：:]\s*(.+)$/);
-            if (match) {
-              let title = match[1].trim().replace(/\*/g, '').trim();
-              const values = match[2].trim();
-              // 跳过已单独显示的字段
-              if (title !== '下载要求' && title !== '性向' && title !== '背景') {
-                // 将逗号分隔的值转换为 " / " 分隔
-                const valueList = values.split(/[,，、]/).map(v => v.trim()).filter(v => v);
-                if (valueList.length > 0) {
-                  text += `**${title}：**${valueList.join(' / ')}\n`;
-                }
-              }
-            }
-          }
-        }
-      } else {
-        // 从 DOM 读取自定义板块
-        document.querySelectorAll('[id^="section_"]').forEach(section => {
-          const labelEl = section.querySelector('.group-label');
-          if (!labelEl) return;
-          // 从 label 提取纯标题（移除 HTML 中的 * 和 : 标记）
-          let sectionTitle = labelEl.textContent.replace(/\*/g, '').replace(':', '').trim();
-          
-          // 跳过性向（已单独显示）
-          if (sectionTitle === '性向') return;
-          
-          const sectionValues = [];
-          section.querySelectorAll('input:checked').forEach(input => {
-            sectionValues.push(input.value);
-          });
-          
-          if (sectionValues.length > 0) {
-            text += `**${sectionTitle}：**${sectionValues.join(' / ')}\n`;
-          }
-        });
-      }
-      
-      // 排雷
-      const warnings = getValue('warnings');
-      if (warnings) {
-        text += `\n**排雷：**\n${warnings}\n`;
-      }
-      
-      // 简介（检查是否为深渊分区）
-      const category = getValue('category');
-      const isAbyss = category === '深渊';
-      const description = getValue('description');
-      
-      if (!isAbyss && description) {
-        text += `\n**简介：**\n${description}\n`;
-      }
-      
-      // 其她
-      const otherInfo = getValue('otherInfo');
-      if (otherInfo) {
-        text += `\n**其她：**\n${otherInfo}\n`;
-      }
-      
-      return text;
-    }
-    
     // 监听 Tags 变化（需要通过 MutationObserver 或委托事件）
     document.addEventListener('change', (e) => {
       if (e.target.classList.contains('pill-input') || 
@@ -3062,6 +3062,67 @@
     window.addEventListener('beforeunload', (e) => {
       saveFormCache();
     });
+    
+    // === 刷新后恢复复制按钮 ===
+    // 在页面加载完成后，检查是否有缓存数据，如果有则显示复制按钮
+    function showCopyButtonsFromCache() {
+      const cachedData = localStorage.getItem('cardFormCache');
+      const uploadStatus = document.getElementById('uploadStatus');
+      
+      // 只在没有 Token 或 Token 已使用的情况下显示
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
+      
+      if (cachedData && uploadStatus && !uploadStatus.querySelector('#cachedCopyTitleBtn')) {
+        try {
+          const formData = JSON.parse(cachedData);
+          const copyButtonsHtml = `
+            <div id="cachedCopyButtonsContainer" style="display: flex; gap: 10px; margin-top: 12px; padding: 12px; background: #FFF3E0; border: 1px solid #FF9800; border-radius: 8px;">
+              <button id="cachedCopyTitleBtn" style="flex: 1; padding: 10px; border: 1px solid #8B5E3C; border-radius: 8px; background: #fff; color: #8B5E3C; cursor: pointer; font-weight: 500; transition: all 0.2s;" onmouseover="this.style.background='#8B5E3C'; this.style.color='#fff';" onmouseout="if(!this.textContent.includes('✅')) { this.style.background='#fff'; this.style.color='#8B5E3C'; }">📋 复制标题</button>
+              <button id="cachedCopyContentBtn" style="flex: 1; padding: 10px; border: 1px solid #8B5E3C; border-radius: 8px; background: #fff; color: #8B5E3C; cursor: pointer; font-weight: 500; transition: all 0.2s;" onmouseover="this.style.background='#8B5E3C'; this.style.color='#fff';" onmouseout="if(!this.textContent.includes('✅')) { this.style.background='#fff'; this.style.color='#8B5E3C'; }">📋 复制主楼内容</button>
+            </div>
+          `;
+          uploadStatus.innerHTML = `<div style="color: #666; font-size: 14px;">💾 已从缓存恢复表单数据</div>` + copyButtonsHtml;
+          
+          // 绑定复制按钮事件
+          setTimeout(() => {
+            const titleBtn = document.getElementById('cachedCopyTitleBtn');
+            const contentBtn = document.getElementById('cachedCopyContentBtn');
+            
+            if (titleBtn) {
+              titleBtn.onclick = async () => {
+                const title = generateThreadTitle();
+                try {
+                  await navigator.clipboard.writeText(title);
+                  titleBtn.textContent = '✅ 已复制';
+                  setTimeout(() => { titleBtn.textContent = '📋 复制标题'; }, 2000);
+                } catch (err) {
+                  alert('复制失败：' + err.message);
+                }
+              };
+            }
+            
+            if (contentBtn) {
+              contentBtn.onclick = async () => {
+                const content = generatePreviewText();
+                try {
+                  await navigator.clipboard.writeText(content);
+                  contentBtn.textContent = '✅ 已复制';
+                  setTimeout(() => { contentBtn.textContent = '📋 复制主楼内容'; }, 2000);
+                } catch (err) {
+                  alert('复制失败：' + err.message);
+                }
+              };
+            }
+          }, 100);
+        } catch (e) {
+          console.error('显示缓存复制按钮失败:', e);
+        }
+      }
+    }
+    
+    // 延迟执行，确保页面完全加载
+    setTimeout(showCopyButtonsFromCache, 500);
   });
 </script>
 

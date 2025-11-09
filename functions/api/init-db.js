@@ -70,6 +70,19 @@ const CORE_TABLES = {
       display_name TEXT,
       created_at TEXT DEFAULT (datetime('now'))
     )
+  `,
+  
+  card_likes: `
+    CREATE TABLE IF NOT EXISTS card_likes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      message_id TEXT NOT NULL,
+      card_id TEXT,
+      user_id TEXT NOT NULL,
+      username TEXT NOT NULL,
+      display_name TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(message_id, user_id)
+    )
   `
 };
 
@@ -129,6 +142,20 @@ const MIGRATIONS = [
     },
     run: async (db) => {
       await db.prepare('ALTER TABLE cards_v2 ADD COLUMN avatarImageKey TEXT').run();
+    }
+  },
+  {
+    name: 'add_likes_to_cards_v2',
+    check: async (db) => {
+      try {
+        const result = await db.prepare('PRAGMA table_info(cards_v2)').all();
+        return result.results && !result.results.some(col => col.name === 'likes');
+      } catch (e) {
+        return false;
+      }
+    },
+    run: async (db) => {
+      await db.prepare('ALTER TABLE cards_v2 ADD COLUMN likes INTEGER DEFAULT 0').run();
     }
   }
 ];
