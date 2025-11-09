@@ -185,38 +185,82 @@ async function uploadFileToR2(bucket, file, folder) {
   function formatDiscordPost(cardData, env) {
     let content = '';
     
-    // 基本信息
-    content += `**卡名：** ${cardData.cardName}\n`;
-    content += `**马甲：** ${cardData.authorName}\n`;
+    // 基本信息（无空格，与预览格式一致）
+    content += `**作者：**${cardData.authorName}\n`;
+    content += `**卡名：**${cardData.cardName}\n`;
     
     // 角色名（仅不同名或多人卡显示）
     if (cardData.cardType === 'multi' || (cardData.cardType === 'single' && cardData.characters.length > 0)) {
-      content += `**角色：** ${cardData.characters.join(' / ')}\n`;
+      content += `**角色：**${cardData.characters.join(' / ')}\n`;
     }
     
     // 性向
     if (cardData.orientation && cardData.orientation.length > 0) {
-      content += `**性向：** ${cardData.orientation.join(' / ')}\n`;
+      content += `**性向：**${cardData.orientation.join(' / ')}\n`;
+    }
+    
+    // 背景
+    if (cardData.background && cardData.background.length > 0) {
+      content += `**背景：**${cardData.background.join(' / ')}\n`;
     }
     
     // Tags
     if (cardData.tags && cardData.tags.length > 0) {
-      content += `**Tags：** ${cardData.tags.join(' / ')}\n`;
+      content += `**Tags：**${cardData.tags.join(' / ')}\n`;
+    }
+    
+    // 自定义板块（从 otherInfo 解析，排除已单独显示的字段）
+    const customSections = [];
+    const remainingLines = [];
+    
+    if (cardData.otherInfo) {
+      const lines = cardData.otherInfo.split('\n');
+      
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        
+        // 检查是否为自定义板块格式（标题: 值）
+        const match = trimmed.match(/^([^：:]+)[：:]\s*(.+)$/);
+        if (match) {
+          const title = match[1].trim().replace(/\*/g, '');
+          const values = match[2].trim();
+          
+          // 跳过已单独显示的字段
+          if (title === '性向' || title === '背景' || title === '下载要求') {
+            continue;
+          }
+          
+          // 将逗号分隔的值转换为 " / " 分隔
+          const valueList = values.split(/[,，、]/).map(v => v.trim()).filter(v => v);
+          if (valueList.length > 0) {
+            customSections.push({ title, value: valueList.join(' / ') });
+          }
+        } else {
+          // 不是自定义板块格式的行，保留到最后
+          remainingLines.push(trimmed);
+        }
+      }
+    }
+    
+    // 添加自定义板块（格式：**标题：**值，无空格）
+    for (const section of customSections) {
+      content += `**${section.title}：**${section.value}\n`;
     }
     
     content += '\n';
     
     // 排雷
-    content += `**排雷：**\n${cardData.warnings || '未填写'}\n\n`;
+    content += `**排雷：**\n${cardData.warnings || '未填写'}\n`;
     
     // 简介（非深渊分区显示）
     if (cardData.category !== '深渊' && cardData.description) {
-      content += `**简介：**\n${cardData.description}\n\n`;
+      content += `\n**简介：**\n${cardData.description}\n`;
     }
     
-    // 其他信息
-    if (cardData.otherInfo) {
-      content += `${cardData.otherInfo}\n`;
+    // 其她信息（无标签，直接显示剩余内容）
+    if (remainingLines.length > 0) {
+      content += `\n${remainingLines.join('\n')}\n`;
     }
 
     return {
@@ -540,8 +584,9 @@ async function uploadFileToR2(bucket, file, folder) {
         `INSERT INTO cards_v2 (id, cardName, cardType, characters, category, authorName, authorId, isAnonymous, 
           orientation, background, tags, userLimit, warnings, description, secondaryWarning, threadTitle, otherInfo,
           avatarImageKey, galleryImageKeys, cardFileKey, attachmentKeys, threadId, firstMessageId,
-          submitterUserId, submitterUsername, submitterDisplayName, primaryTags)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          submitterUserId, submitterUsername, submitterDisplayName, primaryTags,
+          downloadRequirements, requireReaction, requireComment)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).bind(
         cardId,
         formData.get("cardName") || "未命名",
@@ -569,7 +614,10 @@ async function uploadFileToR2(bucket, file, folder) {
         submitterUserId, // 提交者Discord用户ID
         submitterUsername, // 提交者Discord用户名
         submitterDisplayName, // 提交者Discord显示名（服务器昵称）
-        JSON.stringify(primaryTags) // 主要标签（JSON数组）
+        JSON.stringify(primaryTags), // 主要标签（JSON数组）
+        JSON.stringify(downloadRequirements), // 下载要求列表（JSON数组）
+        requireLike ? 1 : 0, // 是否需要点赞/反应
+        requireComment ? 1 : 0 // 是否需要评论
       );
 
       await stmt.run();

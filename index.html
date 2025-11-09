@@ -1237,7 +1237,9 @@
       text += `**Tags：**${selectedTags.join(' / ')}\n`;
     }
     
-    // 自定义板块（除了性向）
+    // 自定义板块（除了性向）和其她内容
+    const remainingLines = [];
+    
     if (formDataObj) {
       // 从 otherInfo 解析自定义板块
       const otherInfo = getValue('otherInfo');
@@ -1259,6 +1261,9 @@
                 text += `**${title}：**${valueList.join(' / ')}\n`;
               }
             }
+          } else {
+            // 不是自定义板块格式的行，保留到最后
+            remainingLines.push(trimmed);
           }
         }
       }
@@ -1282,6 +1287,21 @@
           text += `**${sectionTitle}：**${sectionValues.join(' / ')}\n`;
         }
       });
+      
+      // 从 otherInfo 中提取非自定义板块格式的行
+      const otherInfo = getValue('otherInfo');
+      if (otherInfo) {
+        const lines = otherInfo.split('\n');
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          // 如果不是自定义板块格式，保留
+          const match = trimmed.match(/^([^：:]+)[：:]\s*(.+)$/);
+          if (!match) {
+            remainingLines.push(trimmed);
+          }
+        }
+      }
     }
     
     // 排雷
@@ -1299,10 +1319,9 @@
       text += `\n**简介：**\n${description}\n`;
     }
     
-    // 其她
-    const otherInfo = getValue('otherInfo');
-    if (otherInfo) {
-      text += `\n**其她：**\n${otherInfo}\n`;
+    // 其她（无标签，只显示非自定义板块格式的内容）
+    if (remainingLines.length > 0) {
+      text += `\n${remainingLines.join('\n')}\n`;
     }
     
     return text;
