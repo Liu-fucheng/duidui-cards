@@ -70,7 +70,12 @@ export async function onRequestGet(context) {
       galleryImageUrls: result.galleryImageKeys ? JSON.parse(result.galleryImageKeys).map(key => `${r2PublicUrl}/${key}`) : [],
       threadId: result.threadId,
       firstMessageId: result.firstMessageId,
-      createdAt: result.createdAt
+      createdAt: result.createdAt,
+      // 提交者信息
+      submitterUserId: result.submitterUserId,
+      submitterUsername: result.submitterUsername,
+      submitterDisplayName: result.submitterDisplayName,
+      nameRelation: result.nameRelation
     };
     
     return new Response(JSON.stringify({ 
