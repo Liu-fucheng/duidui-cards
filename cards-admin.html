@@ -706,9 +706,23 @@
       }
     }
 
-    function renderDetail(card) {
+    async function renderDetail(card) {
       const modal = document.getElementById('detailModal');
       const body = document.getElementById('detailBody');
+      
+      // 获取操作统计数据
+      let stats = null;
+      try {
+        const response = await fetch(`/api/card-actions?card_id=${encodeURIComponent(card.id)}`);
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            stats = result.stats;
+          }
+        }
+      } catch (e) {
+        console.warn('获取统计数据失败:', e);
+      }
 
       // 安全解析JSON字段，处理null、空字符串、无效JSON等情况
       function safeParseJSON(value, defaultValue = '-') {
@@ -837,6 +851,23 @@
           <div class="detail-label">上传时间</div>
           <div class="detail-value">${new Date(card.createdAt).toLocaleString('zh-CN')}</div>
         </div>
+        ${stats ? `
+        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #E8DFD6;">
+          <h3 style="margin: 0 0 15px 0; color: #8B5E3C; font-size: 16px;">📊 操作统计</h3>
+          <div class="detail-row">
+            <div class="detail-label">查看简介</div>
+            <div class="detail-value">
+              <strong>${stats.view_intro.total_count}</strong> 人次 / <strong>${stats.view_intro.unique_users}</strong> 人
+            </div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-label">下载卡片</div>
+            <div class="detail-value">
+              <strong>${stats.download.total_count}</strong> 人次 / <strong>${stats.download.unique_users}</strong> 人
+            </div>
+          </div>
+        </div>
+        ` : ''}
       `;
 
       modal.classList.add('show');

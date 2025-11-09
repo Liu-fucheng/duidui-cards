@@ -264,6 +264,28 @@
     .btn-primary:active { background: var(--accent-2); }
     .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; box-shadow: none; }
 
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      font-size: 16px;
+      font-weight: 500;
+      border: 2px solid var(--accent);
+      border-radius: 8px;
+      background: white;
+      color: var(--accent);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-secondary:hover { 
+      background: var(--accent); 
+      color: white;
+      box-shadow: 0 2px 10px rgba(139,94,60,0.25); 
+    }
+    .btn-secondary:active { background: var(--accent-2); color: white; }
+    .btn-secondary:disabled { opacity: 0.6; cursor: not-allowed; box-shadow: none; }
+
     #uploadStatus {
       font-weight: 600;
       margin-top: 15px;
@@ -939,7 +961,10 @@
       </div>
     </div>
 
-    <button type="submit" id="submitButton" class="btn-primary ripple">投递</button>
+    <div style="display: flex; gap: 12px; margin-top: 20px;">
+      <button type="submit" id="submitButton" class="btn-primary ripple">投递</button>
+      <button type="button" id="copyPreviewButton" class="btn-secondary ripple" style="display: none;">复制预览文本</button>
+    </div>
   </form>
 
   <div id="uploadStatus"></div>
@@ -2553,10 +2578,165 @@
       }
     });
     
-    // 监听作者类型变化
+    // 监听作者类型变化（更新预览 + 切换按钮）
     document.querySelectorAll('input[name="authorType"]').forEach(radio => {
-      radio.addEventListener('change', window.updateDiscordPreview);
+      radio.addEventListener('change', () => {
+        window.updateDiscordPreview();
+        toggleSubmitButton();
+      });
     });
+    
+    // 切换投递按钮和复制按钮的显示
+    function toggleSubmitButton() {
+      const authorType = document.querySelector('input[name="authorType"]:checked')?.value;
+      const submitButton = document.getElementById('submitButton');
+      const copyButton = document.getElementById('copyPreviewButton');
+      
+      if (authorType === 'real') {
+        // 实名：隐藏投递按钮，显示复制按钮
+        if (submitButton) submitButton.style.display = 'none';
+        if (copyButton) copyButton.style.display = 'inline-flex';
+      } else {
+        // 匿名：显示投递按钮，隐藏复制按钮
+        if (submitButton) submitButton.style.display = 'inline-flex';
+        if (copyButton) copyButton.style.display = 'none';
+      }
+    }
+    
+    // 生成纯文本预览内容
+    function generatePreviewText() {
+      let text = '';
+      
+      // 作者
+      const authorName = document.getElementById('authorName')?.value.trim() || '未填写';
+      text += `**作者：**${authorName}\n\n`;
+      
+      // 卡名
+      const cardName = document.getElementById('cardName')?.value.trim() || '未填写';
+      text += `**卡名：**${cardName}\n`;
+      
+      // 角色名（仅不同名或多人卡显示）
+      const cardType = document.querySelector('input[name="cardType"]:checked')?.value;
+      const nameRelation = document.querySelector('input[name="nameRelation"]:checked')?.value;
+      const characters = [];
+      
+      if (cardType === 'multi') {
+        document.querySelectorAll('input[name="characters"]').forEach(input => {
+          const val = input.value.trim();
+          if (val) characters.push(val);
+        });
+      } else if (cardType === 'single' && nameRelation === 'different') {
+        const singleChar = document.getElementById('singleCharacterName')?.value.trim();
+        if (singleChar) characters.push(singleChar);
+      }
+      
+      if (characters.length > 0) {
+        text += `**角色：**${characters.join(' / ')}\n`;
+      }
+      
+      // 性向
+      const orientations = [];
+      document.querySelectorAll('input[name="custom_性向"]:checked, input[name="custom_性向[]"]:checked').forEach(cb => {
+        orientations.push(cb.value);
+      });
+      if (orientations.length > 0) {
+        text += `**性向：**${orientations.join(' / ')}\n`;
+      }
+      
+      // Tags
+      const selectedTags = [];
+      document.querySelectorAll('input[type="checkbox"].pill-input:checked').forEach(cb => {
+        const label = document.querySelector(`label[for="${cb.id}"]`);
+        if (label && cb.name === 'tags') {
+          selectedTags.push(label.textContent.trim());
+        }
+      });
+      if (selectedTags.length > 0) {
+        text += `**Tags：**${selectedTags.join(' / ')}\n`;
+      }
+      
+      // 自定义板块（除了性向）
+      document.querySelectorAll('[id^="section_"]').forEach(section => {
+        const labelEl = section.querySelector('.group-label');
+        if (!labelEl) return;
+        const sectionTitle = labelEl.textContent.replace(':', '').trim();
+        
+        // 跳过性向（已单独显示）
+        if (sectionTitle === '性向') return;
+        
+        const sectionValues = [];
+        section.querySelectorAll('input:checked').forEach(input => {
+          sectionValues.push(input.value);
+        });
+        
+        if (sectionValues.length > 0) {
+          text += `**${sectionTitle}：**${sectionValues.join(' / ')}\n`;
+        }
+      });
+      
+      // 排雷
+      const warnings = document.getElementById('warnings')?.value.trim();
+      if (warnings) {
+        text += `\n**排雷：**\n${warnings}\n`;
+      }
+      
+      // 简介（检查是否为深渊分区）
+      const category = document.getElementById('category')?.value.trim();
+      const isAbyss = category === '深渊';
+      const description = document.getElementById('description')?.value.trim();
+      
+      if (!isAbyss && description) {
+        text += `\n**简介：**\n${description}\n`;
+      }
+      
+      // 其她
+      const otherInfo = document.getElementById('otherInfo')?.value.trim();
+      if (otherInfo) {
+        text += `\n**其她：**\n${otherInfo}\n`;
+      }
+      
+      return text;
+    }
+    
+    // 复制按钮点击事件
+    document.getElementById('copyPreviewButton')?.addEventListener('click', async () => {
+      const previewText = generatePreviewText();
+      
+      try {
+        // 使用 Clipboard API 复制到剪贴板
+        await navigator.clipboard.writeText(previewText);
+        
+        // 显示成功提示
+        const statusDiv = document.getElementById('uploadStatus');
+        if (statusDiv) {
+          statusDiv.innerHTML = `
+            <div style="display: inline-block; padding: 10px 20px; background: rgba(76, 175, 80, 0.1); border-radius: 8px; margin-top: 16px; color: #4CAF50; font-size: 14px; border: 1px solid rgba(76, 175, 80, 0.3);">
+              ✅ 预览文本已复制到剪贴板
+            </div>
+          `;
+          
+          // 3秒后自动消失
+          setTimeout(() => {
+            statusDiv.innerHTML = '';
+          }, 3000);
+        }
+      } catch (err) {
+        console.error('复制失败:', err);
+        
+        // 显示失败提示
+        const statusDiv = document.getElementById('uploadStatus');
+        if (statusDiv) {
+          statusDiv.innerHTML = `
+            <div style="display: inline-block; padding: 10px 20px; background: rgba(244, 67, 54, 0.1); border-radius: 8px; margin-top: 16px; color: #F44336; font-size: 14px; border: 1px solid rgba(244, 67, 54, 0.3);">
+              ❌ 复制失败，请手动复制预览内容
+            </div>
+          `;
+        }
+      }
+    });
+    
+    // 初始化按钮状态
+    toggleSubmitButton();
     
     // 监听 Tags 变化（需要通过 MutationObserver 或委托事件）
     document.addEventListener('change', (e) => {

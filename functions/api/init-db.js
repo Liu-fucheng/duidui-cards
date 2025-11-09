@@ -58,6 +58,18 @@ const CORE_TABLES = {
       used INTEGER DEFAULT 0,
       used_at TEXT
     )
+  `,
+  
+  card_actions: `
+    CREATE TABLE IF NOT EXISTS card_actions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      card_id TEXT NOT NULL,
+      action_type TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      username TEXT,
+      display_name TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    )
   `
 };
 
