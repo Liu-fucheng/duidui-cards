@@ -3084,33 +3084,33 @@
           authorNameInput.placeholder = '马甲 (不填默认匿名)';
           authorNameInput.dataset.tokenLocked = 'false';
         } else {
-          // 非深渊区：默认实名并锁定
+          // 非深渊区：默认实名，预填充Discord名字但允许修改
           realRadio.checked = true;
           realRadio.disabled = false;
           realRadio.parentElement.style.opacity = '1';
           realRadio.parentElement.style.cursor = '';
           realRadio.parentElement.title = '';
           
+          // 预填充Discord名字，但允许用户修改为昵称
           authorNameInput.value = TOKEN_DATA.display_name || TOKEN_DATA.username;
-          authorNameInput.readOnly = true;
-          authorNameInput.classList.add('locked');
-          authorNameInput.dataset.tokenLocked = 'true';
+          authorNameInput.readOnly = false;
+          authorNameInput.classList.remove('locked');
+          authorNameInput.placeholder = '昵称/马甲 (不填默认Discord名)';
+          authorNameInput.dataset.tokenLocked = 'false';
           
           // 监听作者类型切换（仅非深渊区）
         document.querySelectorAll('input[name="authorType"]').forEach(radio => {
           radio.addEventListener('change', (e) => {
-            if (authorNameInput.dataset.tokenLocked === 'true') {
-              if (e.target.value === 'anonymous') {
-                // 切换到匿名：解锁，允许修改为马甲名
-                authorNameInput.readOnly = false;
-                authorNameInput.classList.remove('locked');
-                authorNameInput.placeholder = '马甲 (不填默认匿名)';
-                authorNameInput.value = ''; // 清空，让用户填写马甲
-              } else {
-                // 切换到实名：锁定，恢复Discord名字
-                authorNameInput.readOnly = true;
-                authorNameInput.classList.add('locked');
-                authorNameInput.placeholder = '实名';
+            if (e.target.value === 'anonymous') {
+              // 切换到匿名：清空，让用户填写马甲
+              authorNameInput.placeholder = '马甲 (不填默认匿名)';
+              if (authorNameInput.value === TOKEN_DATA.display_name || authorNameInput.value === TOKEN_DATA.username) {
+                authorNameInput.value = ''; // 如果还是Discord名字，清空它
+              }
+            } else {
+              // 切换回实名：恢复Discord名字作为默认值（但仍可修改）
+              authorNameInput.placeholder = '昵称/马甲 (不填默认Discord名)';
+              if (!authorNameInput.value) {
                 authorNameInput.value = TOKEN_DATA.display_name || TOKEN_DATA.username;
               }
             }
@@ -3125,7 +3125,7 @@
             <strong>✅ 已通过Discord验证</strong><br>
             用户: ${TOKEN_DATA.display_name || TOKEN_DATA.username}<br>
             分区: ${TOKEN_DATA.category}<br>
-            <small style="color: #666;">您的信息已自动填写${isAbyss ? '' : '并锁定'}，请继续填写其他信息。</small>
+            <small style="color: #666;">分区已锁定，作者名已预填充（可修改为昵称），请继续填写其他信息。</small>
           </div>
         `;
       }
