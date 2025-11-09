@@ -1212,8 +1212,8 @@
         // 从 label 提取纯标题（移除 HTML 中的 * 和 : 标记）
         let sectionTitle = labelEl.textContent.replace(/\*/g, '').replace(':', '').trim();
         
-        // 跳过性向（已单独显示）
-        if (sectionTitle === '性向') return;
+        // 跳过性向和下载要求（已单独显示或不需要显示）
+        if (sectionTitle === '性向' || sectionTitle === '下载要求') return;
         
         const sectionValues = [];
         section.querySelectorAll('input:checked').forEach(input => {
@@ -2391,8 +2391,8 @@
         if (!labelEl) return;
         const sectionTitle = labelEl.textContent.replace(/\*/g, '').replace(':', '').trim();
         
-        // 跳过性向（已单独显示）
-        if (sectionTitle === '性向') return;
+        // 跳过性向和下载要求（已单独显示或不需要显示）
+        if (sectionTitle === '性向' || sectionTitle === '下载要求') return;
         
         // 收集该板块的选中项
         const sectionValues = [];
@@ -3069,10 +3069,7 @@
       const cachedData = localStorage.getItem('cardFormCache');
       const uploadStatus = document.getElementById('uploadStatus');
       
-      // 只在没有 Token 或 Token 已使用的情况下显示
-      const urlParams = new URLSearchParams(window.location.search);
-      const token = urlParams.get('token');
-      
+      // 有缓存数据就显示复制按钮（无论 Token 状态如何）
       if (cachedData && uploadStatus && !uploadStatus.querySelector('#cachedCopyTitleBtn')) {
         try {
           const formData = JSON.parse(cachedData);
