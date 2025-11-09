@@ -874,7 +874,7 @@
 
     <div class="field">
       <div class="tags-header">
-        <label class="group-label">Tags<span style="color: red;">*</span></label>
+        <label class="group-label">Tags<span style="color: #8B5E3C;">*</span></label>
         <div class="tags-search-wrapper">
           <span class="tags-search-icon material-icons">search</span>
           <input type="text" class="tags-search" id="tagsSearch" placeholder="搜索...">
@@ -886,7 +886,7 @@
     </div>
 
     <div class="field">
-      <label class="group-label" for="warnings">排雷<span style="color: red;">*</span>:</label>
+      <label class="group-label" for="warnings">排雷<span style="color: #8B5E3C;">*</span>:</label>
       <textarea id="warnings" name="warnings" required placeholder="请务必详细填写所有可能的雷点，此板块将会在主楼展示。
 如有违反底线的【涉毒/涉政/同妻/代孕/幼童】要素，请勿投递。（如果认为自己的卡只是有相关要素，但不违背主流价值观，比如凌虐毒枭等，可以与管理组沟通再发卡）
 含有char/user霸凌要素，请投递深渊区。
@@ -895,7 +895,7 @@
     </div>
 
     <div class="field">
-      <label class="group-label" for="description">简介<span style="color: red;">*</span>:</label>
+      <label class="group-label" for="description">简介<span style="color: #8B5E3C;">*</span>:</label>
       <textarea id="description" name="description" required placeholder="请在此处填写简介，非边限/边限会在主楼展示。深渊区只有交互才能查看简介。"></textarea>
     </div>
 
@@ -912,7 +912,7 @@
       </div>
     </div>
     <div id="secondaryWarningContainer" class="field hidden">
-      <label class="group-label" for="secondaryWarning">二次排雷内容<span style="color: red;">*</span>:</label>
+      <label class="group-label" for="secondaryWarning">二次排雷内容<span style="color: #8B5E3C;">*</span>:</label>
       <textarea id="secondaryWarning" name="secondaryWarning"></textarea>
     </div>
 
@@ -935,7 +935,7 @@
     </div>
 
     <div class="field">
-      <label class="group-label">角色卡 PNG<span style="color: red;">*</span> (.png，二选一必填):</label>
+      <label class="group-label">角色卡 PNG<span style="color: #8B5E3C;">*</span> (.png，二选一必填):</label>
       <input type="file" id="cardPngFile" name="cardPngFile" accept=".png" />
       <div class="upload-zone">
         <button type="button" class="upload-btn" onclick="document.getElementById('cardPngFile').click()">+ 选择PNG文件</button>
@@ -944,7 +944,7 @@
     </div>
 
     <div class="field">
-      <label class="group-label">角色卡 JSON<span style="color: red;">*</span> (.json，二选一必填):</label>
+      <label class="group-label">角色卡 JSON<span style="color: #8B5E3C;">*</span> (.json，二选一必填):</label>
       <input type="file" id="cardJsonFile" name="cardJsonFile" accept=".json" />
       <div class="upload-zone">
         <button type="button" class="upload-btn" onclick="document.getElementById('cardJsonFile').click()">+ 选择JSON文件</button>
@@ -963,7 +963,6 @@
 
     <div style="display: flex; gap: 12px; margin-top: 20px;">
       <button type="submit" id="submitButton" class="btn-primary ripple">投递</button>
-      <button type="button" id="copyPreviewButton" class="btn-secondary ripple" style="display: none;">复制预览文本</button>
     </div>
   </form>
 
@@ -1155,7 +1154,7 @@
           }).join('');
           const fieldId = `section_${title.replace(/\s/g,'_')}`;
           const showIf = sec.showIf ? `data-showif="${sec.showIf}"` : '';
-          const requiredMark = sec.required !== false ? '<span style="color: red;">*</span>' : '';
+          const requiredMark = sec.required !== false ? '<span style="color: #8B5E3C;">*</span>' : '';
           htmls.push(`<div class="field" id="${fieldId}" ${showIf} data-required="${sec.required !== false}"><label class="group-label">${sec.title}${requiredMark}:</label><div class="inline-options">${items}</div></div>`);
         }
       });
@@ -1757,20 +1756,42 @@
       const result = await response.json();
 
       if (result.success) {
-        uploadStatus.textContent = result.message;
-        
         // 如果使用了token，标记为已使用
         const params = new URLSearchParams(location.search);
         const token = params.get('token');
         if (token) {
           await markTokenAsUsed(token);
-          // 显示成功并提示关闭页面
-          uploadStatus.innerHTML = `
-            <div style="padding: 12px; background: #E8F5E9; border: 1px solid #4CAF50; border-radius: 8px; margin-top: 16px;">
-              <strong>✅ ${result.message}</strong><br>
-              <small style="color: #666;">此Token已使用，链接已失效。您可以关闭此页面。</small>
-            </div>
-          `;
+          
+          // 检查是否为实名投递
+          const authorType = formData.get('authorType');
+          const category = formData.get('category');
+          
+          if (authorType === 'real') {
+            // 实名投递：显示卡名和使用说明
+            const cardName = formData.get('cardName') || '未命名';
+            uploadStatus.innerHTML = `
+              <div style="padding: 16px; background: #FFF3E0; border: 1px solid #FF9800; border-radius: 8px; margin-top: 16px;">
+                <strong>✅ 角色卡已保存成功！</strong><br><br>
+                <div style="background: #fff; padding: 10px; border-radius: 4px; margin: 8px 0; font-family: monospace; color: #8B5E3C;">
+                  卡名: ${cardName}
+                </div>
+                <strong>📝 下一步操作：</strong><br>
+                1️⃣ 请您自己前往 <strong>${category}</strong> 分区发帖<br>
+                2️⃣ 在您的帖子中使用命令：<code style="background: #f5f5f5; padding: 2px 6px; border-radius: 3px;">/发卡 卡名:${cardName}</code><br>
+                3️⃣ Bot会在您的帖子中发送角色卡按钮<br><br>
+                <small style="color: #666;">此Token已使用，链接已失效。您可以关闭此页面。</small>
+              </div>
+            `;
+          } else {
+            // 匿名投递：显示成功信息
+            uploadStatus.innerHTML = `
+              <div style="padding: 12px; background: #E8F5E9; border: 1px solid #4CAF50; border-radius: 8px; margin-top: 16px;">
+                <strong>✅ ${result.message}</strong><br>
+                <small style="color: #666;">Bot已自动发帖，此Token已使用，链接已失效。您可以关闭此页面。</small>
+              </div>
+            `;
+          }
+          
           // 禁用表单防止重复提交
           submitButton.disabled = true;
           submitButton.textContent = "已提交";
@@ -2655,30 +2676,12 @@
       }
     });
     
-    // 监听作者类型变化（更新预览 + 切换按钮）
+    // 监听作者类型变化（更新预览）
     document.querySelectorAll('input[name="authorType"]').forEach(radio => {
       radio.addEventListener('change', () => {
         window.updateDiscordPreview();
-        toggleSubmitButton();
       });
     });
-    
-    // 切换投递按钮和复制按钮的显示
-    function toggleSubmitButton() {
-      const authorType = document.querySelector('input[name="authorType"]:checked')?.value;
-      const submitButton = document.getElementById('submitButton');
-      const copyButton = document.getElementById('copyPreviewButton');
-      
-      if (authorType === 'real') {
-        // 实名：隐藏投递按钮，显示复制按钮
-        if (submitButton) submitButton.style.display = 'none';
-        if (copyButton) copyButton.style.display = 'inline-flex';
-      } else {
-        // 匿名：显示投递按钮，隐藏复制按钮
-        if (submitButton) submitButton.style.display = 'inline-flex';
-        if (copyButton) copyButton.style.display = 'none';
-      }
-    }
     
     // 生成纯文本预览内容
     function generatePreviewText() {
@@ -2774,46 +2777,6 @@
       
       return text;
     }
-    
-    // 复制按钮点击事件
-    document.getElementById('copyPreviewButton')?.addEventListener('click', async () => {
-      const previewText = generatePreviewText();
-      
-      try {
-        // 使用 Clipboard API 复制到剪贴板
-        await navigator.clipboard.writeText(previewText);
-        
-        // 显示成功提示
-        const statusDiv = document.getElementById('uploadStatus');
-        if (statusDiv) {
-          statusDiv.innerHTML = `
-            <div style="display: inline-block; padding: 10px 20px; background: rgba(76, 175, 80, 0.1); border-radius: 8px; margin-top: 16px; color: #4CAF50; font-size: 14px; border: 1px solid rgba(76, 175, 80, 0.3);">
-              ✅ 预览文本已复制到剪贴板
-            </div>
-          `;
-          
-          // 3秒后自动消失
-          setTimeout(() => {
-            statusDiv.innerHTML = '';
-          }, 3000);
-        }
-      } catch (err) {
-        console.error('复制失败:', err);
-        
-        // 显示失败提示
-        const statusDiv = document.getElementById('uploadStatus');
-        if (statusDiv) {
-          statusDiv.innerHTML = `
-            <div style="display: inline-block; padding: 10px 20px; background: rgba(244, 67, 54, 0.1); border-radius: 8px; margin-top: 16px; color: #F44336; font-size: 14px; border: 1px solid rgba(244, 67, 54, 0.3);">
-              ❌ 复制失败，请手动复制预览内容
-            </div>
-          `;
-        }
-      }
-    });
-    
-    // 初始化按钮状态
-    toggleSubmitButton();
     
     // 监听 Tags 变化（需要通过 MutationObserver 或委托事件）
     document.addEventListener('change', (e) => {

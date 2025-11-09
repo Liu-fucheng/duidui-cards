@@ -457,41 +457,48 @@ async function uploadFileToR2(bucket, file, folder) {
         console.error('解析primaryTags失败:', e);
       }
 
-      // 5. 通知Discord Bot发帖
+      // 5. 通知Discord Bot发帖（仅匿名投递自动发帖）
       let discordInfo = null;
-      try {
-        const notifyResult = await notifyDiscordBot(env, {
-          cardId,
-          cardName: formData.get("cardName") || "未命名",
-          cardType: formData.get("cardType"),
-          characters: JSON.parse(characters),
-          category: formData.get("category"),
-          authorName,
-          isAnonymous,
-          orientation: JSON.parse(orientation),
-          background: JSON.parse(backgrounds),
-          tags: JSON.parse(tags),
-          warnings: formData.get("warnings"),
-          description: formData.get("description"),
-          threadTitle: formData.get("threadTitle") || "",
-          otherInfo: otherInfoValue,
-          avatarImageKey,
-          galleryImageKeys,
-          cardFileKey,
-          downloadRequirements: downloadRequirements, // 传递下载要求列表
-          requireReaction: requireLike, // 兼容旧字段
-          requireComment: requireComment,
-          // 提交者信息
-          submitterUserId,
-          submitterUsername,
-          submitterDisplayName,
-          // 主要标签
-          primaryTags
-        });
+      
+      // 检查是否为实名投递
+      if (authorType === 'real' || isAnonymous === 0) {
+        console.log("ℹ️ 实名投递，跳过自动发帖，等待用户使用/发卡命令");
+        // 实名投递不自动通知Bot，用户需要自己发帖后使用 /发卡 命令
+      } else {
+        // 匿名投递，自动通知Bot发帖
+        try {
+          const notifyResult = await notifyDiscordBot(env, {
+            cardId,
+            cardName: formData.get("cardName") || "未命名",
+            cardType: formData.get("cardType"),
+            characters: JSON.parse(characters),
+            category: formData.get("category"),
+            authorName,
+            isAnonymous,
+            orientation: JSON.parse(orientation),
+            background: JSON.parse(backgrounds),
+            tags: JSON.parse(tags),
+            warnings: formData.get("warnings"),
+            description: formData.get("description"),
+            threadTitle: formData.get("threadTitle") || "",
+            otherInfo: otherInfoValue,
+            avatarImageKey,
+            galleryImageKeys,
+            cardFileKey,
+            downloadRequirements: downloadRequirements, // 传递下载要求列表
+            requireReaction: requireLike, // 兼容旧字段
+            requireComment: requireComment,
+            // 提交者信息
+            submitterUserId,
+            submitterUsername,
+            submitterDisplayName,
+            // 主要标签
+            primaryTags
+          });
 
-        if (notifyResult.success) {
-          console.log("✅ 已通知Bot发帖");
-          discordInfo = notifyResult;
+          if (notifyResult.success) {
+            console.log("✅ 已通知Bot发帖");
+            discordInfo = notifyResult;
           // 保存角色卡数据到KV（供bot查询）
           try {
             await saveCharacterCardToKV(env, {
@@ -513,13 +520,14 @@ async function uploadFileToR2(bucket, file, folder) {
           } catch (kvError) {
             console.error('保存到KV失败:', kvError);
           }
-        } else {
-          console.error("❌ 通知Bot失败:", notifyResult.error);
-          // 继续保存到数据库，Bot会从数据库读取待发布的卡片
+          } else {
+            console.error("❌ 通知Bot失败:", notifyResult.error);
+            // 继续保存到数据库，Bot会从数据库读取待发布的卡片
+          }
+        } catch (discordError) {
+          console.error("通知Bot异常:", discordError);
+          // 继续保存到数据库
         }
-      } catch (discordError) {
-        console.error("通知Bot异常:", discordError);
-        // 继续保存到数据库
       }
 
       // 6. 插入数据库，包含Discord信息
@@ -566,7 +574,14 @@ async function uploadFileToR2(bucket, file, folder) {
 
       await stmt.run();
 
-      return new Response(JSON.stringify({ success: true, message: "卡片上传成功！" }), { status: 200, headers: { "Content-Type": "application/json" } });
+      // 返回成功信息，实名投递需要返回cardId
+      const responseData = { 
+        success: true, 
+        message: "卡片上传成功！",
+        cardId: cardId  // 返回卡片ID给前端
+      };
+      
+      return new Response(JSON.stringify(responseData), { status: 200, headers: { "Content-Type": "application/json" } });
   
     } catch (error) {
       console.error(error);

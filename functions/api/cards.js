@@ -89,6 +89,23 @@ async function getCardsList(env, params) {
     bindings.push(`%${params.search}%`);
   }
   
+  // 按卡名筛选（精确匹配）
+  if (params.cardName) {
+    conditions.push('cardName = ?');
+    bindings.push(params.cardName);
+  }
+  
+  // 按提交者ID筛选
+  if (params.submitterUserId) {
+    conditions.push('submitterUserId = ?');
+    bindings.push(params.submitterUserId);
+  }
+  
+  // 只查询未发布的卡片（threadId为空）
+  if (params.unpublished === 'true') {
+    conditions.push('(threadId IS NULL OR threadId = \'\')');
+  }
+  
   if (conditions.length > 0) {
     const whereClause = ' WHERE ' + conditions.join(' AND ');
     query += whereClause;
@@ -278,17 +295,6 @@ async function deleteCard(env, cardId) {
 export async function onRequest(context) {
   const { request, env } = context;
   
-  // 验证管理员权限
-  if (!verifyAdminToken(request, env)) {
-    return new Response(JSON.stringify({
-      success: false,
-      message: '未授权：需要有效的管理员Token'
-    }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-  
   // 检查数据库绑定
   if (!env.D1_DB) {
     return new Response(JSON.stringify({
@@ -300,9 +306,28 @@ export async function onRequest(context) {
     });
   }
   
+  const url = new URL(request.url);
+  const action = url.searchParams.get('action') || 'list';
+  
+  // 特殊情况：查询特定用户的未发布卡片不需要管理员权限（供Bot使用）
+  const isUserUnpublishedQuery = (
+    action === 'list' && 
+    url.searchParams.get('submitterUserId') && 
+    url.searchParams.get('unpublished') === 'true'
+  );
+  
+  // 验证管理员权限（查询用户未发布卡片除外）
+  if (!isUserUnpublishedQuery && !verifyAdminToken(request, env)) {
+    return new Response(JSON.stringify({
+      success: false,
+      message: '未授权：需要有效的管理员Token'
+    }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+  
   try {
-    const url = new URL(request.url);
-    const action = url.searchParams.get('action') || 'stats';
     
     let result;
     
@@ -319,7 +344,10 @@ export async function onRequest(context) {
           page: url.searchParams.get('page'),
           pageSize: url.searchParams.get('pageSize'),
           category: url.searchParams.get('category'),
-          search: url.searchParams.get('search')
+          search: url.searchParams.get('search'),
+          cardName: url.searchParams.get('cardName'),
+          submitterUserId: url.searchParams.get('submitterUserId'),
+          unpublished: url.searchParams.get('unpublished')
         };
         const listData = await getCardsList(env, params);
         result = { success: true, ...listData };

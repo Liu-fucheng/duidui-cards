@@ -75,7 +75,7 @@ export async function onRequestGet(context) {
     
     return new Response(JSON.stringify({ 
       success: true, 
-      data: cardData 
+      card: cardData 
     }), { 
       status: 200,
       headers: { 'Content-Type': 'application/json' }
@@ -83,6 +83,89 @@ export async function onRequestGet(context) {
     
   } catch (error) {
     console.error('查询角色卡失败:', error);
+    return new Response(JSON.stringify({ 
+      success: false, 
+      message: error.message 
+    }), { 
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
+
+export async function onRequestPatch(context) {
+  try {
+    const { request, env } = context;
+    
+    // 从URL获取cardId
+    const url = new URL(request.url);
+    const cardId = url.searchParams.get('id');
+    
+    if (!cardId) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        message: '缺少cardId参数' 
+      }), { 
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // 检查D1绑定
+    if (!env.D1_DB) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        message: 'D1数据库未绑定' 
+      }), { 
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // 解析请求体
+    const body = await request.json();
+    
+    // 构建UPDATE语句
+    const updates = [];
+    const values = [];
+    
+    if (body.threadId !== undefined) {
+      updates.push('threadId = ?');
+      values.push(body.threadId);
+    }
+    
+    if (body.firstMessageId !== undefined) {
+      updates.push('firstMessageId = ?');
+      values.push(body.firstMessageId);
+    }
+    
+    if (updates.length === 0) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        message: '没有要更新的字段' 
+      }), { 
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // 添加cardId到values
+    values.push(cardId);
+    
+    // 执行更新
+    const sql = `UPDATE cards_v2 SET ${updates.join(', ')} WHERE id = ?`;
+    await env.D1_DB.prepare(sql).bind(...values).run();
+    
+    return new Response(JSON.stringify({ 
+      success: true, 
+      message: '更新成功' 
+    }), { 
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+  } catch (error) {
+    console.error('更新角色卡失败:', error);
     return new Response(JSON.stringify({ 
       success: false, 
       message: error.message 
