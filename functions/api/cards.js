@@ -309,15 +309,14 @@ export async function onRequest(context) {
     const url = new URL(request.url);
   const action = url.searchParams.get('action') || 'list';
   
-  // 特殊情况：查询特定用户的未发布卡片不需要管理员权限（供Bot使用）
-  const isUserUnpublishedQuery = (
+  // 特殊情况：查询特定用户的卡片不需要管理员权限（供Bot使用）
+  const isUserQuery = (
     action === 'list' && 
-    url.searchParams.get('submitterUserId') && 
-    url.searchParams.get('unpublished') === 'true'
+    url.searchParams.get('submitterUserId')
   );
   
-  // 验证管理员权限（查询用户未发布卡片除外）
-  if (!isUserUnpublishedQuery && !verifyAdminToken(request, env)) {
+  // 验证管理员权限（查询用户卡片除外）
+  if (!isUserQuery && !verifyAdminToken(request, env)) {
     return new Response(JSON.stringify({
       success: false,
       message: '未授权：需要有效的管理员Token'
