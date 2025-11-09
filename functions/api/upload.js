@@ -43,9 +43,7 @@ async function uploadFileToR2(bucket, file, folder) {
       galleryImageUrls: cardData.galleryImageKeys.map(key => `${env.R2_PUBLIC_URL}/${key}`),
       downloadRequirements: cardData.downloadRequirements || [], // 下载要求列表
       requireReaction: cardData.requireReaction || false, // 兼容旧字段
-      requireComment: cardData.requireComment || false,
-      submitterUserId: cardData.submitterUserId || null, // 发卡人用户ID
-      submitterUsername: cardData.submitterUsername || null // 发卡人用户名
+      requireComment: cardData.requireComment || false
     };
     
     try {
