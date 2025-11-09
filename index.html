@@ -1952,11 +1952,15 @@
         const radio = document.querySelector(`input[name="authorType"][value="${formData.authorType}"]`);
         if (radio) radio.checked = true;
       }
-      if (formData.authorName && !document.getElementById('authorName').dataset.tokenLocked) {
-        document.getElementById('authorName').value = formData.authorName;
+      // 只在没有被token锁定时恢复作者名和分区
+      const authorNameInput = document.getElementById('authorName');
+      const categoryInput = document.getElementById('category');
+      
+      if (formData.authorName && authorNameInput && !authorNameInput.readOnly && !authorNameInput.dataset.tokenLocked) {
+        authorNameInput.value = formData.authorName;
       }
-      if (formData.category && !document.getElementById('category').readOnly) {
-        document.getElementById('category').value = formData.category;
+      if (formData.category && categoryInput && !categoryInput.readOnly && !categoryInput.classList.contains('locked')) {
+        categoryInput.value = formData.category;
       }
       
       // 立即恢复文本域
@@ -2569,10 +2573,9 @@
     await loadConfig();
     initCharacterList();
     
-    // 在tags渲染完成后恢复缓存（如果没有token）
-    if (!token) {
-      restoreFormCache();
-    }
+    // 在tags渲染完成后恢复缓存
+    // 即使有token，也恢复其他字段（分区和作者名会被restoreFormCache内部判断跳过）
+    restoreFormCache();
 
     // 文件预览（第4个参数表示是否支持多文件累积）
     setupFilePreview('avatarImage', 'avatarPreviews', true, false);     // 头像，单文件
