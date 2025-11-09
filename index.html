@@ -435,7 +435,7 @@
     
     /* 复制按钮样式 */
     .copy-button {
-      background: transparent;
+      background: rgba(0, 0, 0, 0.2);
       border: none;
       color: #b5bac1;
       cursor: pointer;
@@ -449,7 +449,7 @@
     }
     
     .copy-button:hover {
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(0, 0, 0, 0.4);
       color: #ffffff;
     }
     
@@ -2014,8 +2014,20 @@
                 <strong>📝 下一步操作：</strong><br>
                 1️⃣ 请您自己前往 <strong>${category}</strong> 分区发帖<br>
                 <div style="display: flex; gap: 10px; margin: 12px 0;">
-                  <button id="copyTitleBtn" style="flex: 1; padding: 10px; border: 1px solid #8B5E3C; border-radius: 8px; background: #fff; color: #8B5E3C; cursor: pointer; font-weight: 500; transition: all 0.2s;" onmouseover="this.style.background='#8B5E3C'; this.style.color='#fff';" onmouseout="if(!this.textContent.includes('✅')) { this.style.background='#fff'; this.style.color='#8B5E3C'; }">📋 复制标题</button>
-                  <button id="copyContentBtn" style="flex: 1; padding: 10px; border: 1px solid #8B5E3C; border-radius: 8px; background: #fff; color: #8B5E3C; cursor: pointer; font-weight: 500; transition: all 0.2s;" onmouseover="this.style.background='#8B5E3C'; this.style.color='#fff';" onmouseout="if(!this.textContent.includes('✅')) { this.style.background='#fff'; this.style.color='#8B5E3C'; }">📋 复制主楼内容</button>
+                  <button id="copyTitleBtn" style="flex: 1; padding: 10px; border: 1px solid #8B5E3C; border-radius: 8px; background: #fff; color: #8B5E3C; cursor: pointer; font-weight: 500; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;" onmouseover="this.style.background='#8B5E3C'; this.style.color='#fff';" onmouseout="if(!this.classList.contains('copied')) { this.style.background='#fff'; this.style.color='#8B5E3C'; }">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                    <span>复制标题</span>
+                  </button>
+                  <button id="copyContentBtn" style="flex: 1; padding: 10px; border: 1px solid #8B5E3C; border-radius: 8px; background: #fff; color: #8B5E3C; cursor: pointer; font-weight: 500; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;" onmouseover="this.style.background='#8B5E3C'; this.style.color='#fff';" onmouseout="if(!this.classList.contains('copied')) { this.style.background='#fff'; this.style.color='#8B5E3C'; }">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                    <span>复制主楼内容</span>
+                  </button>
                 </div>
                 2️⃣ 在您的帖子中使用命令：<code style="background: #f5f5f5; padding: 2px 6px; border-radius: 3px;">/发卡 卡名:${cardName}</code><br>
                 3️⃣ Bot会在您的帖子中发送角色卡按钮<br><br>
@@ -2033,8 +2045,23 @@
                   const title = generateThreadTitle(formData);
                   try {
                     await navigator.clipboard.writeText(title);
-                    titleBtn.textContent = '✅ 已复制';
-                    setTimeout(() => { titleBtn.textContent = '📋 复制标题'; }, 2000);
+                    titleBtn.classList.add('copied');
+                    titleBtn.innerHTML = `
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                      <span>已复制</span>
+                    `;
+                    setTimeout(() => {
+                      titleBtn.classList.remove('copied');
+                      titleBtn.innerHTML = `
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
+                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                        <span>复制标题</span>
+                      `;
+                    }, 2000);
                   } catch (err) {
                     alert('复制失败：' + err.message);
                   }
@@ -2046,8 +2073,23 @@
                   const content = generatePreviewText(formData);
                   try {
                     await navigator.clipboard.writeText(content);
-                    contentBtn.textContent = '✅ 已复制';
-                    setTimeout(() => { contentBtn.textContent = '📋 复制主楼内容'; }, 2000);
+                    contentBtn.classList.add('copied');
+                    contentBtn.innerHTML = `
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                      <span>已复制</span>
+                    `;
+                    setTimeout(() => {
+                      contentBtn.classList.remove('copied');
+                      contentBtn.innerHTML = `
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
+                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                        <span>复制主楼内容</span>
+                      `;
+                    }, 2000);
                   } catch (err) {
                     alert('复制失败：' + err.message);
                   }
@@ -2815,8 +2857,20 @@
             const formData = JSON.parse(cachedData);
             const copyButtonsHtml = `
               <div style="display: flex; gap: 10px; margin-top: 12px;">
-                <button id="cachedCopyTitleBtn" style="flex: 1; padding: 10px; border: 1px solid #8B5E3C; border-radius: 8px; background: #fff; color: #8B5E3C; cursor: pointer; font-weight: 500; transition: all 0.2s;" onmouseover="this.style.background='#8B5E3C'; this.style.color='#fff';" onmouseout="if(!this.textContent.includes('✅')) { this.style.background='#fff'; this.style.color='#8B5E3C'; }">📋 复制标题</button>
-                <button id="cachedCopyContentBtn" style="flex: 1; padding: 10px; border: 1px solid #8B5E3C; border-radius: 8px; background: #fff; color: #8B5E3C; cursor: pointer; font-weight: 500; transition: all 0.2s;" onmouseover="this.style.background='#8B5E3C'; this.style.color='#fff';" onmouseout="if(!this.textContent.includes('✅')) { this.style.background='#fff'; this.style.color='#8B5E3C'; }">📋 复制主楼内容</button>
+                <button id="cachedCopyTitleBtn" style="flex: 1; padding: 10px; border: 1px solid #8B5E3C; border-radius: 8px; background: #fff; color: #8B5E3C; cursor: pointer; font-weight: 500; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;" onmouseover="this.style.background='#8B5E3C'; this.style.color='#fff';" onmouseout="if(!this.classList.contains('copied')) { this.style.background='#fff'; this.style.color='#8B5E3C'; }">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                  <span>复制标题</span>
+                </button>
+                <button id="cachedCopyContentBtn" style="flex: 1; padding: 10px; border: 1px solid #8B5E3C; border-radius: 8px; background: #fff; color: #8B5E3C; cursor: pointer; font-weight: 500; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;" onmouseover="this.style.background='#8B5E3C'; this.style.color='#fff';" onmouseout="if(!this.classList.contains('copied')) { this.style.background='#fff'; this.style.color='#8B5E3C'; }">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                  <span>复制主楼内容</span>
+                </button>
               </div>
             `;
             uploadStatus.innerHTML += copyButtonsHtml;
@@ -2831,8 +2885,23 @@
                   const title = generateThreadTitle();
                   try {
                     await navigator.clipboard.writeText(title);
-                    titleBtn.textContent = '✅ 已复制';
-                    setTimeout(() => { titleBtn.textContent = '📋 复制标题'; }, 2000);
+                    titleBtn.classList.add('copied');
+                    titleBtn.innerHTML = `
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                      <span>已复制</span>
+                    `;
+                    setTimeout(() => {
+                      titleBtn.classList.remove('copied');
+                      titleBtn.innerHTML = `
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
+                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                        <span>复制标题</span>
+                      `;
+                    }, 2000);
                   } catch (err) {
                     alert('复制失败：' + err.message);
                   }
@@ -2844,8 +2913,23 @@
                   const content = generatePreviewText();
                   try {
                     await navigator.clipboard.writeText(content);
-                    contentBtn.textContent = '✅ 已复制';
-                    setTimeout(() => { contentBtn.textContent = '📋 复制主楼内容'; }, 2000);
+                    contentBtn.classList.add('copied');
+                    contentBtn.innerHTML = `
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                      <span>已复制</span>
+                    `;
+                    setTimeout(() => {
+                      contentBtn.classList.remove('copied');
+                      contentBtn.innerHTML = `
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
+                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                        <span>复制主楼内容</span>
+                      `;
+                    }, 2000);
                   } catch (err) {
                     alert('复制失败：' + err.message);
                   }
@@ -3134,8 +3218,20 @@
           const formData = JSON.parse(cachedData);
           const copyButtonsHtml = `
             <div id="cachedCopyButtonsContainer" style="display: flex; gap: 10px; margin-top: 12px; padding: 12px; background: #FFF3E0; border: 1px solid #FF9800; border-radius: 8px;">
-              <button id="cachedCopyTitleBtn" style="flex: 1; padding: 10px; border: 1px solid #8B5E3C; border-radius: 8px; background: #fff; color: #8B5E3C; cursor: pointer; font-weight: 500; transition: all 0.2s;" onmouseover="this.style.background='#8B5E3C'; this.style.color='#fff';" onmouseout="if(!this.textContent.includes('✅')) { this.style.background='#fff'; this.style.color='#8B5E3C'; }">📋 复制标题</button>
-              <button id="cachedCopyContentBtn" style="flex: 1; padding: 10px; border: 1px solid #8B5E3C; border-radius: 8px; background: #fff; color: #8B5E3C; cursor: pointer; font-weight: 500; transition: all 0.2s;" onmouseover="this.style.background='#8B5E3C'; this.style.color='#fff';" onmouseout="if(!this.textContent.includes('✅')) { this.style.background='#fff'; this.style.color='#8B5E3C'; }">📋 复制主楼内容</button>
+              <button id="cachedCopyTitleBtn" style="flex: 1; padding: 10px; border: 1px solid #8B5E3C; border-radius: 8px; background: #fff; color: #8B5E3C; cursor: pointer; font-weight: 500; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;" onmouseover="this.style.background='#8B5E3C'; this.style.color='#fff';" onmouseout="if(!this.classList.contains('copied')) { this.style.background='#fff'; this.style.color='#8B5E3C'; }">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                <span>复制标题</span>
+              </button>
+              <button id="cachedCopyContentBtn" style="flex: 1; padding: 10px; border: 1px solid #8B5E3C; border-radius: 8px; background: #fff; color: #8B5E3C; cursor: pointer; font-weight: 500; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;" onmouseover="this.style.background='#8B5E3C'; this.style.color='#fff';" onmouseout="if(!this.classList.contains('copied')) { this.style.background='#fff'; this.style.color='#8B5E3C'; }">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                <span>复制主楼内容</span>
+              </button>
             </div>
           `;
           uploadStatus.innerHTML = `<div style="color: #666; font-size: 14px;">💾 已从缓存恢复表单数据</div>` + copyButtonsHtml;
@@ -3150,8 +3246,23 @@
                 const title = generateThreadTitle();
                 try {
                   await navigator.clipboard.writeText(title);
-                  titleBtn.textContent = '✅ 已复制';
-                  setTimeout(() => { titleBtn.textContent = '📋 复制标题'; }, 2000);
+                  titleBtn.classList.add('copied');
+                  titleBtn.innerHTML = `
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    <span>已复制</span>
+                  `;
+                  setTimeout(() => {
+                    titleBtn.classList.remove('copied');
+                    titleBtn.innerHTML = `
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                      </svg>
+                      <span>复制标题</span>
+                    `;
+                  }, 2000);
                 } catch (err) {
                   alert('复制失败：' + err.message);
                 }
@@ -3163,8 +3274,23 @@
                 const content = generatePreviewText();
                 try {
                   await navigator.clipboard.writeText(content);
-                  contentBtn.textContent = '✅ 已复制';
-                  setTimeout(() => { contentBtn.textContent = '📋 复制主楼内容'; }, 2000);
+                  contentBtn.classList.add('copied');
+                  contentBtn.innerHTML = `
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    <span>已复制</span>
+                  `;
+                  setTimeout(() => {
+                    contentBtn.classList.remove('copied');
+                    contentBtn.innerHTML = `
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                      </svg>
+                      <span>复制主楼内容</span>
+                    `;
+                  }, 2000);
                 } catch (err) {
                   alert('复制失败：' + err.message);
                 }
