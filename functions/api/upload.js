@@ -466,25 +466,25 @@ async function uploadFileToR2(bucket, file, folder) {
         // 实名投递不自动通知Bot，用户需要自己发帖后使用 /发卡 命令
       } else {
         // 匿名投递，自动通知Bot发帖
-        try {
-          const notifyResult = await notifyDiscordBot(env, {
-            cardId,
-            cardName: formData.get("cardName") || "未命名",
-            cardType: formData.get("cardType"),
-            characters: JSON.parse(characters),
-            category: formData.get("category"),
-            authorName,
-            isAnonymous,
-            orientation: JSON.parse(orientation),
-            background: JSON.parse(backgrounds),
-            tags: JSON.parse(tags),
-            warnings: formData.get("warnings"),
-            description: formData.get("description"),
-            threadTitle: formData.get("threadTitle") || "",
-            otherInfo: otherInfoValue,
-            avatarImageKey,
-            galleryImageKeys,
-            cardFileKey,
+      try {
+        const notifyResult = await notifyDiscordBot(env, {
+          cardId,
+          cardName: formData.get("cardName") || "未命名",
+          cardType: formData.get("cardType"),
+          characters: JSON.parse(characters),
+          category: formData.get("category"),
+          authorName,
+          isAnonymous,
+          orientation: JSON.parse(orientation),
+          background: JSON.parse(backgrounds),
+          tags: JSON.parse(tags),
+          warnings: formData.get("warnings"),
+          description: formData.get("description"),
+          threadTitle: formData.get("threadTitle") || "",
+          otherInfo: otherInfoValue,
+          avatarImageKey,
+          galleryImageKeys,
+          cardFileKey,
             downloadRequirements: downloadRequirements, // 传递下载要求列表
             requireReaction: requireLike, // 兼容旧字段
             requireComment: requireComment,
@@ -494,11 +494,11 @@ async function uploadFileToR2(bucket, file, folder) {
             submitterDisplayName,
             // 主要标签
             primaryTags
-          });
+        });
 
-          if (notifyResult.success) {
-            console.log("✅ 已通知Bot发帖");
-            discordInfo = notifyResult;
+        if (notifyResult.success) {
+          console.log("✅ 已通知Bot发帖");
+          discordInfo = notifyResult;
           // 保存角色卡数据到KV（供bot查询）
           try {
             await saveCharacterCardToKV(env, {
@@ -520,13 +520,13 @@ async function uploadFileToR2(bucket, file, folder) {
           } catch (kvError) {
             console.error('保存到KV失败:', kvError);
           }
-          } else {
-            console.error("❌ 通知Bot失败:", notifyResult.error);
-            // 继续保存到数据库，Bot会从数据库读取待发布的卡片
-          }
-        } catch (discordError) {
-          console.error("通知Bot异常:", discordError);
-          // 继续保存到数据库
+        } else {
+          console.error("❌ 通知Bot失败:", notifyResult.error);
+          // 继续保存到数据库，Bot会从数据库读取待发布的卡片
+        }
+      } catch (discordError) {
+        console.error("通知Bot异常:", discordError);
+        // 继续保存到数据库
         }
       }
 

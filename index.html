@@ -962,7 +962,7 @@
     </div>
 
     <div style="display: flex; gap: 12px; margin-top: 20px;">
-      <button type="submit" id="submitButton" class="btn-primary ripple">投递</button>
+    <button type="submit" id="submitButton" class="btn-primary ripple">投递</button>
     </div>
   </form>
 
@@ -1820,12 +1820,12 @@
             }, 100);
           } else {
             // 匿名投递：显示成功信息
-            uploadStatus.innerHTML = `
-              <div style="padding: 12px; background: #E8F5E9; border: 1px solid #4CAF50; border-radius: 8px; margin-top: 16px;">
-                <strong>✅ ${result.message}</strong><br>
+          uploadStatus.innerHTML = `
+            <div style="padding: 12px; background: #E8F5E9; border: 1px solid #4CAF50; border-radius: 8px; margin-top: 16px;">
+              <strong>✅ ${result.message}</strong><br>
                 <small style="color: #666;">Bot已自动发帖，此Token已使用，链接已失效。您可以关闭此页面。</small>
-              </div>
-            `;
+            </div>
+          `;
           }
           
           // 禁用表单防止重复提交
@@ -2197,10 +2197,10 @@
         const sectionId = section.id;
         if (!sectionId.startsWith('section_')) return;
         
-        // 提取板块标题
+        // 提取板块标题（移除 * 和 : 标记）
         const labelEl = section.querySelector('.group-label');
         if (!labelEl) return;
-        const sectionTitle = labelEl.textContent.replace(':', '').trim();
+        const sectionTitle = labelEl.textContent.replace(/\*/g, '').replace(':', '').trim();
         
         // 跳过性向（已单独显示）
         if (sectionTitle === '性向') return;
@@ -2252,14 +2252,43 @@
       }
     }
     
-    // 更新其她（保留换行）
+    // 更新其她（解析 otherInfo，过滤已单独显示的字段，移除 * 标记）
     const otherInfo = document.getElementById('otherInfo')?.value || '';
     const previewOtherInfoField = document.getElementById('previewOtherInfoField');
     const previewOtherInfo = document.getElementById('previewOtherInfo');
     if (previewOtherInfoField && previewOtherInfo) {
       if (otherInfo.trim()) {
-        previewOtherInfoField.style.display = '';
-        previewOtherInfo.textContent = otherInfo;
+        // 解析 otherInfo，过滤掉已单独显示的字段
+        const lines = otherInfo.split('\n');
+        const filteredLines = [];
+        
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          
+          // 匹配格式："{title}: {value1}, {value2}" 或 "{title}*: {value}"
+          const match = trimmed.match(/^([^：:]+)[：:]\s*(.+)$/);
+          if (match) {
+            let title = match[1].trim().replace(/\*/g, '').trim();
+            // 跳过已单独显示的字段
+            if (title === '下载要求' || title === '性向' || title === '背景') {
+              continue;
+            }
+            // 移除 * 标记后保留
+            const cleanLine = trimmed.replace(/\*/g, '');
+            filteredLines.push(cleanLine);
+          } else {
+            // 不是键值对格式的行，直接保留
+            filteredLines.push(trimmed);
+          }
+        }
+        
+        if (filteredLines.length > 0) {
+          previewOtherInfoField.style.display = '';
+          previewOtherInfo.textContent = filteredLines.join('\n');
+        } else {
+          previewOtherInfoField.style.display = 'none';
+        }
       } else {
         previewOtherInfoField.style.display = 'none';
       }
@@ -2584,7 +2613,7 @@
     
     // 在tags渲染完成后恢复缓存
     // 即使有token，也恢复其他字段（分区和作者名会被restoreFormCache内部判断跳过）
-    restoreFormCache();
+      restoreFormCache();
 
     // 文件预览（第4个参数表示是否支持多文件累积）
     setupFilePreview('avatarImage', 'avatarPreviews', true, false);     // 头像，单文件
@@ -2716,7 +2745,7 @@
     document.querySelectorAll('input[name="authorType"]').forEach(radio => {
       radio.addEventListener('change', () => {
         window.updateDiscordPreview();
-      });
+    });
     });
     
     // 生成帖子标题

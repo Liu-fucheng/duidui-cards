@@ -306,7 +306,7 @@ export async function onRequest(context) {
     });
   }
   
-  const url = new URL(request.url);
+    const url = new URL(request.url);
   const action = url.searchParams.get('action') || 'list';
   
   // 特殊情况：查询特定用户的未发布卡片不需要管理员权限（供Bot使用）
