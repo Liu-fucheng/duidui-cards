@@ -395,6 +395,10 @@
         h('input', { class: 'big-check', type: 'checkbox', checked: sec.multiple !== false, onchange: (e) => { sec.multiple = e.target.checked; } }),
         document.createTextNode(' 可多选')
       ]),
+      h('label', { style: 'margin-left:16px;' }, [
+        h('input', { class: 'big-check', type: 'checkbox', checked: sec.required !== false, onchange: (e) => { sec.required = e.target.checked; } }),
+        document.createTextNode(' 必填')
+      ]),
       h('span', { text: '显示条件（可选）：', style: 'margin-left:16px; color:#876; font-size:13px;' }),
       h('input', { type: 'text', value: sec.showIf || '', placeholder: '如 性向:GB', style: 'width:180px;', oninput: (e) => { sec.showIf = e.target.value.trim() || undefined; } })
     ]);
