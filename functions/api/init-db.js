@@ -84,6 +84,20 @@ const CORE_TABLES = {
       created_at TEXT DEFAULT (datetime('now')),
       UNIQUE(message_id, user_id)
     )
+  `,
+  
+  card_comments: `
+    CREATE TABLE IF NOT EXISTS card_comments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      thread_id TEXT NOT NULL,
+      card_id TEXT,
+      user_id TEXT NOT NULL,
+      username TEXT NOT NULL,
+      display_name TEXT,
+      vest_name TEXT,
+      content TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    )
   `
 };
 
