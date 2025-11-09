@@ -2849,7 +2849,7 @@
         document.querySelectorAll('[id^="section_"]').forEach(section => {
           const labelEl = section.querySelector('.group-label');
           if (!labelEl) return;
-          // 移除 * 标记和冒号
+          // 从 label 提取纯标题（移除 HTML 中的 * 和 : 标记）
           let sectionTitle = labelEl.textContent.replace(/\*/g, '').replace(':', '').trim();
           
           // 跳过性向（已单独显示）
