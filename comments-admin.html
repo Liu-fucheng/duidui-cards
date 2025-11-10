@@ -5,6 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>评论管理后台</title>
     <style>
+        :root {
+            --primary: #4A90A4;        /* 水蓝主色 */
+            --primary-dark: #357A8A;   /* 深水蓝 */
+            --secondary: #7CC6D9;      /* 浅水蓝 */
+            --accent: #5FC3D9;         /* 强调色 */
+            --bg: #E8F4F8;             /* 浅水色背景 */
+            --surface: #FFFFFF;        /* 卡片背景 */
+            --text: #2C5F6F;           /* 深水蓝文字 */
+            --text-light: #5A8896;     /* 浅色文字 */
+            --border: #C5E4ED;         /* 边框色 */
+            --shadow: rgba(74, 144, 164, 0.15);
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -13,7 +26,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #B8E6F0 0%, #D4F1F7 50%, #E8F4F8 100%);
             min-height: 100vh;
             padding: 20px;
         }
@@ -24,30 +37,32 @@
         }
 
         .header {
-            background: white;
+            background: var(--surface);
             padding: 30px;
             border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 8px 20px var(--shadow);
             margin-bottom: 30px;
+            border: 1px solid var(--border);
         }
 
         h1 {
-            color: #333;
+            color: var(--text);
             margin-bottom: 10px;
             font-size: 28px;
         }
 
         .subtitle {
-            color: #666;
+            color: var(--text-light);
             font-size: 14px;
         }
 
         .auth-section {
-            background: white;
+            background: var(--surface);
             padding: 30px;
             border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 8px 20px var(--shadow);
             margin-bottom: 30px;
+            border: 1px solid var(--border);
         }
 
         .input-group {
@@ -57,7 +72,7 @@
         label {
             display: block;
             margin-bottom: 8px;
-            color: #333;
+            color: var(--text);
             font-weight: 500;
         }
 
@@ -67,22 +82,24 @@
         select {
             width: 100%;
             padding: 12px 15px;
-            border: 2px solid #e0e0e0;
+            border: 2px solid var(--border);
             border-radius: 8px;
             font-size: 14px;
             transition: all 0.3s;
+            background: var(--surface);
+            color: var(--text);
         }
 
         input:focus,
         select:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(74, 144, 164, 0.1);
         }
 
         .btn {
             padding: 12px 30px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
             color: white;
             border: none;
             border-radius: 8px;
@@ -94,27 +111,29 @@
 
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 5px 15px var(--shadow);
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
         }
 
         .btn:disabled {
-            background: #ccc;
+            background: #B8C9CE;
             cursor: not-allowed;
             transform: none;
         }
 
         .btn-secondary {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            background: linear-gradient(135deg, var(--accent) 0%, var(--secondary) 100%);
             margin-left: 10px;
         }
 
         .filters-section {
-            background: white;
+            background: var(--surface);
             padding: 30px;
             border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 8px 20px var(--shadow);
             margin-bottom: 30px;
             display: none;
+            border: 1px solid var(--border);
         }
 
         .filters-grid {
@@ -125,11 +144,12 @@
         }
 
         .results-section {
-            background: white;
+            background: var(--surface);
             padding: 30px;
             border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 8px 20px var(--shadow);
             display: none;
+            border: 1px solid var(--border);
         }
 
         .stats {
@@ -143,10 +163,11 @@
             flex: 1;
             min-width: 200px;
             padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
             color: white;
             border-radius: 10px;
             text-align: center;
+            box-shadow: 0 4px 12px var(--shadow);
         }
 
         .stat-number {
@@ -169,27 +190,27 @@
         }
 
         .comments-table thead {
-            background: #f8f9fa;
+            background: #F0F8FA;
         }
 
         .comments-table th,
         .comments-table td {
             padding: 15px;
             text-align: left;
-            border-bottom: 1px solid #e0e0e0;
+            border-bottom: 1px solid var(--border);
         }
 
         .comments-table th {
             font-weight: 600;
-            color: #333;
+            color: var(--text);
             position: sticky;
             top: 0;
-            background: #f8f9fa;
+            background: #F0F8FA;
             z-index: 1;
         }
 
         .comments-table tbody tr:hover {
-            background: #f8f9fa;
+            background: #F7FCFD;
         }
 
         .comment-content {
@@ -205,7 +226,7 @@
         }
 
         .expand-btn {
-            color: #667eea;
+            color: var(--primary);
             cursor: pointer;
             text-decoration: underline;
             font-size: 12px;
@@ -213,14 +234,14 @@
 
         .user-info {
             font-size: 12px;
-            color: #666;
+            color: var(--text-light);
         }
 
         .vest-name {
             display: inline-block;
             padding: 4px 12px;
-            background: #e3f2fd;
-            color: #1976d2;
+            background: #D4F1F7;
+            color: var(--primary-dark);
             border-radius: 12px;
             font-size: 12px;
             font-weight: 500;
@@ -230,13 +251,13 @@
         .card-id {
             font-family: monospace;
             font-size: 12px;
-            color: #666;
+            color: var(--text-light);
             cursor: pointer;
         }
 
         .thread-id:hover,
         .card-id:hover {
-            color: #667eea;
+            color: var(--primary);
             text-decoration: underline;
         }
 
@@ -247,27 +268,27 @@
         }
 
         .alert-success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
+            background: #D4F1F7;
+            color: #1A5C6E;
+            border: 1px solid var(--secondary);
         }
 
         .alert-error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
+            background: #FFE8E8;
+            color: #8B3A3A;
+            border: 1px solid #FFCCCC;
         }
 
         .alert-info {
-            background: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
+            background: #E8F4F8;
+            color: var(--text);
+            border: 1px solid var(--border);
         }
 
         .loading {
             text-align: center;
             padding: 40px;
-            color: #666;
+            color: var(--text-light);
         }
 
         .loading::after {
@@ -284,13 +305,17 @@
         .no-data {
             text-align: center;
             padding: 60px 20px;
-            color: #999;
+            color: var(--text-light);
             font-size: 16px;
         }
 
         .export-btn {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            background: linear-gradient(135deg, var(--accent) 0%, var(--secondary) 100%);
             float: right;
+        }
+
+        .export-btn:hover {
+            background: linear-gradient(135deg, var(--secondary) 0%, var(--accent) 100%);
         }
 
         @media (max-width: 768px) {
@@ -322,7 +347,7 @@
     <div class="container">
         <!-- 标题 -->
         <div class="header">
-            <h1>📝 评论管理后台</h1>
+            <h1>💬 评论管理后台</h1>
             <p class="subtitle">查询和管理用户评论数据 · 仅限管理员访问</p>
         </div>
 
