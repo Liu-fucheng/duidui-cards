@@ -67,10 +67,17 @@ export async function onRequestGet(context) {
       introImageUrl: `${r2PublicUrl}/intros/intro_${result.id}.png`, // 简介图URL
       avatarImageUrl: result.avatarImageKey ? `${r2PublicUrl}/${result.avatarImageKey}` : null,
       cardFileUrl: result.cardFileKey ? `${r2PublicUrl}/${result.cardFileKey}` : null,
+      cardFileKey: result.cardFileKey,
+      cardJsonFileKey: result.cardJsonFileKey,
+      attachmentKeys: result.attachmentKeys ? JSON.parse(result.attachmentKeys) : [],
       galleryImageUrls: result.galleryImageKeys ? JSON.parse(result.galleryImageKeys).map(key => `${r2PublicUrl}/${key}`) : [],
       threadId: result.threadId,
       firstMessageId: result.firstMessageId,
       createdAt: result.createdAt,
+      // 下载要求
+      downloadRequirements: result.downloadRequirements ? JSON.parse(result.downloadRequirements) : [],
+      requireReaction: result.requireReaction || false,
+      requireComment: result.requireComment || false,
       // 提交者信息
       submitterUserId: result.submitterUserId,
       submitterUsername: result.submitterUsername,

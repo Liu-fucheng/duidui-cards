@@ -1491,11 +1491,10 @@
           const pills = cat.querySelectorAll('.pill');
           let hasVisible = false;
           pills.forEach(pill => {
-            const label = pill.querySelector('.option-item');
-            if (!label) return;
+            // pill 本身就是 label.option-item 元素
             
             // 检查启用条件
-            const showIf = label.getAttribute('data-showif');
+            const showIf = pill.getAttribute('data-showif');
             const conditionMet = !showIf || checkCondition(showIf, selected);
             
             // 检查搜索匹配
