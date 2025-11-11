@@ -101,6 +101,12 @@ async function getCardsList(env, params) {
     bindings.push(params.submitterUserId);
   }
   
+  // 按threadId筛选（用于查询已发布到指定帖子的卡片）
+  if (params.threadId) {
+    conditions.push('threadId = ?');
+    bindings.push(params.threadId);
+  }
+  
   // 只查询未发布的卡片（threadId为空）
   if (params.unpublished === 'true') {
     conditions.push('(threadId IS NULL OR threadId = \'\')');
@@ -346,6 +352,7 @@ export async function onRequest(context) {
           search: url.searchParams.get('search'),
           cardName: url.searchParams.get('cardName'),
           submitterUserId: url.searchParams.get('submitterUserId'),
+          threadId: url.searchParams.get('threadId'),
           unpublished: url.searchParams.get('unpublished')
         };
         const listData = await getCardsList(env, params);
