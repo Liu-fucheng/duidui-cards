@@ -49,6 +49,12 @@ export async function onRequestGet(context) {
     const r2PublicUrl = env.R2_PUBLIC_URL || 'http://r2.liuyaocheng.org';
     
     // 解析附件元数据
+    console.log('🔍 [card-detail] 数据库原始数据 (cardId=' + cardId + '):');
+    console.log('  - attachmentOriginalNames 原始值:', result.attachmentOriginalNames, '类型:', typeof result.attachmentOriginalNames, '是否为null:', result.attachmentOriginalNames === null, '是否为空字符串:', result.attachmentOriginalNames === '');
+    console.log('  - attachmentDescriptions 原始值:', result.attachmentDescriptions, '类型:', typeof result.attachmentDescriptions, '是否为null:', result.attachmentDescriptions === null, '是否为空字符串:', result.attachmentDescriptions === '');
+    console.log('  - attachmentSummary 原始值:', result.attachmentSummary, '类型:', typeof result.attachmentSummary, '是否为null:', result.attachmentSummary === null, '是否为空字符串:', result.attachmentSummary === '');
+    console.log('  - attachmentKeys 原始值:', result.attachmentKeys, '类型:', typeof result.attachmentKeys);
+    
     let attachmentOriginalNames = [];
     if (result.attachmentOriginalNames) {
       try {
@@ -56,6 +62,7 @@ export async function onRequestGet(context) {
         if (Array.isArray(parsed)) {
           attachmentOriginalNames = parsed;
         }
+        console.log('  - attachmentOriginalNames 解析后:', attachmentOriginalNames);
       } catch (e) {
         console.error('解析附件原始名称失败:', e);
       }
@@ -68,9 +75,12 @@ export async function onRequestGet(context) {
         if (Array.isArray(parsed)) {
           attachmentDescriptions = parsed;
         }
+        console.log('  - attachmentDescriptions 解析后:', attachmentDescriptions);
       } catch (e) {
-        console.error('解析附件描述失败:', e);
+        console.error('解析附件描述失败:', e, '原始值:', result.attachmentDescriptions);
       }
+    } else {
+      console.log('  - attachmentDescriptions 为空或null');
     }
     
     // 解析JSON字段

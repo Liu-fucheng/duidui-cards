@@ -769,10 +769,16 @@ async function uploadFileToR2(bucket, file, folder) {
       if (hasAttachmentDescriptions) {
         columns.push('attachmentDescriptions');
         values.push(attachmentDescriptionsJson);
+        console.log('🔍 [upload] 保存附件描述到数据库:', attachmentDescriptionsJson, '长度:', attachmentDescriptions.length);
+      } else {
+        console.log('⚠️ [upload] 数据库表没有 attachmentDescriptions 字段');
       }
       if (hasAttachmentSummary) {
         columns.push('attachmentSummary');
         values.push(attachmentSummary);
+        console.log('🔍 [upload] 保存附件总说明到数据库:', attachmentSummary);
+      } else {
+        console.log('⚠️ [upload] 数据库表没有 attachmentSummary 字段');
       }
 
       if (hasThreadId) {
