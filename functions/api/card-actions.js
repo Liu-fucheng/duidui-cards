@@ -139,10 +139,10 @@ export async function onRequestGet(context) {
     // 如果提供了 user_id 和 action_type，查询特定用户的操作记录
     if (user_id && action_type) {
       const records = await env.D1_DB.prepare(`
-        SELECT id, card_id, action_type, user_id, username, display_name, timestamp
+        SELECT id, card_id, action_type, user_id, username, display_name, created_at
         FROM card_actions
         WHERE card_id = ? AND user_id = ? AND action_type = ?
-        ORDER BY timestamp DESC
+        ORDER BY created_at DESC
         LIMIT 10
       `).bind(card_id, user_id, action_type).all();
 
