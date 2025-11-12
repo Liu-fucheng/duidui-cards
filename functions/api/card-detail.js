@@ -61,6 +61,7 @@ export async function onRequestGet(context) {
       background: result.background ? JSON.parse(result.background) : [],
       tags: result.tags ? JSON.parse(result.tags) : [],
       warnings: result.warnings,
+      secondaryWarning: result.secondaryWarning,
       description: result.description,
       threadTitle: result.threadTitle,
       otherInfo: result.otherInfo,

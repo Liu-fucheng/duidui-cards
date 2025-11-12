@@ -204,6 +204,45 @@ const MIGRATIONS = [
       // 添加 JSON 格式角色卡字段
       await db.prepare('ALTER TABLE cards_v2 ADD COLUMN cardJsonFileKey TEXT').run();
     }
+  },
+  {
+    name: 'remove_unique_constraint_from_card_actions',
+    check: async (db) => {
+      try {
+        const indexes = await db.prepare('PRAGMA index_list(card_actions)').all();
+        if (!indexes.results) return false;
+        return indexes.results.some(index => {
+          if (!index) return false;
+          const isUnique = index.unique === 1;
+          const origin = (index.origin || '').toLowerCase();
+          const name = (index.name || '').toLowerCase();
+          return isUnique && (origin === 'u' || name.includes('unique'));
+        });
+      } catch (e) {
+        return false;
+      }
+    },
+    run: async (db) => {
+      // 重新创建 card_actions 表以去除旧的唯一约束
+      await db.prepare(`
+        CREATE TABLE IF NOT EXISTS card_actions_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          card_id TEXT NOT NULL,
+          action_type TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          username TEXT,
+          display_name TEXT,
+          created_at TEXT DEFAULT (datetime('now'))
+        )
+      `).run();
+      await db.prepare(`
+        INSERT INTO card_actions_new (id, card_id, action_type, user_id, username, display_name, created_at)
+        SELECT id, card_id, action_type, user_id, username, display_name, created_at
+        FROM card_actions
+      `).run();
+      await db.prepare(`DROP TABLE card_actions`).run();
+      await db.prepare(`ALTER TABLE card_actions_new RENAME TO card_actions`).run();
+    }
   }
 ];
 
