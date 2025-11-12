@@ -999,6 +999,10 @@
     <div class="field">
       <label class="group-label">其它附件 (可多图):</label>
       <input type="file" id="attachments" name="attachments" multiple />
+      <div class="inline-field" style="margin-top:10px;">
+        <label class="group-label" for="attachmentSummary" style="white-space:nowrap;">附件总说明:</label>
+        <textarea id="attachmentSummary" name="attachmentSummary" placeholder="为全部附件写一个总的说明（选填）" style="min-height:60px; resize:vertical;"></textarea>
+      </div>
       <div class="upload-zone">
         <button type="button" class="upload-btn" onclick="document.getElementById('attachments').click()">+ 添加附件</button>
         <div id="attachmentPreviews" class="preview-grid"></div>
@@ -2061,6 +2065,21 @@
         formData.append('cardJsonFile', cardJsonFile);
       }
 
+      // 附件说明
+      const attachmentSummaryInput = document.getElementById('attachmentSummary');
+      const attachmentSummary = attachmentSummaryInput ? attachmentSummaryInput.value.trim() : '';
+      const attachmentFiles = fileStorage['attachments'] || [];
+      const attachmentDescriptions = attachmentFiles.map(file => {
+        if (file && file.__uid && attachmentDescriptionMap[file.__uid] !== undefined) {
+          return attachmentDescriptionMap[file.__uid];
+        }
+        return '';
+      });
+      const attachmentOriginalNames = attachmentFiles.map(file => file.name);
+      formData.append('attachmentSummary', attachmentSummary);
+      formData.append('attachmentDescriptions', JSON.stringify(attachmentDescriptions));
+      formData.append('attachmentOriginalNames', JSON.stringify(attachmentOriginalNames));
+
       if (formData.get('cardType') === 'single') {
         const relation = formData.get('nameRelation') || 'same';
         if (relation === 'same') {
@@ -2207,6 +2226,9 @@
         fileStorage['cardPngFile'] = [];
         fileStorage['cardJsonFile'] = [];
         fileStorage['attachments'] = [];
+        Object.keys(attachmentDescriptionMap).forEach(key => delete attachmentDescriptionMap[key]);
+        const attachmentSummaryEl = document.getElementById('attachmentSummary');
+        if (attachmentSummaryEl) attachmentSummaryEl.value = '';
         document.getElementById('avatarPreviews').innerHTML = '';
         document.getElementById('galleryPreviews').innerHTML = '';
         document.getElementById('cardPngPreviews').innerHTML = '';
@@ -2270,7 +2292,8 @@
         description: document.getElementById('description')?.value,
         otherInfo: document.getElementById('otherInfo')?.value,
         secondaryWarningToggle: document.querySelector('input[name="secondaryWarningToggle"]:checked')?.value,
-        secondaryWarning: document.getElementById('secondaryWarning')?.value
+        secondaryWarning: document.getElementById('secondaryWarning')?.value,
+        attachmentSummary: document.getElementById('attachmentSummary')?.value
       };
       
       // 收集所有自定义板块的选中状态
@@ -2361,6 +2384,9 @@
         }
       }
       if (formData.secondaryWarning) document.getElementById('secondaryWarning').value = formData.secondaryWarning;
+      if (formData.attachmentSummary && document.getElementById('attachmentSummary')) {
+        document.getElementById('attachmentSummary').value = formData.attachmentSummary;
+      }
       
       // 恢复 Tags（现在tags已经渲染完成，只需要短暂延迟确保DOM稳定）
       setTimeout(() => {
@@ -2752,6 +2778,7 @@
   
   // --- 文件上传预览功能 ---
   const fileStorage = {}; // 存储每个input的文件列表
+  const attachmentDescriptionMap = {}; // 记录附件的逐个说明，按文件唯一ID索引
 
   function setupFilePreview(inputId, previewId, isImage = false, multiple = false) {
     const input = document.getElementById(inputId);
@@ -2763,7 +2790,18 @@
     }
     
     input.addEventListener('change', (e) => {
-      const newFiles = Array.from(e.target.files || []);
+      const newFilesRaw = Array.from(e.target.files || []);
+      const newFiles = (inputId === 'attachments')
+        ? newFilesRaw.map(file => {
+            if (!file.__uid) {
+              file.__uid = `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+            }
+            if (attachmentDescriptionMap[file.__uid] === undefined) {
+              attachmentDescriptionMap[file.__uid] = '';
+            }
+            return file;
+          })
+        : newFilesRaw;
       
       if (multiple) {
         // 多文件模式：累积文件
@@ -2843,6 +2881,36 @@
     const files = fileStorage[inputId] || [];
     
     files.forEach((file, idx) => {
+      if (inputId === 'attachments') {
+        const descValue = file.__uid ? (attachmentDescriptionMap[file.__uid] || '') : '';
+        const container = document.createElement('div');
+        container.className = 'upload-thumbnail';
+        container.style.width = '180px';
+        container.style.minHeight = '160px';
+        container.style.display = 'flex';
+        container.style.flexDirection = 'column';
+        container.style.padding = '8px';
+        container.style.boxSizing = 'border-box';
+        container.innerHTML = `
+          <button class="remove" type="button" onclick="removeFile('${inputId}', ${idx})" style="top:6px; right:6px;">×</button>
+          <div style="flex:0 0 auto; font-size:12px; color:#5C4033; word-break:break-all; padding-right:18px;">
+            ${file.name}
+            <div style="color:#9A8274; font-size:11px; margin-top:2px;">${(file.size/1024).toFixed(1)} KB</div>
+          </div>
+          <textarea class="attachment-desc-input" data-uid="${file.__uid || ''}" placeholder="附件说明（选填）" style="margin-top:8px; flex:1 1 auto; resize:vertical; font-size:12px; line-height:1.4;">${descValue}</textarea>
+        `;
+        preview.appendChild(container);
+        const descInput = container.querySelector('.attachment-desc-input');
+        if (descInput) {
+          descInput.addEventListener('input', (event) => {
+            const uid = event.target.getAttribute('data-uid');
+            if (uid) {
+              attachmentDescriptionMap[uid] = event.target.value;
+            }
+          });
+        }
+        return;
+      }
       if ((isImage && file.type.startsWith('image/')) || (inputId === 'cardPngFile' && file.type === 'image/png')) {
         const reader = new FileReader();
         reader.onload = (ev) => {
@@ -2869,7 +2937,10 @@
 
   window.removeFile = function(inputId, index) {
     // 从存储中删除
-    fileStorage[inputId].splice(index, 1);
+    const removed = fileStorage[inputId].splice(index, 1)[0];
+    if (inputId === 'attachments' && removed && removed.__uid) {
+      delete attachmentDescriptionMap[removed.__uid];
+    }
     
     // 更新 input.files
     const input = document.getElementById(inputId);
