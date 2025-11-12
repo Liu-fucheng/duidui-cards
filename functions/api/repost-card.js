@@ -36,7 +36,13 @@ function verifyAdminToken(request, env) {
       otherInfo: cardData.otherInfo,
       avatarImageUrl: cardData.avatarImageKey ? `${env.R2_PUBLIC_URL}/${cardData.avatarImageKey}` : null,
       cardFileUrl: `${env.R2_PUBLIC_URL}/${cardData.cardFileKey}`,
+      cardFileKey: cardData.cardFileKey,
+      cardJsonFileKey: cardData.cardJsonFileKey,
       galleryImageUrls: cardData.galleryImageKeys.map(key => `${env.R2_PUBLIC_URL}/${key}`),
+      attachmentKeys: cardData.attachmentKeys || [],
+      attachmentOriginalNames: cardData.attachmentOriginalNames || [],
+      attachmentDescriptions: cardData.attachmentDescriptions || [],
+      attachmentSummary: cardData.attachmentSummary || '',
       downloadRequirements: cardData.downloadRequirements || [],
       requireReaction: cardData.requireReaction || false,
       requireComment: cardData.requireComment || false,
@@ -91,7 +97,13 @@ function verifyAdminToken(request, env) {
       otherInfo: cardData.otherInfo,
       avatarImageUrl: cardData.avatarImageUrl || null,
       cardFileUrl: cardData.cardFileUrl,
+      cardFileKey: cardData.cardFileKey,
+      cardJsonFileKey: cardData.cardJsonFileKey,
       galleryImageUrls: cardData.galleryImageUrls || [],
+      attachmentKeys: cardData.attachmentKeys || [],
+      attachmentOriginalNames: cardData.attachmentOriginalNames || [],
+      attachmentDescriptions: cardData.attachmentDescriptions || [],
+      attachmentSummary: cardData.attachmentSummary || '',
       uploadTime: new Date().toISOString()
     };
     await env.CLOUDFLARE_KV_NAMESPACE.put(key, JSON.stringify(persist));
@@ -138,6 +150,41 @@ function verifyAdminToken(request, env) {
       const requireLike = downloadRequirements.includes('点赞') || downloadRequirements.includes('like');
       const requireComment = downloadRequirements.includes('评论') || downloadRequirements.includes('comment');
   
+      let attachmentKeys = [];
+      let attachmentOriginalNames = [];
+      let attachmentDescriptions = [];
+      if (card.attachmentKeys) {
+        try {
+          const parsed = JSON.parse(card.attachmentKeys);
+          if (Array.isArray(parsed)) {
+            attachmentKeys = parsed;
+          }
+        } catch (e) {
+          console.error('解析附件键失败:', e);
+        }
+      }
+      if (card.attachmentOriginalNames) {
+        try {
+          const parsed = JSON.parse(card.attachmentOriginalNames);
+          if (Array.isArray(parsed)) {
+            attachmentOriginalNames = parsed;
+          }
+        } catch (e) {
+          console.error('解析附件原始名称失败:', e);
+        }
+      }
+      if (card.attachmentDescriptions) {
+        try {
+          const parsed = JSON.parse(card.attachmentDescriptions);
+          if (Array.isArray(parsed)) {
+            attachmentDescriptions = parsed;
+          }
+        } catch (e) {
+          console.error('解析附件描述失败:', e);
+        }
+      }
+      const attachmentSummary = card.attachmentSummary || '';
+
       // 3. 准备数据并通知Bot
       const payload = {
         cardId: card.id,
@@ -157,6 +204,11 @@ function verifyAdminToken(request, env) {
         avatarImageKey: card.avatarImageKey,
         galleryImageKeys: JSON.parse(card.galleryImageKeys || '[]'),
         cardFileKey: card.cardFileKey,
+        cardJsonFileKey: card.cardJsonFileKey,
+        attachmentKeys,
+        attachmentOriginalNames,
+        attachmentDescriptions,
+        attachmentSummary,
         downloadRequirements: downloadRequirements,
         requireReaction: requireLike,
         requireComment: requireComment,
@@ -193,7 +245,13 @@ function verifyAdminToken(request, env) {
             otherInfo: payload.otherInfo,
             avatarImageUrl: payload.avatarImageKey ? `${env.R2_PUBLIC_URL}/${payload.avatarImageKey}` : null,
             cardFileUrl: `${env.R2_PUBLIC_URL}/${payload.cardFileKey}`,
-            galleryImageUrls: JSON.parse(card.galleryImageKeys || '[]').map(key => `${env.R2_PUBLIC_URL}/${key}`)
+            cardFileKey: payload.cardFileKey,
+            cardJsonFileKey: payload.cardJsonFileKey,
+            galleryImageUrls: JSON.parse(card.galleryImageKeys || '[]').map(key => `${env.R2_PUBLIC_URL}/${key}`),
+            attachmentKeys,
+            attachmentOriginalNames,
+            attachmentDescriptions,
+            attachmentSummary
           });
         } catch (kvErr) {
           console.error('保存到KV失败:', kvErr);

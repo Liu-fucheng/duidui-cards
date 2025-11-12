@@ -90,6 +90,75 @@ export async function onRequestPost(context) {
     
     console.log(`收到 ${attachments.length} 个附件`);
     
+    // 解析附件名称、描述和总说明
+    const defaultAttachmentNames = attachments.map(file => file?.name || '').filter(Boolean);
+
+    let attachmentOriginalNames = [];
+    const rawAttachmentNames = formData.get("attachmentOriginalNames");
+    if (rawAttachmentNames) {
+      try {
+        const text = typeof rawAttachmentNames === 'string' ? rawAttachmentNames : await rawAttachmentNames.text();
+        if (text) {
+          const parsed = JSON.parse(text);
+          if (Array.isArray(parsed)) {
+            attachmentOriginalNames = parsed.map(name => (name ?? '').toString());
+          }
+        }
+      } catch (e) {
+        console.error('解析附件原始名称失败:', e);
+      }
+    }
+    if (!Array.isArray(attachmentOriginalNames) || attachmentOriginalNames.length === 0) {
+      attachmentOriginalNames = defaultAttachmentNames;
+    }
+    while (attachmentOriginalNames.length < attachments.length) {
+      const idx = attachmentOriginalNames.length;
+      attachmentOriginalNames.push(defaultAttachmentNames[idx] || '');
+    }
+    if (attachmentOriginalNames.length > attachments.length) {
+      attachmentOriginalNames = attachmentOriginalNames.slice(0, attachments.length);
+    }
+
+    let attachmentDescriptions = [];
+    const rawAttachmentDescriptions = formData.get("attachmentDescriptions");
+    if (rawAttachmentDescriptions) {
+      try {
+        const text = typeof rawAttachmentDescriptions === 'string' ? rawAttachmentDescriptions : await rawAttachmentDescriptions.text();
+        if (text) {
+          const parsed = JSON.parse(text);
+          if (Array.isArray(parsed)) {
+            attachmentDescriptions = parsed.map(desc => (desc ?? '').toString());
+          }
+        }
+      } catch (e) {
+        console.error('解析附件描述失败:', e);
+      }
+    }
+    if (!Array.isArray(attachmentDescriptions)) {
+      attachmentDescriptions = [];
+    }
+    while (attachmentDescriptions.length < attachments.length) {
+      attachmentDescriptions.push('');
+    }
+    if (attachmentDescriptions.length > attachments.length) {
+      attachmentDescriptions = attachmentDescriptions.slice(0, attachments.length);
+    }
+
+    let attachmentSummary = '';
+    const rawAttachmentSummary = formData.get("attachmentSummary");
+    if (rawAttachmentSummary) {
+      try {
+        if (typeof rawAttachmentSummary === 'string') {
+          attachmentSummary = rawAttachmentSummary;
+        } else if (typeof rawAttachmentSummary.text === 'function') {
+          attachmentSummary = await rawAttachmentSummary.text();
+        }
+      } catch (e) {
+        console.error('解析附件总说明失败:', e);
+      }
+    }
+    attachmentSummary = (attachmentSummary || '').trim();
+
     // 上传所有附件到R2
     const attachmentKeys = [];
     for (const attachment of attachments) {
@@ -130,9 +199,43 @@ export async function onRequestPost(context) {
     
     // 更新数据库
     const attachmentKeysJson = JSON.stringify(attachmentKeys);
-    await env.D1_DB.prepare(
-      `UPDATE cards_v2 SET attachmentKeys = ?, updatedAt = datetime('now') WHERE id = ?`
-    ).bind(attachmentKeysJson, cardId).run();
+    const attachmentOriginalNamesJson = JSON.stringify(attachmentOriginalNames);
+    const attachmentDescriptionsJson = JSON.stringify(attachmentDescriptions);
+
+    let tableColumns = [];
+    try {
+      const tableInfo = await env.D1_DB.prepare('PRAGMA table_info(cards_v2)').all();
+      tableColumns = tableInfo.results ? tableInfo.results.map(col => col.name) : [];
+    } catch (e) {
+      console.error('检查附件字段结构失败:', e);
+    }
+
+    const hasAttachmentOriginalNames = tableColumns.includes('attachmentOriginalNames');
+    const hasAttachmentDescriptions = tableColumns.includes('attachmentDescriptions');
+    const hasAttachmentSummary = tableColumns.includes('attachmentSummary');
+
+    const updates = ['attachmentKeys = ?'];
+    const values = [attachmentKeysJson];
+
+    if (hasAttachmentOriginalNames) {
+      updates.push('attachmentOriginalNames = ?');
+      values.push(attachmentOriginalNamesJson);
+    }
+    if (hasAttachmentDescriptions) {
+      updates.push('attachmentDescriptions = ?');
+      values.push(attachmentDescriptionsJson);
+    }
+    if (hasAttachmentSummary) {
+      updates.push('attachmentSummary = ?');
+      values.push(attachmentSummary);
+    }
+
+    updates.push("updatedAt = datetime('now')");
+
+    const sql = `UPDATE cards_v2 SET ${updates.join(', ')} WHERE id = ?`;
+    values.push(cardId);
+
+    await env.D1_DB.prepare(sql).bind(...values).run();
     
     console.log(`✅ 已更新附件: cardId=${cardId}, 附件数=${attachmentKeys.length}`);
     

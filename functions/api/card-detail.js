@@ -48,6 +48,31 @@ export async function onRequestGet(context) {
     // 生成公开URL
     const r2PublicUrl = env.R2_PUBLIC_URL || 'http://r2.liuyaocheng.org';
     
+    // 解析附件元数据
+    let attachmentOriginalNames = [];
+    if (result.attachmentOriginalNames) {
+      try {
+        const parsed = JSON.parse(result.attachmentOriginalNames);
+        if (Array.isArray(parsed)) {
+          attachmentOriginalNames = parsed;
+        }
+      } catch (e) {
+        console.error('解析附件原始名称失败:', e);
+      }
+    }
+    
+    let attachmentDescriptions = [];
+    if (result.attachmentDescriptions) {
+      try {
+        const parsed = JSON.parse(result.attachmentDescriptions);
+        if (Array.isArray(parsed)) {
+          attachmentDescriptions = parsed;
+        }
+      } catch (e) {
+        console.error('解析附件描述失败:', e);
+      }
+    }
+    
     // 解析JSON字段
     const cardData = {
       cardId: result.id,
@@ -71,6 +96,9 @@ export async function onRequestGet(context) {
       cardFileKey: result.cardFileKey,
       cardJsonFileKey: result.cardJsonFileKey,
       attachmentKeys: result.attachmentKeys ? JSON.parse(result.attachmentKeys) : [],
+      attachmentOriginalNames,
+      attachmentDescriptions,
+      attachmentSummary: result.attachmentSummary || '',
       galleryImageUrls: result.galleryImageKeys ? JSON.parse(result.galleryImageKeys).map(key => `${r2PublicUrl}/${key}`) : [],
       threadId: result.threadId,
       firstMessageId: result.firstMessageId,

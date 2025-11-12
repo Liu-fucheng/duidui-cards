@@ -40,7 +40,13 @@ async function uploadFileToR2(bucket, file, folder) {
       // 完整的文件URL
       avatarImageUrl: cardData.avatarImageKey ? `${env.R2_PUBLIC_URL}/${cardData.avatarImageKey}` : null,
       cardFileUrl: `${env.R2_PUBLIC_URL}/${cardData.cardFileKey}`,
+      cardFileKey: cardData.cardFileKey,
+      cardJsonFileKey: cardData.cardJsonFileKey,
       galleryImageUrls: cardData.galleryImageKeys.map(key => `${env.R2_PUBLIC_URL}/${key}`),
+      attachmentKeys: cardData.attachmentKeys || [],
+      attachmentOriginalNames: cardData.attachmentOriginalNames || [],
+      attachmentDescriptions: cardData.attachmentDescriptions || [],
+      attachmentSummary: cardData.attachmentSummary || '',
       downloadRequirements: cardData.downloadRequirements || [], // 下载要求列表
       requireReaction: cardData.requireReaction || false, // 兼容旧字段
       requireComment: cardData.requireComment || false,
@@ -416,6 +422,75 @@ async function uploadFileToR2(bucket, file, folder) {
       const attachmentFiles = formData.getAll("attachments");
       const attachmentUploadPromises = attachmentFiles.map(file => uploadFileToR2(env.R2_BUCKET, file, "attachments"));
       const attachmentKeys = (await Promise.all(attachmentUploadPromises)).filter(Boolean);
+
+      // 附件名称、描述和总说明（用于下载时展示）
+      const defaultAttachmentNames = attachmentFiles.map(file => file?.name || '').filter(Boolean);
+
+      let attachmentOriginalNames = [];
+      const rawAttachmentNames = formData.get("attachmentOriginalNames");
+      if (rawAttachmentNames) {
+        try {
+          const text = typeof rawAttachmentNames === 'string' ? rawAttachmentNames : await rawAttachmentNames.text();
+          if (text) {
+            const parsed = JSON.parse(text);
+            if (Array.isArray(parsed)) {
+              attachmentOriginalNames = parsed.map(name => (name ?? '').toString());
+            }
+          }
+        } catch (e) {
+          console.error('解析附件原始文件名失败:', e);
+        }
+      }
+      if (!Array.isArray(attachmentOriginalNames) || attachmentOriginalNames.length === 0) {
+        attachmentOriginalNames = defaultAttachmentNames;
+      }
+      while (attachmentOriginalNames.length < attachmentKeys.length) {
+        const idx = attachmentOriginalNames.length;
+        attachmentOriginalNames.push(defaultAttachmentNames[idx] || (attachmentKeys[idx] ? attachmentKeys[idx].split('/').pop() : ''));
+      }
+      if (attachmentOriginalNames.length > attachmentKeys.length) {
+        attachmentOriginalNames = attachmentOriginalNames.slice(0, attachmentKeys.length);
+      }
+
+      let attachmentDescriptions = [];
+      const rawAttachmentDescriptions = formData.get("attachmentDescriptions");
+      if (rawAttachmentDescriptions) {
+        try {
+          const text = typeof rawAttachmentDescriptions === 'string' ? rawAttachmentDescriptions : await rawAttachmentDescriptions.text();
+          if (text) {
+            const parsed = JSON.parse(text);
+            if (Array.isArray(parsed)) {
+              attachmentDescriptions = parsed.map(desc => (desc ?? '').toString());
+            }
+          }
+        } catch (e) {
+          console.error('解析附件描述失败:', e);
+        }
+      }
+      if (!Array.isArray(attachmentDescriptions)) {
+        attachmentDescriptions = [];
+      }
+      while (attachmentDescriptions.length < attachmentKeys.length) {
+        attachmentDescriptions.push('');
+      }
+      if (attachmentDescriptions.length > attachmentKeys.length) {
+        attachmentDescriptions = attachmentDescriptions.slice(0, attachmentKeys.length);
+      }
+
+      let attachmentSummary = '';
+      const rawAttachmentSummary = formData.get("attachmentSummary");
+      if (rawAttachmentSummary) {
+        try {
+          if (typeof rawAttachmentSummary === 'string') {
+            attachmentSummary = rawAttachmentSummary;
+          } else if (typeof rawAttachmentSummary.text === 'function') {
+            attachmentSummary = await rawAttachmentSummary.text();
+          }
+        } catch (e) {
+          console.error('解析附件总说明失败:', e);
+        }
+      }
+      attachmentSummary = (attachmentSummary || '').trim();
   
       // 3.5. 自动收集自定义板块数据（先收集，用于回填性向/背景）
       // 读取配置以识别自定义板块字段
@@ -548,6 +623,11 @@ async function uploadFileToR2(bucket, file, folder) {
           avatarImageKey,
           galleryImageKeys,
           cardFileKey,
+          cardJsonFileKey,
+          attachmentKeys,
+          attachmentOriginalNames,
+          attachmentDescriptions,
+          attachmentSummary,
             downloadRequirements: downloadRequirements, // 传递下载要求列表
             requireReaction: requireLike, // 兼容旧字段
             requireComment: requireComment,
@@ -578,6 +658,12 @@ async function uploadFileToR2(bucket, file, folder) {
               avatarImageUrl: avatarImageKey ? `${env.R2_PUBLIC_URL}/${avatarImageKey}` : null,
               cardFileUrl: `${env.R2_PUBLIC_URL}/${cardFileKey}`,
               galleryImageUrls: galleryImageKeys.map(key => `${env.R2_PUBLIC_URL}/${key}`),
+              cardFileKey,
+              cardJsonFileKey,
+              attachmentKeys,
+              attachmentOriginalNames,
+              attachmentDescriptions,
+              attachmentSummary,
               uploadTime: new Date().toISOString()
             });
           } catch (kvError) {
@@ -595,140 +681,144 @@ async function uploadFileToR2(bucket, file, folder) {
 
       // 6. 插入数据库，包含Discord信息
       // 检查表结构
-      let hasDownloadRequirements = false;
-      let hasCardJsonFileKey = false;
+      let tableColumns = [];
       try {
         const tableInfo = await env.D1_DB.prepare('PRAGMA table_info(cards_v2)').all();
-        hasDownloadRequirements = tableInfo.results && tableInfo.results.some(col => col.name === 'downloadRequirements');
-        hasCardJsonFileKey = tableInfo.results && tableInfo.results.some(col => col.name === 'cardJsonFileKey');
+        tableColumns = tableInfo.results ? tableInfo.results.map(col => col.name) : [];
       } catch (e) {
         console.error('检查表结构失败:', e);
       }
-      
-      let stmt;
-      if (hasDownloadRequirements && hasCardJsonFileKey) {
-        // 最新版本：包含下载要求和JSON文件字段
-        stmt = env.D1_DB.prepare(
-          `INSERT INTO cards_v2 (id, cardName, cardType, characters, category, authorName, authorId, isAnonymous, 
-            orientation, background, tags, userLimit, warnings, description, secondaryWarning, threadTitle, otherInfo,
-            avatarImageKey, galleryImageKeys, cardFileKey, cardJsonFileKey, attachmentKeys, threadId, firstMessageId,
-            submitterUserId, submitterUsername, submitterDisplayName, primaryTags,
-            downloadRequirements, requireReaction, requireComment)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-        ).bind(
-          cardId,
-          formData.get("cardName") || "未命名",
-          formData.get("cardType"), // 'single' or 'multi'
-          characters, // JSON string
-          formData.get("category"),
-          authorName,
-          authorId, // Discord 用户ID（已废弃，保留兼容）
-          isAnonymous,
-          orientation, // JSON string
-          backgrounds, // JSON string
-          tags, // JSON string
-          JSON.stringify(formData.getAll("userLimit").filter(v => v && v.trim() !== "")) || "[]",
-          formData.get("warnings"),
-          formData.get("description"),
-          formData.get("secondaryWarning"), // 二次排雷
-          formData.get("threadTitle") || "",
-          otherInfoValue,
-          avatarImageKey, // 头像文件 key
-          JSON.stringify(galleryImageKeys), // JSON string
-          cardFileKey, // PNG文件 key
-          cardJsonFileKey, // JSON文件 key
-          JSON.stringify(attachmentKeys), // JSON string
-          discordInfo?.threadId || null, // Discord thread ID
-          discordInfo?.firstMessageId || null, // Discord首楼消息 ID
-          submitterUserId, // 提交者Discord用户ID
-          submitterUsername, // 提交者Discord用户名
-          submitterDisplayName, // 提交者Discord显示名（服务器昵称）
-          JSON.stringify(primaryTags), // 主要标签（JSON数组）
-          JSON.stringify(downloadRequirements), // 下载要求列表（JSON数组）
-          requireLike ? 1 : 0, // 是否需要点赞/反应
-          requireComment ? 1 : 0 // 是否需要评论
-        );
-      } else if (hasDownloadRequirements) {
-        // 旧版本（有下载要求但没有JSON字段）
-        stmt = env.D1_DB.prepare(
-          `INSERT INTO cards_v2 (id, cardName, cardType, characters, category, authorName, authorId, isAnonymous, 
-            orientation, background, tags, userLimit, warnings, description, secondaryWarning, threadTitle, otherInfo,
-            avatarImageKey, galleryImageKeys, cardFileKey, attachmentKeys, threadId, firstMessageId,
-            submitterUserId, submitterUsername, submitterDisplayName, primaryTags,
-            downloadRequirements, requireReaction, requireComment)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-        ).bind(
-          cardId,
-          formData.get("cardName") || "未命名",
-          formData.get("cardType"), // 'single' or 'multi'
-          characters, // JSON string
-          formData.get("category"),
-          authorName,
-          authorId, // Discord 用户ID（已废弃，保留兼容）
-          isAnonymous,
-          orientation, // JSON string
-          backgrounds, // JSON string
-          tags, // JSON string
-          JSON.stringify(formData.getAll("userLimit").filter(v => v && v.trim() !== "")) || "[]",
-          formData.get("warnings"),
-          formData.get("description"),
-          formData.get("secondaryWarning"), // 二次排雷
-          formData.get("threadTitle") || "",
-          otherInfoValue,
-          avatarImageKey, // 头像文件 key
-          JSON.stringify(galleryImageKeys), // JSON string
-          cardFileKey,
-          JSON.stringify(attachmentKeys), // JSON string
-          discordInfo?.threadId || null, // Discord thread ID
-          discordInfo?.firstMessageId || null, // Discord首楼消息 ID
-          submitterUserId, // 提交者Discord用户ID
-          submitterUsername, // 提交者Discord用户名
-          submitterDisplayName, // 提交者Discord显示名（服务器昵称）
-          JSON.stringify(primaryTags), // 主要标签（JSON数组）
-          JSON.stringify(downloadRequirements), // 下载要求列表（JSON数组）
-          requireLike ? 1 : 0, // 是否需要点赞/反应
-          requireComment ? 1 : 0 // 是否需要评论
-        );
-      } else {
-        // 旧版本：不包含下载要求字段
-        stmt = env.D1_DB.prepare(
-          `INSERT INTO cards_v2 (id, cardName, cardType, characters, category, authorName, authorId, isAnonymous, 
-            orientation, background, tags, userLimit, warnings, description, secondaryWarning, threadTitle, otherInfo,
-            avatarImageKey, galleryImageKeys, cardFileKey, attachmentKeys, threadId, firstMessageId,
-            submitterUserId, submitterUsername, submitterDisplayName, primaryTags)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-        ).bind(
-          cardId,
-          formData.get("cardName") || "未命名",
-          formData.get("cardType"), // 'single' or 'multi'
-          characters, // JSON string
-          formData.get("category"),
-          authorName,
-          authorId, // Discord 用户ID（已废弃，保留兼容）
-          isAnonymous,
-          orientation, // JSON string
-          backgrounds, // JSON string
-          tags, // JSON string
-          JSON.stringify(formData.getAll("userLimit").filter(v => v && v.trim() !== "")) || "[]",
-          formData.get("warnings"),
-          formData.get("description"),
-          formData.get("secondaryWarning"), // 二次排雷
-          formData.get("threadTitle") || "",
-          otherInfoValue,
-          avatarImageKey, // 头像文件 key
-          JSON.stringify(galleryImageKeys), // JSON string
-          cardFileKey,
-          JSON.stringify(attachmentKeys), // JSON string
-          discordInfo?.threadId || null, // Discord thread ID
-          discordInfo?.firstMessageId || null, // Discord首楼消息 ID
-          submitterUserId, // 提交者Discord用户ID
-          submitterUsername, // 提交者Discord用户名
-          submitterDisplayName, // 提交者Discord显示名（服务器昵称）
-          JSON.stringify(primaryTags) // 主要标签（JSON数组）
-        );
+
+      const hasCardJsonFileKey = tableColumns.includes('cardJsonFileKey');
+      const hasDownloadRequirements = tableColumns.includes('downloadRequirements');
+      const hasRequireReaction = tableColumns.includes('requireReaction');
+      const hasRequireComment = tableColumns.includes('requireComment');
+      const hasPrimaryTags = tableColumns.includes('primaryTags');
+      const hasAttachmentOriginalNames = tableColumns.includes('attachmentOriginalNames');
+      const hasAttachmentDescriptions = tableColumns.includes('attachmentDescriptions');
+      const hasAttachmentSummary = tableColumns.includes('attachmentSummary');
+      const hasThreadId = tableColumns.includes('threadId');
+      const hasFirstMessageId = tableColumns.includes('firstMessageId');
+      const hasSubmitterUserId = tableColumns.includes('submitterUserId');
+      const hasSubmitterUsername = tableColumns.includes('submitterUsername');
+      const hasSubmitterDisplayName = tableColumns.includes('submitterDisplayName');
+
+      const userLimitJson = JSON.stringify(formData.getAll("userLimit").filter(v => v && v.trim() !== "")) || "[]";
+      const attachmentKeysJson = JSON.stringify(attachmentKeys);
+      const attachmentOriginalNamesJson = JSON.stringify(attachmentOriginalNames);
+      const attachmentDescriptionsJson = JSON.stringify(attachmentDescriptions);
+
+      const columns = [
+        'id',
+        'cardName',
+        'cardType',
+        'characters',
+        'category',
+        'authorName',
+        'authorId',
+        'isAnonymous',
+        'orientation',
+        'background',
+        'tags',
+        'userLimit',
+        'warnings',
+        'description',
+        'secondaryWarning',
+        'threadTitle',
+        'otherInfo',
+        'avatarImageKey',
+        'galleryImageKeys',
+        'cardFileKey'
+      ];
+
+      const values = [
+        cardId,
+        formData.get("cardName") || "未命名",
+        formData.get("cardType"),
+        characters,
+        formData.get("category"),
+        authorName,
+        authorId,
+        isAnonymous,
+        orientation,
+        backgrounds,
+        tags,
+        userLimitJson,
+        formData.get("warnings"),
+        formData.get("description"),
+        formData.get("secondaryWarning"),
+        formData.get("threadTitle") || "",
+        otherInfoValue,
+        avatarImageKey,
+        JSON.stringify(galleryImageKeys),
+        cardFileKey || null
+      ];
+
+      if (hasCardJsonFileKey) {
+        columns.push('cardJsonFileKey');
+        values.push(cardJsonFileKey || null);
       }
 
-      await stmt.run();
+      columns.push('attachmentKeys');
+      values.push(attachmentKeysJson);
+
+      if (hasAttachmentOriginalNames) {
+        columns.push('attachmentOriginalNames');
+        values.push(attachmentOriginalNamesJson);
+      }
+      if (hasAttachmentDescriptions) {
+        columns.push('attachmentDescriptions');
+        values.push(attachmentDescriptionsJson);
+      }
+      if (hasAttachmentSummary) {
+        columns.push('attachmentSummary');
+        values.push(attachmentSummary);
+      }
+
+      if (hasThreadId) {
+        columns.push('threadId');
+        values.push(discordInfo?.threadId || null);
+      }
+      if (hasFirstMessageId) {
+        columns.push('firstMessageId');
+        values.push(discordInfo?.firstMessageId || null);
+      }
+
+      if (hasSubmitterUserId) {
+        columns.push('submitterUserId');
+        values.push(submitterUserId || null);
+      }
+      if (hasSubmitterUsername) {
+        columns.push('submitterUsername');
+        values.push(submitterUsername || null);
+      }
+      if (hasSubmitterDisplayName) {
+        columns.push('submitterDisplayName');
+        values.push(submitterDisplayName || null);
+      }
+      if (hasPrimaryTags) {
+        columns.push('primaryTags');
+        values.push(JSON.stringify(primaryTags));
+      }
+
+      if (hasDownloadRequirements) {
+        columns.push('downloadRequirements');
+        values.push(JSON.stringify(downloadRequirements));
+        if (hasRequireReaction) {
+          columns.push('requireReaction');
+          values.push(requireLike ? 1 : 0);
+        }
+        if (hasRequireComment) {
+          columns.push('requireComment');
+          values.push(requireComment ? 1 : 0);
+        }
+      }
+
+      const placeholders = columns.map(() => '?').join(', ');
+      const sanitizedValues = values.map(value => (value === undefined ? null : value));
+      await env.D1_DB.prepare(
+        `INSERT INTO cards_v2 (${columns.join(', ')}) VALUES (${placeholders})`
+      ).bind(...sanitizedValues).run();
 
       // 返回成功信息，实名投递需要返回cardId
       const responseData = { 

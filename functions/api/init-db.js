@@ -32,6 +32,9 @@ const CORE_TABLES = {
       cardFileKey TEXT,
       cardJsonFileKey TEXT,
       attachmentKeys TEXT,
+      attachmentOriginalNames TEXT,
+      attachmentDescriptions TEXT,
+      attachmentSummary TEXT,
       threadId TEXT,
       firstMessageId TEXT,
       createdAt TEXT DEFAULT (datetime('now')),
@@ -203,6 +206,39 @@ const MIGRATIONS = [
     run: async (db) => {
       // 添加 JSON 格式角色卡字段
       await db.prepare('ALTER TABLE cards_v2 ADD COLUMN cardJsonFileKey TEXT').run();
+    }
+  },
+  {
+    name: 'add_attachment_metadata_to_cards_v2',
+    check: async (db) => {
+      try {
+        const result = await db.prepare('PRAGMA table_info(cards_v2)').all();
+        if (!result.results) return false;
+        const existing = result.results.map(col => col.name);
+        return !existing.includes('attachmentOriginalNames') ||
+          !existing.includes('attachmentDescriptions') ||
+          !existing.includes('attachmentSummary');
+      } catch (e) {
+        return false;
+      }
+    },
+    run: async (db) => {
+      try {
+        const tableInfo = await db.prepare('PRAGMA table_info(cards_v2)').all();
+        const existing = new Set((tableInfo.results || []).map(col => col.name));
+        if (!existing.has('attachmentOriginalNames')) {
+          await db.prepare('ALTER TABLE cards_v2 ADD COLUMN attachmentOriginalNames TEXT').run();
+        }
+        if (!existing.has('attachmentDescriptions')) {
+          await db.prepare('ALTER TABLE cards_v2 ADD COLUMN attachmentDescriptions TEXT').run();
+        }
+        if (!existing.has('attachmentSummary')) {
+          await db.prepare('ALTER TABLE cards_v2 ADD COLUMN attachmentSummary TEXT').run();
+        }
+      } catch (e) {
+        console.error('添加附件元数据字段失败:', e);
+        throw e;
+      }
     }
   },
   {
