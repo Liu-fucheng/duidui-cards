@@ -21,6 +21,14 @@ async function ensureCheckinTable(env) {
   `);
 }
 
+function normalizeCount(value, fallback = 0) {
+  if (value === null || value === undefined) {
+    return fallback;
+  }
+  const numeric = typeof value === 'string' ? Number.parseInt(value, 10) : Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
+}
+
 // POST: 用户签到
 export async function onRequestPost(context) {
   try {
@@ -83,16 +91,16 @@ export async function onRequestPost(context) {
     // 检查今天是否已经签到
     let todayCheckin = null;
     try {
-      const checkinResult = await env.D1_DB.prepare(
+      const todayQuery = await env.D1_DB.prepare(
         `SELECT * FROM checkins WHERE user_id = ? AND guild_id = ? AND checkin_date = ?`
-      ).bind(user_id, guild_id, beijing_date).first();
-      
-      if (checkinResult) {
-        todayCheckin = checkinResult;
+      ).bind(user_id, guild_id, beijing_date).all();
+
+      if (todayQuery?.results && todayQuery.results.length > 0) {
+        todayCheckin = todayQuery.results[0];
       }
     } catch (checkError) {
       console.error('查询今天签到记录失败:', checkError);
-      // 继续执行，不阻止签到
+      throw new Error('查询今天签到记录失败: ' + (checkError?.message || String(checkError)));
     }
 
     if (todayCheckin) {
@@ -109,15 +117,15 @@ export async function onRequestPost(context) {
     // 查询用户总签到次数
     let current_count = 1;
     try {
-      const totalCheckins = await env.D1_DB.prepare(
+      const totalQuery = await env.D1_DB.prepare(
         `SELECT COUNT(*) as count FROM checkins WHERE user_id = ? AND guild_id = ?`
-      ).bind(user_id, guild_id).first();
-      
-      current_count = (totalCheckins?.count || 0) + 1;
+      ).bind(user_id, guild_id).all();
+
+      const totalCount = normalizeCount(totalQuery?.results?.[0]?.count);
+      current_count = totalCount + 1;
     } catch (countError) {
       console.error('查询签到次数失败:', countError);
-      // 如果查询失败，默认从1开始
-      current_count = 1;
+      throw new Error('查询签到次数失败: ' + (countError?.message || String(countError)));
     }
 
     // 插入今天的签到记录
@@ -194,17 +202,18 @@ export async function onRequestGet(context) {
     await ensureCheckinTable(env);
 
     // 查询用户总签到次数
-    const totalCheckins = await env.D1_DB.prepare(
+    const totalQuery = await env.D1_DB.prepare(
       `SELECT COUNT(*) as count FROM checkins WHERE user_id = ? AND guild_id = ?`
-    ).bind(user_id, guild_id).first();
+    ).bind(user_id, guild_id).all();
 
-    const checkin_count = totalCheckins?.count || 0;
+    const checkin_count = normalizeCount(totalQuery?.results?.[0]?.count);
 
     // 查询今天的签到记录
     const beijing_date = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Shanghai' });
-    const todayCheckin = await env.D1_DB.prepare(
+    const todayQuery = await env.D1_DB.prepare(
       `SELECT * FROM checkins WHERE user_id = ? AND guild_id = ? AND checkin_date = ?`
-    ).bind(user_id, guild_id, beijing_date).first();
+    ).bind(user_id, guild_id, beijing_date).all();
+    const todayCheckin = todayQuery?.results && todayQuery.results.length > 0 ? todayQuery.results[0] : null;
 
     return new Response(JSON.stringify({ 
       success: true,
