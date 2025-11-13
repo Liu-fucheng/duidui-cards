@@ -55,6 +55,24 @@ export async function onRequestGet(context) {
     console.log('  - attachmentSummary 原始值:', result.attachmentSummary, '类型:', typeof result.attachmentSummary, '是否为null:', result.attachmentSummary === null, '是否为空字符串:', result.attachmentSummary === '');
     console.log('  - attachmentKeys 原始值:', result.attachmentKeys, '类型:', typeof result.attachmentKeys);
     
+    // --- (开始) 附件解析逻辑修改 ---
+
+    // 1. 解析 Keys (作为附件数量的基准)
+    let attachmentKeys = [];
+    if (result.attachmentKeys) {
+      try {
+        const parsed = JSON.parse(result.attachmentKeys);
+        if (Array.isArray(parsed)) {
+          attachmentKeys = parsed;
+        }
+      } catch (e) {
+        console.error('解析附件Keys失败:', e, '原始值:', result.attachmentKeys);
+      }
+    }
+    const attachmentCount = attachmentKeys.length;
+    console.log(`  - attachmentKeys 解析后: ${attachmentCount} 个附件`);
+
+    // 2. 解析 OriginalNames
     let attachmentOriginalNames = [];
     if (result.attachmentOriginalNames) {
       try {
@@ -62,27 +80,51 @@ export async function onRequestGet(context) {
         if (Array.isArray(parsed)) {
           attachmentOriginalNames = parsed;
         }
-        console.log('  - attachmentOriginalNames 解析后:', attachmentOriginalNames);
+        console.log('  - attachmentOriginalNames 解析后 (原始):', attachmentOriginalNames);
       } catch (e) {
-        console.error('解析附件原始名称失败:', e);
+        console.error('解析附件原始名称失败:', e, '原始值:', result.attachmentOriginalNames);
       }
     }
-    
+
+    // 3. 解析 Descriptions
     let attachmentDescriptions = [];
-    if (result.attachmentDescriptions) {
+    if (result.attachmentDescriptions && result.attachmentDescriptions !== 'null') { // 增加 'null' 字符串检查
       try {
         const parsed = JSON.parse(result.attachmentDescriptions);
         if (Array.isArray(parsed)) {
           attachmentDescriptions = parsed;
         }
-        console.log('  - attachmentDescriptions 解析后:', attachmentDescriptions);
+        console.log('  - attachmentDescriptions 解析后 (原始):', attachmentDescriptions);
       } catch (e) {
         console.error('解析附件描述失败:', e, '原始值:', result.attachmentDescriptions);
       }
     } else {
       console.log('  - attachmentDescriptions 为空或null');
     }
+
+    // 4. [修复] 确保 Names 和 Descriptions 数组长度与 Keys 数组长度一致，用空字符串填充缺失项
+    if (attachmentCount > 0) {
+      const correctedNames = [];
+      const correctedDescriptions = [];
+      
+      for (let i = 0; i < attachmentCount; i++) {
+        correctedNames.push(attachmentOriginalNames[i] || ""); // 如果 Names 数组对应位置没有值，填空字符串
+        correctedDescriptions.push(attachmentDescriptions[i] || ""); // 如果 Descriptions 数组对应位置没有值，填空字符串
+      }
+      
+      if (attachmentOriginalNames.length !== attachmentCount) {
+        console.warn(`[!] 附件原始名称数量 (${attachmentOriginalNames.length}) 与 Keys 数量 (${attachmentCount}) 不匹配。已填充。`);
+        attachmentOriginalNames = correctedNames;
+      }
+      
+      if (attachmentDescriptions.length !== attachmentCount) {
+        console.warn(`[!] 附件描述数量 (${attachmentDescriptions.length}) 与 Keys 数量 (${attachmentCount}) 不匹配。已填充。`);
+        attachmentDescriptions = correctedDescriptions;
+      }
+    }
     
+    // --- (结束) 附件解析逻辑修改 ---
+
     // 解析JSON字段
     const cardData = {
       cardId: result.id,
@@ -105,9 +147,9 @@ export async function onRequestGet(context) {
       cardFileUrl: result.cardFileKey ? `${r2PublicUrl}/${result.cardFileKey}` : null,
       cardFileKey: result.cardFileKey,
       cardJsonFileKey: result.cardJsonFileKey,
-      attachmentKeys: result.attachmentKeys ? JSON.parse(result.attachmentKeys) : [],
-      attachmentOriginalNames,
-      attachmentDescriptions,
+      attachmentKeys: attachmentKeys, // <-- 使用修复后的
+      attachmentOriginalNames, // <-- 使用修复后的
+      attachmentDescriptions, // <-- 使用修复后的
       attachmentSummary: result.attachmentSummary || '',
       galleryImageUrls: result.galleryImageKeys ? JSON.parse(result.galleryImageKeys).map(key => `${r2PublicUrl}/${key}`) : [],
       threadId: result.threadId,
@@ -226,4 +268,3 @@ export async function onRequestPatch(context) {
     });
   }
 }
-
