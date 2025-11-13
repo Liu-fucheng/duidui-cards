@@ -81,15 +81,25 @@ export async function onRequestPost(context) {
     await ensureCheckinTable(env);
 
     // 检查今天是否已经签到
-    const todayCheckin = await env.D1_DB.prepare(
-      `SELECT * FROM checkins WHERE user_id = ? AND guild_id = ? AND checkin_date = ?`
-    ).bind(user_id, guild_id, beijing_date).first();
+    let todayCheckin = null;
+    try {
+      const checkinResult = await env.D1_DB.prepare(
+        `SELECT * FROM checkins WHERE user_id = ? AND guild_id = ? AND checkin_date = ?`
+      ).bind(user_id, guild_id, beijing_date).first();
+      
+      if (checkinResult) {
+        todayCheckin = checkinResult;
+      }
+    } catch (checkError) {
+      console.error('查询今天签到记录失败:', checkError);
+      // 继续执行，不阻止签到
+    }
 
     if (todayCheckin) {
       return new Response(JSON.stringify({ 
         success: false,
         message: '今天已经签到过了',
-        checkin_count: todayCheckin.checkin_count
+        checkin_count: todayCheckin.checkin_count || 0
       }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' }
@@ -97,22 +107,36 @@ export async function onRequestPost(context) {
     }
 
     // 查询用户总签到次数
-    const totalCheckins = await env.D1_DB.prepare(
-      `SELECT COUNT(*) as count FROM checkins WHERE user_id = ? AND guild_id = ?`
-    ).bind(user_id, guild_id).first();
-
-    const current_count = (totalCheckins?.count || 0) + 1;
+    let current_count = 1;
+    try {
+      const totalCheckins = await env.D1_DB.prepare(
+        `SELECT COUNT(*) as count FROM checkins WHERE user_id = ? AND guild_id = ?`
+      ).bind(user_id, guild_id).first();
+      
+      current_count = (totalCheckins?.count || 0) + 1;
+    } catch (countError) {
+      console.error('查询签到次数失败:', countError);
+      // 如果查询失败，默认从1开始
+      current_count = 1;
+    }
 
     // 插入今天的签到记录
-    await env.D1_DB.prepare(
-      `INSERT INTO checkins (user_id, guild_id, checkin_date, checkin_count) 
-       VALUES (?, ?, ?, ?)`
-    ).bind(
-      user_id,
-      guild_id,
-      beijing_date,
-      current_count
-    ).run();
+    try {
+      const insertResult = await env.D1_DB.prepare(
+        `INSERT INTO checkins (user_id, guild_id, checkin_date, checkin_count) 
+         VALUES (?, ?, ?, ?)`
+      ).bind(
+        user_id,
+        guild_id,
+        beijing_date,
+        current_count
+      ).run();
+      
+      console.log('✅ 签到记录插入成功:', insertResult);
+    } catch (insertError) {
+      console.error('插入签到记录失败:', insertError);
+      throw new Error('插入签到记录失败: ' + (insertError?.message || String(insertError)));
+    }
 
     return new Response(JSON.stringify({ 
       success: true,
@@ -126,9 +150,11 @@ export async function onRequestPost(context) {
 
   } catch (error) {
     console.error('签到失败:', error);
+    console.error('错误堆栈:', error.stack);
+    const errorMessage = error?.message || String(error) || '未知错误';
     return new Response(JSON.stringify({ 
       success: false, 
-      message: '签到失败: ' + error.message 
+      message: '签到失败: ' + errorMessage 
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
@@ -191,9 +217,11 @@ export async function onRequestGet(context) {
 
   } catch (error) {
     console.error('查询签到记录失败:', error);
+    console.error('错误堆栈:', error.stack);
+    const errorMessage = error?.message || String(error) || '未知错误';
     return new Response(JSON.stringify({ 
       success: false, 
-      message: '查询失败: ' + error.message 
+      message: '查询失败: ' + errorMessage 
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
