@@ -8,17 +8,22 @@
 
 // 确保签到表存在
 async function ensureCheckinTable(env) {
-  await env.D1_DB.exec(`
-    CREATE TABLE IF NOT EXISTS checkins (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id TEXT NOT NULL,
-      guild_id TEXT NOT NULL,
-      checkin_date TEXT NOT NULL,
-      checkin_count INTEGER NOT NULL DEFAULT 1,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      UNIQUE(user_id, guild_id, checkin_date)
-    )
-  `);
+  try {
+    await env.D1_DB.prepare(`
+      CREATE TABLE IF NOT EXISTS checkins (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        guild_id TEXT NOT NULL,
+        checkin_date TEXT NOT NULL,
+        checkin_count INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(user_id, guild_id, checkin_date)
+      )
+    `).run();
+  } catch (error) {
+    console.error('初始化签到表失败:', error);
+    throw new Error('初始化签到表失败: ' + (error?.message || String(error)));
+  }
 }
 
 function normalizeCount(value, fallback = 0) {
