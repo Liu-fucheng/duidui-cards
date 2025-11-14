@@ -620,7 +620,7 @@
       cards.forEach(card => {
         const row = document.createElement('tr');
         const shortId = card.id.substring(0, 8);
-        const uploadTime = new Date(card.createdAt).toLocaleString('zh-CN');
+        const uploadTime = new Date(card.createdAt).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
         const categoryBadge = `<span class="badge ${card.category === '深渊' ? 'warning' : 'info'}">${card.category || '未知'}</span>`;
         const typeBadge = card.cardType === 'multi' ? '多人' : '单人';
         const discordLink = card.threadId 
@@ -857,7 +857,7 @@
         </div>
         <div class="detail-row">
           <div class="detail-label">上传时间</div>
-          <div class="detail-value">${new Date(card.createdAt).toLocaleString('zh-CN')}</div>
+          <div class="detail-value">${new Date(card.createdAt).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</div>
         </div>
         <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #E8DFD6;">
           <h3 style="margin: 0 0 15px 0; color: #8B5E3C; font-size: 16px;">操作统计</h3>
@@ -915,7 +915,7 @@
       }
 
       logs.forEach(log => {
-        const time = new Date(log.createdAt).toLocaleString('zh-CN');
+        const time = new Date(log.createdAt).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
         const discordLink = log.threadId 
           ? `<a href="https://discord.com/channels/1338365085072101416/${log.threadId}" target="_blank" style="color: var(--accent);">查看</a>`
           : '-';

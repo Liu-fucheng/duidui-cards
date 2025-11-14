@@ -23,28 +23,39 @@ async function getStats(env) {
     'SELECT COUNT(*) as count FROM cards_v2'
   ).first();
   
-  // 今日新增（UTC时间）
-  const today = new Date();
+  // 获取北京时间（UTC+8）
+  // 使用更可靠的方法获取北京时间
+  const now = new Date();
+  const beijingOffset = 8 * 60 * 60 * 1000; // 8小时的毫秒数
+  const utcTime = now.getTime() + (now.getTimezoneOffset() * 60 * 1000);
+  const beijingTime = new Date(utcTime + beijingOffset);
+  
+  // 今日新增（北京时间）
+  const today = new Date(beijingTime);
   today.setHours(0, 0, 0, 0);
+  // 转换为 UTC 时间用于数据库查询（数据库存储的是 UTC 时间）
+  const todayUTC = new Date(today.getTime() - beijingOffset);
   const todayResult = await db.prepare(
     'SELECT COUNT(*) as count FROM cards_v2 WHERE createdAt >= ?'
-  ).bind(today.toISOString()).first();
+  ).bind(todayUTC.toISOString()).first();
   
-  // 本周新增
-  const weekAgo = new Date();
+  // 本周新增（北京时间）
+  const weekAgo = new Date(beijingTime);
   weekAgo.setDate(weekAgo.getDate() - 7);
   weekAgo.setHours(0, 0, 0, 0);
+  const weekAgoUTC = new Date(weekAgo.getTime() - beijingOffset);
   const weekResult = await db.prepare(
     'SELECT COUNT(*) as count FROM cards_v2 WHERE createdAt >= ?'
-  ).bind(weekAgo.toISOString()).first();
+  ).bind(weekAgoUTC.toISOString()).first();
   
-  // 本月新增
-  const monthAgo = new Date();
+  // 本月新增（北京时间）
+  const monthAgo = new Date(beijingTime);
   monthAgo.setMonth(monthAgo.getMonth() - 1);
   monthAgo.setHours(0, 0, 0, 0);
+  const monthAgoUTC = new Date(monthAgo.getTime() - beijingOffset);
   const monthResult = await db.prepare(
     'SELECT COUNT(*) as count FROM cards_v2 WHERE createdAt >= ?'
-  ).bind(monthAgo.toISOString()).first();
+  ).bind(monthAgoUTC.toISOString()).first();
   
   // 按分区统计
   const categoryResult = await db.prepare(
@@ -192,25 +203,34 @@ async function getLogs(env, timeRange = 'week') {
   let query = 'SELECT * FROM cards_v2 WHERE threadId IS NOT NULL';
   const bindings = [];
   
-  // 时间范围
+  // 时间范围（使用北京时间）
   if (timeRange !== 'all') {
+    // 获取北京时间（UTC+8）
     const now = new Date();
+    const beijingOffset = 8 * 60 * 60 * 1000; // 8小时的毫秒数
+    const utcTime = now.getTime() + (now.getTimezoneOffset() * 60 * 1000);
+    const beijingTime = new Date(utcTime + beijingOffset);
+    
     let startDate;
     
     if (timeRange === 'today') {
-      startDate = new Date();
+      startDate = new Date(beijingTime);
       startDate.setHours(0, 0, 0, 0);
     } else if (timeRange === 'week') {
-      startDate = new Date();
+      startDate = new Date(beijingTime);
       startDate.setDate(startDate.getDate() - 7);
+      startDate.setHours(0, 0, 0, 0);
     } else if (timeRange === 'month') {
-      startDate = new Date();
+      startDate = new Date(beijingTime);
       startDate.setMonth(startDate.getMonth() - 1);
+      startDate.setHours(0, 0, 0, 0);
     }
     
     if (startDate) {
+      // 转换为 UTC 时间用于数据库查询（数据库存储的是 UTC 时间）
+      const startDateUTC = new Date(startDate.getTime() - beijingOffset);
       query += ' AND createdAt >= ?';
-      bindings.push(startDate.toISOString());
+      bindings.push(startDateUTC.toISOString());
     }
   }
   

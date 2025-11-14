@@ -15,3 +15,4 @@ ALTER TABLE cards_v2 DROP COLUMN requireComment;
 
 -- Cloudflare D1 支持 ALTER TABLE DROP COLUMN，可以直接执行上面的语句
 
+
