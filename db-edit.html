@@ -471,7 +471,11 @@
         }
 
         currentCard = result.card;
-        originalCard = JSON.parse(JSON.stringify(result.card)); // 深拷贝
+        // 确保id字段存在（API返回的是cardId）
+        if (!currentCard.id && currentCard.cardId) {
+          currentCard.id = currentCard.cardId;
+        }
+        originalCard = JSON.parse(JSON.stringify(currentCard)); // 深拷贝
         changedFields.clear();
         
         renderEditForm();
@@ -514,10 +518,14 @@
         description: { label: '描述', type: 'textarea' },
         userLimit: { label: '用户限制', type: 'text' },
         
-        // 下载要求
-        downloadRequirements: { label: '下载要求', type: 'json', help: 'JSON数组，如: ["点赞", "评论"]' },
-        requireReaction: { label: '需要反应', type: 'boolean' },
-        requireComment: { label: '需要评论', type: 'boolean' },
+        // 下载要求（多选下拉）
+        downloadRequirements: { label: '下载要求', type: 'multiselect', options: [
+          { value: '', label: '（无）', isClearOption: true },
+          { value: '点赞', label: '点赞' },
+          { value: '评论', label: '评论' },
+          { value: '点赞与评论', label: '点赞与评论' },
+          { value: '点赞或评论', label: '点赞或评论' }
+        ], help: '可多选，也可不选。选择"（无）"可清空所有选择' },
         
         // 文件信息
         cardFileKey: { label: '卡片文件Key', type: 'text' },
@@ -547,6 +555,11 @@
       };
 
       const html = Object.entries(fieldConfig).map(([key, config]) => {
+        // 跳过隐藏字段
+        if (config.hidden) {
+          return '';
+        }
+        
         const value = card[key];
         const displayValue = formatFieldValue(value, config.type);
         const fieldId = `field_${key}`;
@@ -570,13 +583,61 @@
           </div>`;
         } else if (config.type === 'json') {
           inputHtml = `<textarea id="${fieldId}" ${isReadonly ? 'readonly' : ''} class="json-editor ${isChanged ? 'changed-field' : ''} ${isReadonly ? 'readonly-field' : ''}" style="min-height: 120px;">${escapeHtml(displayValue)}</textarea>`;
+        } else if (config.type === 'multiselect') {
+          // 处理多选下拉框
+          const currentValues = Array.isArray(value) ? value : (typeof value === 'string' && value ? (() => {
+            try {
+              return JSON.parse(value);
+            } catch (e) {
+              return [];
+            }
+          })() : []);
+          const options = config.options.map(opt => {
+            const optValue = typeof opt === 'string' ? opt : opt.value;
+            const optLabel = typeof opt === 'string' ? opt : opt.label;
+            const isClearOption = typeof opt === 'object' && opt.isClearOption;
+            // 空选项只在没有其他选择时显示为选中
+            const isSelected = isClearOption ? (currentValues.length === 0 || currentValues.includes('')) : currentValues.includes(optValue);
+            return `<option value="${escapeHtml(optValue)}" ${isSelected ? 'selected' : ''}>${escapeHtml(optLabel)}</option>`;
+          }).join('');
+          inputHtml = `<select id="${fieldId}" multiple ${isReadonly ? 'disabled' : ''} class="${isChanged ? 'changed-field' : ''} ${isReadonly ? 'readonly-field' : ''}" style="min-height: 100px;">${options}</select>`;
+          
+          // 添加清空选项的点击处理
+          if (!isReadonly) {
+            setTimeout(() => {
+              const selectEl = document.getElementById(fieldId);
+              if (selectEl) {
+                selectEl.addEventListener('change', function() {
+                  const selectedValues = Array.from(this.selectedOptions).map(opt => opt.value);
+                  // 如果选择了"（无）"选项，清空其他所有选择
+                  if (selectedValues.includes('')) {
+                    Array.from(this.options).forEach(opt => {
+                      if (opt.value !== '') {
+                        opt.selected = false;
+                      }
+                    });
+                  } else {
+                    // 如果选择了其他选项，取消"（无）"选项
+                    const clearOption = Array.from(this.options).find(opt => opt.value === '');
+                    if (clearOption) {
+                      clearOption.selected = false;
+                    }
+                  }
+                  // 触发字段变更检测
+                  const fieldName = this.id.replace('field_', '');
+                  checkFieldChanged(fieldName);
+                });
+              }
+            }, 100);
+          }
         } else {
           inputHtml = `<input type="${config.type}" id="${fieldId}" value="${escapeHtml(displayValue)}" ${isReadonly ? 'readonly' : ''} class="${isChanged ? 'changed-field' : ''} ${isReadonly ? 'readonly-field' : ''}">`;
         }
 
         const typeBadge = config.type === 'json' ? '<span class="field-type-badge json">JSON</span>' :
                          config.type === 'boolean' ? '<span class="field-type-badge boolean">布尔</span>' :
-                         config.type === 'number' ? '<span class="field-type-badge integer">数字</span>' : '';
+                         config.type === 'number' ? '<span class="field-type-badge integer">数字</span>' :
+                         config.type === 'multiselect' ? '<span class="field-type-badge json">多选</span>' : '';
 
         return `
           <div class="form-group ${config.fullWidth ? 'full-width' : ''}">
@@ -624,6 +685,11 @@
         return String(value);
       }
       
+      if (type === 'multiselect') {
+        // 多选下拉框不需要格式化，直接返回原值
+        return value;
+      }
+      
       if (type === 'boolean') {
         return value === true || value === 1 || value === '1';
       }
@@ -642,26 +708,45 @@
       let currentValue = getInputValue(input, config.type);
       let originalValue = originalCard[fieldName];
 
-      // 处理 JSON 字段
-      if (config.type === 'json') {
-        try {
-          currentValue = currentValue ? JSON.parse(currentValue) : null;
-        } catch (e) {
-          // 无效的 JSON，标记为已改变
-          changedFields.add(fieldName);
-          updateChangedCount();
-          input.classList.add('changed-field');
-          return;
-        }
-        
-        if (typeof originalValue === 'string') {
+        // 处理 JSON 字段
+        if (config.type === 'json') {
           try {
-            originalValue = JSON.parse(originalValue);
+            currentValue = currentValue ? JSON.parse(currentValue) : null;
           } catch (e) {
-            originalValue = originalValue;
+            // 无效的 JSON，标记为已改变
+            changedFields.add(fieldName);
+            updateChangedCount();
+            input.classList.add('changed-field');
+            return;
+          }
+          
+          if (typeof originalValue === 'string') {
+            try {
+              originalValue = JSON.parse(originalValue);
+            } catch (e) {
+              originalValue = originalValue;
+            }
           }
         }
-      }
+        
+        // 处理多选下拉框
+        if (config.type === 'multiselect') {
+          // currentValue 已经是数组（从 getInputValue 返回）
+          // 需要处理 originalValue
+          if (typeof originalValue === 'string') {
+            try {
+              originalValue = JSON.parse(originalValue);
+            } catch (e) {
+              originalValue = [];
+            }
+          }
+          if (!Array.isArray(originalValue)) {
+            originalValue = [];
+          }
+          // 排序后比较，避免顺序不同导致的误判
+          currentValue = [...currentValue].sort();
+          originalValue = [...originalValue].sort();
+        }
 
       // 处理布尔字段
       if (config.type === 'boolean') {
@@ -688,6 +773,11 @@
       if (type === 'boolean') {
         return input.checked;
       }
+      if (type === 'multiselect') {
+        // 获取多选下拉框的所有选中值，过滤掉空值
+        const values = Array.from(input.selectedOptions).map(option => option.value).filter(v => v !== '');
+        return values;
+      }
       return input.value;
     }
 
@@ -709,13 +799,11 @@
         background: { type: 'json' },
         tags: { type: 'json' },
         primaryTags: { type: 'json' },
+        downloadRequirements: { type: 'multiselect' },
         warnings: { type: 'text' },
         secondaryWarning: { type: 'textarea' },
         description: { type: 'textarea' },
         userLimit: { type: 'text' },
-        downloadRequirements: { type: 'json' },
-        requireReaction: { type: 'boolean' },
-        requireComment: { type: 'boolean' },
         cardFileKey: { type: 'text' },
         cardJsonFileKey: { type: 'text' },
         avatarImageKey: { type: 'text' },
@@ -785,15 +873,23 @@
         const config = getFieldConfig(fieldName);
         let value = getInputValue(input, config.type);
         
-        // 处理 JSON 字段
-        if (config.type === 'json') {
-          try {
-            value = value ? JSON.parse(value) : [];
-          } catch (e) {
-            showStatus(`字段 ${fieldName} 的 JSON 格式无效: ${e.message}`, 'error');
-            throw new Error(`JSON 格式错误: ${fieldName}`);
-          }
+      // 处理 JSON 字段
+      if (config.type === 'json') {
+        try {
+          value = value ? JSON.parse(value) : [];
+        } catch (e) {
+          showStatus(`字段 ${fieldName} 的 JSON 格式无效: ${e.message}`, 'error');
+          throw new Error(`JSON 格式错误: ${fieldName}`);
         }
+      }
+      
+      // 处理多选下拉框（保存为 JSON 数组）
+      if (config.type === 'multiselect') {
+        // value 已经是数组，直接使用
+        if (!Array.isArray(value)) {
+          value = [];
+        }
+      }
         
         // 处理布尔字段
         if (config.type === 'boolean') {
@@ -816,7 +912,13 @@
       try {
         showStatus('保存中...', 'info');
         
-        const response = await fetch(`/api/card-detail?id=${currentCard.id}`, {
+        // 确保使用正确的ID字段
+        const cardId = currentCard.id || currentCard.cardId;
+        if (!cardId) {
+          throw new Error('无法获取卡片ID');
+        }
+        
+        const response = await fetch(`/api/card-detail?id=${cardId}`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
@@ -835,7 +937,10 @@
         
         // 重新加载数据
         setTimeout(() => {
-          loadCardForEdit(currentCard.id);
+          const cardId = currentCard.id || currentCard.cardId;
+          if (cardId) {
+            loadCardForEdit(cardId);
+          }
         }, 1000);
 
       } catch (error) {
@@ -846,7 +951,10 @@
     function resetForm() {
       if (confirm('确定要重置所有更改吗？')) {
         changedFields.clear();
-        loadCardForEdit(currentCard.id);
+        const cardId = currentCard.id || currentCard.cardId;
+        if (cardId) {
+          loadCardForEdit(cardId);
+        }
       }
     }
 

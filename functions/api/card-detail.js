@@ -127,12 +127,14 @@ export async function onRequestGet(context) {
 
     // 解析JSON字段
     const cardData = {
+      id: result.id, // 添加id字段，与cardId保持一致
       cardId: result.id,
       cardName: result.cardName,
       cardType: result.cardType,
       characters: result.characters ? JSON.parse(result.characters) : [],
       category: result.category,
       authorName: result.authorName,
+      authorId: result.authorId || null, // 添加authorId字段
       isAnonymous: result.isAnonymous,
       orientation: result.orientation ? JSON.parse(result.orientation) : [],
       background: result.background ? JSON.parse(result.background) : [],
@@ -155,10 +157,13 @@ export async function onRequestGet(context) {
       threadId: result.threadId,
       firstMessageId: result.firstMessageId,
       createdAt: result.createdAt,
+      updatedAt: result.updatedAt || null, // 添加updatedAt字段
       // 下载要求
       downloadRequirements: result.downloadRequirements ? JSON.parse(result.downloadRequirements) : [],
       requireReaction: result.requireReaction || false,
       requireComment: result.requireComment || false,
+      // 统计信息
+      likes: result.likes || 0, // 添加likes字段
       // 提交者信息
       submitterUserId: result.submitterUserId,
       submitterUsername: result.submitterUsername,
