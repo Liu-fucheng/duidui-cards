@@ -30,32 +30,56 @@ async function getStats(env) {
   const utcTime = now.getTime() + (now.getTimezoneOffset() * 60 * 1000);
   const beijingTime = new Date(utcTime + beijingOffset);
   
+  console.log('=== 统计时间计算调试 ===');
+  console.log('当前时间 (now):', now.toISOString());
+  console.log('北京时间 (beijingTime):', beijingTime.toISOString());
+  
   // 今日新增（北京时间）
   const today = new Date(beijingTime);
   today.setHours(0, 0, 0, 0);
   // 转换为 UTC 时间用于数据库查询（数据库存储的是 UTC 时间）
   const todayUTC = new Date(today.getTime() - beijingOffset);
+  console.log('今日0点 (北京时间):', today.toISOString());
+  console.log('今日0点 (UTC，用于查询):', todayUTC.toISOString());
+  
+  // 查询今日新增前，先查询一些最近的卡片创建时间用于对比
+  const recentCards = await db.prepare(
+    'SELECT id, cardName, createdAt FROM cards_v2 ORDER BY createdAt DESC LIMIT 5'
+  ).all();
+  console.log('最近5张卡片的创建时间:');
+  recentCards.results.forEach(card => {
+    console.log(`  - ${card.cardName || card.id}: ${card.createdAt} (UTC)`);
+  });
+  
   const todayResult = await db.prepare(
     'SELECT COUNT(*) as count FROM cards_v2 WHERE createdAt >= ?'
   ).bind(todayUTC.toISOString()).first();
+  console.log('今日新增数量:', todayResult.count);
   
   // 本周新增（北京时间）
   const weekAgo = new Date(beijingTime);
   weekAgo.setDate(weekAgo.getDate() - 7);
   weekAgo.setHours(0, 0, 0, 0);
   const weekAgoUTC = new Date(weekAgo.getTime() - beijingOffset);
+  console.log('7天前0点 (北京时间):', weekAgo.toISOString());
+  console.log('7天前0点 (UTC，用于查询):', weekAgoUTC.toISOString());
   const weekResult = await db.prepare(
     'SELECT COUNT(*) as count FROM cards_v2 WHERE createdAt >= ?'
   ).bind(weekAgoUTC.toISOString()).first();
+  console.log('本周新增数量:', weekResult.count);
   
   // 本月新增（北京时间）
   const monthAgo = new Date(beijingTime);
   monthAgo.setMonth(monthAgo.getMonth() - 1);
   monthAgo.setHours(0, 0, 0, 0);
   const monthAgoUTC = new Date(monthAgo.getTime() - beijingOffset);
+  console.log('1个月前0点 (北京时间):', monthAgo.toISOString());
+  console.log('1个月前0点 (UTC，用于查询):', monthAgoUTC.toISOString());
   const monthResult = await db.prepare(
     'SELECT COUNT(*) as count FROM cards_v2 WHERE createdAt >= ?'
   ).bind(monthAgoUTC.toISOString()).first();
+  console.log('本月新增数量:', monthResult.count);
+  console.log('=== 统计时间计算调试结束 ===');
   
   // 按分区统计
   const categoryResult = await db.prepare(

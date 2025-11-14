@@ -538,6 +538,11 @@
         const data = await res.json();
 
         if (data.success) {
+          console.log('=== 概览统计数据 ===');
+          console.log('API返回的统计数据:', data.stats);
+          console.log('当前时间:', new Date().toISOString());
+          console.log('当前时间 (本地):', new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }));
+          
           const totalEl = document.getElementById('totalCards');
           const todayEl = document.getElementById('todayCards');
           const weekEl = document.getElementById('weekCards');
@@ -547,6 +552,9 @@
           if (todayEl) todayEl.textContent = data.stats.today || 0;
           if (weekEl) weekEl.textContent = data.stats.week || 0;
           if (monthEl) monthEl.textContent = data.stats.month || 0;
+          
+          console.log('显示的值 - 总卡数:', data.stats.total, '今日新增:', data.stats.today, '本周新增:', data.stats.week, '本月新增:', data.stats.month);
+          console.log('=== 概览统计数据结束 ===');
 
           // 分区统计
           const tbody = document.querySelector('#categoryStats tbody');
