@@ -190,6 +190,30 @@ export async function onRequestPatch(context) {
   try {
     const { request, env } = context;
     
+    // 验证管理员权限
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        message: '未授权：需要管理员Token' 
+      }), { 
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    const token = authHeader.substring(7);
+    const adminToken = env.ADMIN_TOKEN || env.DB_ADMIN_TOKEN;
+    if (token !== adminToken) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        message: '未授权：Token无效' 
+      }), { 
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
     // 从URL获取cardId
     const url = new URL(request.url);
     const cardId = url.searchParams.get('id');
@@ -215,6 +239,28 @@ export async function onRequestPatch(context) {
       });
     }
     
+    // 检查卡片是否存在
+    const existingCard = await env.D1_DB.prepare(
+      'SELECT * FROM cards_v2 WHERE id = ?'
+    ).bind(cardId).first();
+    
+    if (!existingCard) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        message: '卡片不存在' 
+      }), { 
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // 获取表结构，确定哪些字段可以更新
+    const tableInfo = await env.D1_DB.prepare('PRAGMA table_info(cards_v2)').all();
+    const allowedColumns = tableInfo.results ? tableInfo.results.map(col => col.name) : [];
+    
+    // 不允许更新的字段（主键、自动生成的字段等）
+    const restrictedFields = ['id', 'createdAt'];
+    
     // 解析请求体
     const body = await request.json();
     
@@ -222,14 +268,62 @@ export async function onRequestPatch(context) {
     const updates = [];
     const values = [];
     
-    if (body.threadId !== undefined) {
-      updates.push('threadId = ?');
-      values.push(body.threadId);
-    }
+    // 定义需要JSON序列化的字段
+    const jsonFields = [
+      'characters', 'orientation', 'background', 'tags', 
+      'galleryImageKeys', 'attachmentKeys', 'attachmentOriginalNames', 
+      'attachmentDescriptions', 'downloadRequirements', 'primaryTags'
+    ];
     
-    if (body.firstMessageId !== undefined) {
-      updates.push('firstMessageId = ?');
-      values.push(body.firstMessageId);
+    // 定义需要整数转换的字段
+    const integerFields = ['requireReaction', 'requireComment', 'likes'];
+    
+    // 遍历请求体中的所有字段
+    for (const [key, value] of Object.entries(body)) {
+      // 跳过不允许更新的字段
+      if (restrictedFields.includes(key)) {
+        continue;
+      }
+      
+      // 检查字段是否存在
+      if (!allowedColumns.includes(key)) {
+        console.warn(`字段 ${key} 不存在于表中，跳过`);
+        continue;
+      }
+      
+      // 处理不同类型的字段
+      let processedValue = value;
+      
+      if (value === null || value === undefined) {
+        // null 值直接传递
+        processedValue = null;
+      } else if (jsonFields.includes(key)) {
+        // JSON 字段需要序列化
+        if (Array.isArray(value) || typeof value === 'object') {
+          processedValue = JSON.stringify(value);
+        } else if (typeof value === 'string') {
+          // 如果已经是字符串，尝试解析验证
+          try {
+            JSON.parse(value);
+            processedValue = value; // 已经是有效的JSON字符串
+          } catch (e) {
+            // 不是有效的JSON，尝试作为普通字符串处理
+            processedValue = JSON.stringify(value);
+          }
+        }
+      } else if (integerFields.includes(key)) {
+        // 整数字段转换
+        processedValue = value === true ? 1 : (value === false ? 0 : parseInt(value) || 0);
+      } else if (typeof value === 'boolean') {
+        // 其他布尔值转换为整数
+        processedValue = value ? 1 : 0;
+      } else {
+        // 其他字段直接使用
+        processedValue = value;
+      }
+      
+      updates.push(`${key} = ?`);
+      values.push(processedValue);
     }
     
     if (updates.length === 0) {
@@ -242,6 +336,9 @@ export async function onRequestPatch(context) {
       });
     }
     
+    // 添加 updatedAt 时间戳
+    updates.push('updatedAt = datetime(\'now\')');
+    
     // 添加cardId到values
     values.push(cardId);
     
@@ -249,9 +346,12 @@ export async function onRequestPatch(context) {
     const sql = `UPDATE cards_v2 SET ${updates.join(', ')} WHERE id = ?`;
     await env.D1_DB.prepare(sql).bind(...values).run();
     
+    console.log(`✅ 已更新卡片 ${cardId}，更新了 ${updates.length - 1} 个字段`);
+    
     return new Response(JSON.stringify({ 
       success: true, 
-      message: '更新成功' 
+      message: '更新成功',
+      updatedFields: updates.length - 1
     }), { 
       status: 200,
       headers: { 'Content-Type': 'application/json' }

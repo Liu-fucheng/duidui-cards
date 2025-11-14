@@ -128,8 +128,25 @@ async function getCardsList(env, params) {
   // 获取数据
   const cards = await db.prepare(query).bind(...bindings, pageSize, offset).all();
   
+  // 解析 JSON 字段（与 card-detail.js 保持一致）
+  const processedCards = (cards.results || []).map(card => {
+    // 解析 downloadRequirements 字段
+    if (card.downloadRequirements) {
+      try {
+        card.downloadRequirements = JSON.parse(card.downloadRequirements);
+      } catch (e) {
+        console.warn('解析 downloadRequirements 失败:', e);
+        card.downloadRequirements = [];
+      }
+    } else {
+      card.downloadRequirements = [];
+    }
+    
+    return card;
+  });
+  
   return {
-    cards: cards.results || [],
+    cards: processedCards,
     pagination: {
       currentPage: page,
       pageSize,
@@ -151,6 +168,18 @@ async function getCardDetail(env, cardId) {
   
   if (!card) {
     throw new Error('角色卡不存在');
+  }
+  
+  // 解析 downloadRequirements 字段（与 card-detail.js 保持一致）
+  if (card.downloadRequirements) {
+    try {
+      card.downloadRequirements = JSON.parse(card.downloadRequirements);
+    } catch (e) {
+      console.warn('解析 downloadRequirements 失败:', e);
+      card.downloadRequirements = [];
+    }
+  } else {
+    card.downloadRequirements = [];
   }
   
   return card;
@@ -189,7 +218,24 @@ async function getLogs(env, timeRange = 'week') {
   
   const result = await db.prepare(query).bind(...bindings).all();
   
-  return result.results || [];
+  // 解析 JSON 字段（与 card-detail.js 保持一致）
+  const processedLogs = (result.results || []).map(card => {
+    // 解析 downloadRequirements 字段
+    if (card.downloadRequirements) {
+      try {
+        card.downloadRequirements = JSON.parse(card.downloadRequirements);
+      } catch (e) {
+        console.warn('解析 downloadRequirements 失败:', e);
+        card.downloadRequirements = [];
+      }
+    } else {
+      card.downloadRequirements = [];
+    }
+    
+    return card;
+  });
+  
+  return processedLogs;
 }
 
 // 获取系统状态

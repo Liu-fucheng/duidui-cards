@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数据库编辑管理</title>
+  <style>
+    :root {
+      --bg: #F3E9DD;
+      --surface: #FAF4EC;
+      --text: #5C4033;
+      --muted: #D9CBBE;
+      --accent: #8B5E3C;
+      --success: #4CAF50;
+      --warning: #FF9800;
+      --danger: #B5534E;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { 
+      background: var(--bg); 
+      color: var(--text); 
+      font-family: ui-sans-serif, -apple-system, sans-serif; 
+      margin: 0;
+      padding: 0;
+    }
+    body { 
+      margin: 24px; 
+      max-width: 1600px; 
+      margin-left: auto; 
+      margin-right: auto; 
+    }
+    h1 { font-size: 28px; margin: 0 0 20px; }
+    h2 { font-size: 20px; margin: 20px 0 12px; }
+    .card { 
+      background: var(--surface); 
+      border: 1px solid var(--muted); 
+      border-radius: 12px; 
+      padding: 20px; 
+      margin-bottom: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05); 
+    }
+    .btn { 
+      display: inline-flex; 
+      align-items: center; 
+      gap: 6px; 
+      padding: 10px 18px; 
+      border-radius: 10px; 
+      border: 1px solid var(--muted); 
+      background: var(--surface); 
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .btn:hover { background: #fff; }
+    .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .btn.primary:hover { background: #6d4a2e; }
+    .btn.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+    .btn.success { background: var(--success); color: #fff; border-color: var(--success); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    
+    input[type="password"], input[type="text"], input[type="number"], 
+    textarea, select { 
+      padding: 8px 12px; 
+      border: 1px solid var(--muted); 
+      border-radius: 8px; 
+      background: #fff; 
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+      width: 100%;
+    }
+    
+    textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+    
+    .flex { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+    
+    .status { 
+      padding: 12px; 
+      border-radius: 8px; 
+      margin: 12px 0; 
+      font-weight: 500;
+    }
+    .status.success { background: #e8f5e9; color: #2e7d32; border: 1px solid #4caf50; }
+    .status.error { background: #ffebee; color: #c62828; border: 1px solid #f44336; }
+    .status.warning { background: #fff3e0; color: #e65100; border: 1px solid #ff9800; }
+    .status.info { background: #e3f2fd; color: #1565c0; border: 1px solid #2196f3; }
+    
+    .hidden { display: none; }
+    
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    
+    .form-group.full-width {
+      grid-column: 1 / -1;
+    }
+    
+    .form-label {
+      font-weight: 600;
+      font-size: 13px;
+      color: #876;
+    }
+    
+    .form-help {
+      font-size: 12px;
+      color: #999;
+      margin-top: -4px;
+    }
+    
+    .search-bar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+      padding: 16px;
+      background: #fff;
+      border-radius: 8px;
+      border: 1px solid var(--muted);
+    }
+    
+    .search-bar input {
+      flex: 1;
+      min-width: 200px;
+    }
+    
+    .card-list {
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid var(--muted);
+      border-radius: 8px;
+      background: #fff;
+    }
+    
+    .card-item {
+      padding: 12px 16px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    .card-item:hover {
+      background: #f9f6f2;
+    }
+    
+    .card-item.selected {
+      background: #e8f0fe;
+      border-left: 3px solid var(--accent);
+    }
+    
+    .card-item-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    
+    .card-item-meta {
+      font-size: 12px;
+      color: #876;
+    }
+    
+    .loading {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--muted);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .field-type-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      background: #e0e0e0;
+      color: #666;
+      margin-left: 8px;
+    }
+    
+    .field-type-badge.json { background: #fff3e0; color: #e65100; }
+    .field-type-badge.integer { background: #e3f2fd; color: #1565c0; }
+    .field-type-badge.boolean { background: #f3e5f5; color: #7b1fa2; }
+    
+    .checkbox-group {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .checkbox-item input[type="checkbox"] {
+      width: auto;
+    }
+    
+    .json-editor {
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+    }
+    
+    .actions-bar {
+      position: sticky;
+      bottom: 0;
+      background: var(--surface);
+      padding: 16px;
+      border-top: 2px solid var(--muted);
+      margin-top: 20px;
+      border-radius: 0 0 12px 12px;
+    }
+    
+    .changed-field {
+      background: #fff3e0 !important;
+    }
+    
+    .readonly-field {
+      background: #f5f5f5 !important;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <div class="flex-between">
+    <h1>🗄️ 数据库编辑管理</h1>
+    <div class="flex">
+      <input type="password" id="adminToken" placeholder="管理员 Token" style="width:220px;">
+      <button class="btn" id="toggleToken">显示</button>
+      <button class="btn" id="saveToken">保存</button>
+    </div>
+  </div>
+
+  <div class="card" id="guardCard">
+    <div class="flex-between">
+      <div>
+        <div style="font-weight:600; margin-bottom:6px;">需要管理员 Token</div>
+        <div style="color: #876;">编辑数据库数据需要管理员权限</div>
+      </div>
+      <button class="btn primary" id="enterAdmin">进入管理</button>
+    </div>
+  </div>
+
+  <div id="adminPanel" class="hidden">
+    <!-- 搜索区域 -->
+    <div class="card">
+      <h2>搜索角色卡</h2>
+      <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="输入卡名或ID搜索...">
+        <select id="categoryFilter">
+          <option value="">全部分区</option>
+          <option value="非边限">非边限</option>
+          <option value="边限">边限</option>
+          <option value="深渊">深渊</option>
+        </select>
+        <button class="btn primary" id="searchBtn">搜索</button>
+        <button class="btn" id="clearBtn">清空</button>
+      </div>
+      
+      <div id="cardListContainer" class="hidden">
+        <div class="card-list" id="cardList"></div>
+      </div>
+    </div>
+
+    <!-- 编辑区域 -->
+    <div class="card hidden" id="editCard">
+      <div class="flex-between">
+        <h2>编辑角色卡数据</h2>
+        <div class="flex">
+          <button class="btn" id="resetBtn">重置</button>
+          <button class="btn primary" id="saveBtn">保存更改</button>
+        </div>
+      </div>
+      
+      <div id="statusMessage"></div>
+      
+      <div class="form-grid" id="formContainer"></div>
+      
+      <div class="actions-bar">
+        <div class="flex-between">
+          <div>
+            <span id="changedCount" style="color: #876; font-size: 13px;"></span>
+          </div>
+          <div class="flex">
+            <button class="btn" id="cancelBtn">取消</button>
+            <button class="btn primary" id="saveBtnBottom">保存更改</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let adminToken = '';
+    let currentCard = null;
+    let originalCard = null;
+    let changedFields = new Set();
+
+    // Token 管理
+    const tokenInput = document.getElementById('adminToken');
+    const toggleTokenBtn = document.getElementById('toggleToken');
+    const saveTokenBtn = document.getElementById('saveToken');
+    const enterAdminBtn = document.getElementById('enterAdmin');
+    const guardCard = document.getElementById('guardCard');
+    const adminPanel = document.getElementById('adminPanel');
+
+    // 从 localStorage 加载 token
+    const savedToken = localStorage.getItem('adminToken');
+    if (savedToken) {
+      adminToken = savedToken;
+      tokenInput.value = savedToken;
+      enterAdmin();
+    }
+
+    toggleTokenBtn.addEventListener('click', () => {
+      if (tokenInput.type === 'password') {
+        tokenInput.type = 'text';
+        toggleTokenBtn.textContent = '隐藏';
+      } else {
+        tokenInput.type = 'password';
+        toggleTokenBtn.textContent = '显示';
+      }
+    });
+
+    saveTokenBtn.addEventListener('click', () => {
+      adminToken = tokenInput.value.trim();
+      if (adminToken) {
+        localStorage.setItem('adminToken', adminToken);
+        alert('Token 已保存');
+        enterAdmin();
+      }
+    });
+
+    enterAdminBtn.addEventListener('click', () => {
+      adminToken = tokenInput.value.trim();
+      if (!adminToken) {
+        alert('请输入管理员 Token');
+        return;
+      }
+      enterAdmin();
+    });
+
+    function enterAdmin() {
+      guardCard.classList.add('hidden');
+      adminPanel.classList.remove('hidden');
+    }
+
+    // 搜索功能
+    const searchInput = document.getElementById('searchInput');
+    const categoryFilter = document.getElementById('categoryFilter');
+    const searchBtn = document.getElementById('searchBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const cardListContainer = document.getElementById('cardListContainer');
+    const cardList = document.getElementById('cardList');
+
+    searchBtn.addEventListener('click', searchCards);
+    clearBtn.addEventListener('click', () => {
+      searchInput.value = '';
+      categoryFilter.value = '';
+      cardListContainer.classList.add('hidden');
+      document.getElementById('editCard').classList.add('hidden');
+    });
+
+    searchInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') searchCards();
+    });
+
+    async function searchCards() {
+      const query = searchInput.value.trim();
+      const category = categoryFilter.value;
+      
+      if (!query && !category) {
+        alert('请输入搜索关键词或选择分区');
+        return;
+      }
+
+      cardList.innerHTML = '<div style="padding: 20px; text-align: center;"><span class="loading"></span> 搜索中...</div>';
+      cardListContainer.classList.remove('hidden');
+
+      try {
+        const params = new URLSearchParams();
+        if (query) params.append('cardName', query);
+        if (category) params.append('category', category);
+        params.append('action', 'list');
+        params.append('pageSize', '50');
+
+        const response = await fetch(`/api/cards?${params}`, {
+          headers: {
+            'Authorization': `Bearer ${adminToken}`
+          }
+        });
+
+        const result = await response.json();
+        
+        if (!result.success) {
+          throw new Error(result.message || '搜索失败');
+        }
+
+        const cards = result.cards || [];
+        
+        if (cards.length === 0) {
+          cardList.innerHTML = '<div style="padding: 20px; text-align: center; color: #876;">未找到匹配的角色卡</div>';
+          return;
+        }
+
+        cardList.innerHTML = cards.map(card => `
+          <div class="card-item" data-card-id="${card.id}">
+            <div class="card-item-title">${escapeHtml(card.cardName || '未命名')}</div>
+            <div class="card-item-meta">
+              ID: ${card.id} | 分区: ${card.category || '未知'} | 作者: ${escapeHtml(card.authorName || '匿名')}
+            </div>
+          </div>
+        `).join('');
+
+        // 添加点击事件
+        cardList.querySelectorAll('.card-item').forEach(item => {
+          item.addEventListener('click', () => {
+            const cardId = item.dataset.cardId;
+            loadCardForEdit(cardId);
+            // 更新选中状态
+            cardList.querySelectorAll('.card-item').forEach(i => i.classList.remove('selected'));
+            item.classList.add('selected');
+          });
+        });
+
+      } catch (error) {
+        cardList.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--danger);">错误: ${error.message}</div>`;
+      }
+    }
+
+    // 加载卡片数据用于编辑
+    async function loadCardForEdit(cardId) {
+      const editCard = document.getElementById('editCard');
+      const formContainer = document.getElementById('formContainer');
+      
+      editCard.classList.remove('hidden');
+      formContainer.innerHTML = '<div style="padding: 20px; text-align: center;"><span class="loading"></span> 加载中...</div>';
+
+      try {
+        const response = await fetch(`/api/card-detail?id=${cardId}`, {
+          headers: {
+            'Authorization': `Bearer ${adminToken}`
+          }
+        });
+
+        const result = await response.json();
+        
+        if (!result.success || !result.card) {
+          throw new Error(result.message || '加载失败');
+        }
+
+        currentCard = result.card;
+        originalCard = JSON.parse(JSON.stringify(result.card)); // 深拷贝
+        changedFields.clear();
+        
+        renderEditForm();
+        updateChangedCount();
+
+      } catch (error) {
+        formContainer.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--danger);">错误: ${error.message}</div>`;
+      }
+    }
+
+    // 渲染编辑表单
+    function renderEditForm() {
+      const formContainer = document.getElementById('formContainer');
+      const card = currentCard;
+
+      // 定义字段配置
+      const fieldConfig = {
+        // 基本信息
+        id: { label: '卡片ID', type: 'text', readonly: true },
+        cardName: { label: '卡名', type: 'text', required: true },
+        cardType: { label: '卡片类型', type: 'text' },
+        category: { label: '分区', type: 'select', options: ['非边限', '边限', '深渊'] },
+        
+        // 作者信息
+        authorName: { label: '作者名', type: 'text' },
+        authorId: { label: '作者ID', type: 'text' },
+        isAnonymous: { label: '是否匿名', type: 'boolean' },
+        submitterUserId: { label: '提交者用户ID', type: 'text' },
+        submitterUsername: { label: '提交者用户名', type: 'text' },
+        submitterDisplayName: { label: '提交者显示名', type: 'text' },
+        
+        // 角色信息
+        characters: { label: '角色', type: 'json', help: 'JSON数组格式' },
+        orientation: { label: '性向', type: 'json', help: 'JSON数组格式' },
+        background: { label: '背景', type: 'json', help: 'JSON数组格式' },
+        tags: { label: '标签', type: 'json', help: 'JSON数组格式' },
+        primaryTags: { label: '主要标签', type: 'json', help: 'JSON数组格式' },
+        warnings: { label: '警告', type: 'text' },
+        secondaryWarning: { label: '二次排雷', type: 'textarea' },
+        description: { label: '描述', type: 'textarea' },
+        userLimit: { label: '用户限制', type: 'text' },
+        
+        // 下载要求
+        downloadRequirements: { label: '下载要求', type: 'json', help: 'JSON数组，如: ["点赞", "评论"]' },
+        requireReaction: { label: '需要反应', type: 'boolean' },
+        requireComment: { label: '需要评论', type: 'boolean' },
+        
+        // 文件信息
+        cardFileKey: { label: '卡片文件Key', type: 'text' },
+        cardJsonFileKey: { label: 'JSON文件Key', type: 'text' },
+        avatarImageKey: { label: '头像Key', type: 'text' },
+        galleryImageKeys: { label: '画廊图片Keys', type: 'json', help: 'JSON数组格式' },
+        
+        // 附件信息
+        attachmentKeys: { label: '附件Keys', type: 'json', help: 'JSON数组格式' },
+        attachmentOriginalNames: { label: '附件原始名称', type: 'json', help: 'JSON数组格式' },
+        attachmentDescriptions: { label: '附件描述', type: 'json', help: 'JSON数组格式' },
+        attachmentSummary: { label: '附件总说明', type: 'textarea' },
+        
+        // 其他信息
+        threadTitle: { label: '帖子标题', type: 'text' },
+        threadId: { label: '帖子ID', type: 'text' },
+        firstMessageId: { label: '首楼消息ID', type: 'text' },
+        otherInfo: { label: '其他信息', type: 'textarea' },
+        nameRelation: { label: '名称关系', type: 'text' },
+        
+        // 统计信息
+        likes: { label: '点赞数', type: 'number' },
+        
+        // 时间信息
+        createdAt: { label: '创建时间', type: 'text', readonly: true },
+        updatedAt: { label: '更新时间', type: 'text', readonly: true }
+      };
+
+      const html = Object.entries(fieldConfig).map(([key, config]) => {
+        const value = card[key];
+        const displayValue = formatFieldValue(value, config.type);
+        const fieldId = `field_${key}`;
+        const isReadonly = config.readonly || false;
+        const isChanged = changedFields.has(key);
+        
+        let inputHtml = '';
+        
+        if (config.type === 'textarea') {
+          inputHtml = `<textarea id="${fieldId}" ${isReadonly ? 'readonly' : ''} class="${isChanged ? 'changed-field' : ''} ${isReadonly ? 'readonly-field' : ''}">${escapeHtml(displayValue)}</textarea>`;
+        } else if (config.type === 'select') {
+          const options = config.options.map(opt => 
+            `<option value="${opt}" ${value === opt ? 'selected' : ''}>${opt}</option>`
+          ).join('');
+          inputHtml = `<select id="${fieldId}" ${isReadonly ? 'disabled' : ''} class="${isChanged ? 'changed-field' : ''} ${isReadonly ? 'readonly-field' : ''}">${options}</select>`;
+        } else if (config.type === 'boolean') {
+          const checked = value === true || value === 1 || value === '1';
+          inputHtml = `<div class="checkbox-item">
+            <input type="checkbox" id="${fieldId}" ${checked ? 'checked' : ''} ${isReadonly ? 'disabled' : ''} class="${isReadonly ? 'readonly-field' : ''}">
+            <label for="${fieldId}">${checked ? '是' : '否'}</label>
+          </div>`;
+        } else if (config.type === 'json') {
+          inputHtml = `<textarea id="${fieldId}" ${isReadonly ? 'readonly' : ''} class="json-editor ${isChanged ? 'changed-field' : ''} ${isReadonly ? 'readonly-field' : ''}" style="min-height: 120px;">${escapeHtml(displayValue)}</textarea>`;
+        } else {
+          inputHtml = `<input type="${config.type}" id="${fieldId}" value="${escapeHtml(displayValue)}" ${isReadonly ? 'readonly' : ''} class="${isChanged ? 'changed-field' : ''} ${isReadonly ? 'readonly-field' : ''}">`;
+        }
+
+        const typeBadge = config.type === 'json' ? '<span class="field-type-badge json">JSON</span>' :
+                         config.type === 'boolean' ? '<span class="field-type-badge boolean">布尔</span>' :
+                         config.type === 'number' ? '<span class="field-type-badge integer">数字</span>' : '';
+
+        return `
+          <div class="form-group ${config.fullWidth ? 'full-width' : ''}">
+            <label class="form-label" for="${fieldId}">
+              ${config.label}${typeBadge}
+            </label>
+            ${inputHtml}
+            ${config.help ? `<div class="form-help">${config.help}</div>` : ''}
+          </div>
+        `;
+      }).join('');
+
+      formContainer.innerHTML = html;
+
+      // 添加输入监听
+      formContainer.querySelectorAll('input, textarea, select').forEach(input => {
+        if (!input.readOnly && !input.disabled) {
+          input.addEventListener('input', () => {
+            const fieldName = input.id.replace('field_', '');
+            checkFieldChanged(fieldName);
+          });
+          input.addEventListener('change', () => {
+            const fieldName = input.id.replace('field_', '');
+            checkFieldChanged(fieldName);
+          });
+        }
+      });
+    }
+
+    // 格式化字段值用于显示
+    function formatFieldValue(value, type) {
+      if (value === null || value === undefined) return '';
+      
+      if (type === 'json') {
+        if (typeof value === 'string') {
+          try {
+            const parsed = JSON.parse(value);
+            return JSON.stringify(parsed, null, 2);
+          } catch (e) {
+            return value;
+          }
+        } else if (Array.isArray(value) || typeof value === 'object') {
+          return JSON.stringify(value, null, 2);
+        }
+        return String(value);
+      }
+      
+      if (type === 'boolean') {
+        return value === true || value === 1 || value === '1';
+      }
+      
+      return String(value);
+    }
+
+    // 检查字段是否改变
+    function checkFieldChanged(fieldName) {
+      const input = document.getElementById(`field_${fieldName}`);
+      if (!input) return;
+
+      const config = getFieldConfig(fieldName);
+      if (!config) return;
+
+      let currentValue = getInputValue(input, config.type);
+      let originalValue = originalCard[fieldName];
+
+      // 处理 JSON 字段
+      if (config.type === 'json') {
+        try {
+          currentValue = currentValue ? JSON.parse(currentValue) : null;
+        } catch (e) {
+          // 无效的 JSON，标记为已改变
+          changedFields.add(fieldName);
+          updateChangedCount();
+          input.classList.add('changed-field');
+          return;
+        }
+        
+        if (typeof originalValue === 'string') {
+          try {
+            originalValue = JSON.parse(originalValue);
+          } catch (e) {
+            originalValue = originalValue;
+          }
+        }
+      }
+
+      // 处理布尔字段
+      if (config.type === 'boolean') {
+        currentValue = input.checked;
+        originalValue = originalValue === true || originalValue === 1 || originalValue === '1';
+      }
+
+      // 比较值
+      const isChanged = JSON.stringify(currentValue) !== JSON.stringify(originalValue);
+      
+      if (isChanged) {
+        changedFields.add(fieldName);
+        input.classList.add('changed-field');
+      } else {
+        changedFields.delete(fieldName);
+        input.classList.remove('changed-field');
+      }
+      
+      updateChangedCount();
+    }
+
+    // 获取输入值
+    function getInputValue(input, type) {
+      if (type === 'boolean') {
+        return input.checked;
+      }
+      return input.value;
+    }
+
+    // 获取字段配置
+    function getFieldConfig(fieldName) {
+      const fieldConfigs = {
+        id: { type: 'text' },
+        cardName: { type: 'text' },
+        cardType: { type: 'text' },
+        category: { type: 'select' },
+        authorName: { type: 'text' },
+        authorId: { type: 'text' },
+        isAnonymous: { type: 'boolean' },
+        submitterUserId: { type: 'text' },
+        submitterUsername: { type: 'text' },
+        submitterDisplayName: { type: 'text' },
+        characters: { type: 'json' },
+        orientation: { type: 'json' },
+        background: { type: 'json' },
+        tags: { type: 'json' },
+        primaryTags: { type: 'json' },
+        warnings: { type: 'text' },
+        secondaryWarning: { type: 'textarea' },
+        description: { type: 'textarea' },
+        userLimit: { type: 'text' },
+        downloadRequirements: { type: 'json' },
+        requireReaction: { type: 'boolean' },
+        requireComment: { type: 'boolean' },
+        cardFileKey: { type: 'text' },
+        cardJsonFileKey: { type: 'text' },
+        avatarImageKey: { type: 'text' },
+        galleryImageKeys: { type: 'json' },
+        attachmentKeys: { type: 'json' },
+        attachmentOriginalNames: { type: 'json' },
+        attachmentDescriptions: { type: 'json' },
+        attachmentSummary: { type: 'textarea' },
+        threadTitle: { type: 'text' },
+        threadId: { type: 'text' },
+        firstMessageId: { type: 'text' },
+        otherInfo: { type: 'textarea' },
+        nameRelation: { type: 'text' },
+        likes: { type: 'number' },
+        createdAt: { type: 'text' },
+        updatedAt: { type: 'text' }
+      };
+      return fieldConfigs[fieldName] || { type: 'text' };
+    }
+
+    // 更新改变计数
+    function updateChangedCount() {
+      const count = changedFields.size;
+      const countEl = document.getElementById('changedCount');
+      if (count > 0) {
+        countEl.textContent = `已修改 ${count} 个字段`;
+        countEl.style.color = 'var(--warning)';
+      } else {
+        countEl.textContent = '未修改';
+        countEl.style.color = '#876';
+      }
+    }
+
+    // 保存更改
+    const saveBtn = document.getElementById('saveBtn');
+    const saveBtnBottom = document.getElementById('saveBtnBottom');
+    const resetBtn = document.getElementById('resetBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const statusMessage = document.getElementById('statusMessage');
+
+    saveBtn.addEventListener('click', saveChanges);
+    saveBtnBottom.addEventListener('click', saveChanges);
+    resetBtn.addEventListener('click', resetForm);
+    cancelBtn.addEventListener('click', () => {
+      if (confirm('确定要取消吗？未保存的更改将丢失。')) {
+        document.getElementById('editCard').classList.add('hidden');
+        changedFields.clear();
+      }
+    });
+
+    async function saveChanges() {
+      if (changedFields.size === 0) {
+        showStatus('没有需要保存的更改', 'info');
+        return;
+      }
+
+      if (!confirm(`确定要保存 ${changedFields.size} 个字段的更改吗？`)) {
+        return;
+      }
+
+      const updateData = {};
+      
+      changedFields.forEach(fieldName => {
+        const input = document.getElementById(`field_${fieldName}`);
+        if (!input) return;
+
+        const config = getFieldConfig(fieldName);
+        let value = getInputValue(input, config.type);
+        
+        // 处理 JSON 字段
+        if (config.type === 'json') {
+          try {
+            value = value ? JSON.parse(value) : [];
+          } catch (e) {
+            showStatus(`字段 ${fieldName} 的 JSON 格式无效: ${e.message}`, 'error');
+            throw new Error(`JSON 格式错误: ${fieldName}`);
+          }
+        }
+        
+        // 处理布尔字段
+        if (config.type === 'boolean') {
+          value = input.checked;
+        }
+        
+        // 处理数字字段
+        if (config.type === 'number') {
+          value = parseInt(value) || 0;
+        }
+        
+        // 空字符串转为 null（除了 JSON 数组，空数组应该保持为空数组）
+        if (value === '' && config.type !== 'json') {
+          value = null;
+        }
+        
+        updateData[fieldName] = value;
+      });
+
+      try {
+        showStatus('保存中...', 'info');
+        
+        const response = await fetch(`/api/card-detail?id=${currentCard.id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${adminToken}`
+          },
+          body: JSON.stringify(updateData)
+        });
+
+        const result = await response.json();
+        
+        if (!result.success) {
+          throw new Error(result.message || '保存失败');
+        }
+
+        showStatus(`✅ 成功保存 ${result.updatedFields || changedFields.size} 个字段的更改`, 'success');
+        
+        // 重新加载数据
+        setTimeout(() => {
+          loadCardForEdit(currentCard.id);
+        }, 1000);
+
+      } catch (error) {
+        showStatus(`❌ 保存失败: ${error.message}`, 'error');
+      }
+    }
+
+    function resetForm() {
+      if (confirm('确定要重置所有更改吗？')) {
+        changedFields.clear();
+        loadCardForEdit(currentCard.id);
+      }
+    }
+
+    function showStatus(message, type) {
+      statusMessage.innerHTML = `<div class="status ${type}">${message}</div>`;
+      setTimeout(() => {
+        statusMessage.innerHTML = '';
+      }, 5000);
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>
+
