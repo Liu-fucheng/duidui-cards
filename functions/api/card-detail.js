@@ -296,6 +296,18 @@ export async function onRequestPatch(context) {
         continue;
       }
       
+      // 添加调试日志（特别是 attachmentSummary）
+      if (key === 'attachmentSummary') {
+        console.log('🔍 [card-detail PATCH] 处理 attachmentSummary:', {
+          key,
+          rawValue: value,
+          type: typeof value,
+          isNull: value === null,
+          isEmpty: value === '',
+          length: value ? String(value).length : 0
+        });
+      }
+      
       // 处理不同类型的字段
       let processedValue = value;
       
@@ -325,6 +337,18 @@ export async function onRequestPatch(context) {
       } else {
         // 其他字段直接使用
         processedValue = value;
+      }
+      
+      // 添加调试日志（特别是 attachmentSummary）
+      if (key === 'attachmentSummary') {
+        console.log('🔍 [card-detail PATCH] attachmentSummary 处理后的值:', {
+          key,
+          processedValue,
+          type: typeof processedValue,
+          isNull: processedValue === null,
+          isEmpty: processedValue === '',
+          length: processedValue ? String(processedValue).length : 0
+        });
       }
       
       updates.push(`${key} = ?`);

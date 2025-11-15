@@ -901,9 +901,22 @@
           value = parseInt(value) || 0;
         }
         
-        // 空字符串转为 null（除了 JSON 数组，空数组应该保持为空数组）
-        if (value === '' && config.type !== 'json') {
+        // 空字符串转为 null（除了 JSON 数组和 textarea 类型，textarea 应该保持为空字符串）
+        // textarea 类型的字段（如 attachmentSummary, description, otherInfo 等）应该允许空字符串
+        if (value === '' && config.type !== 'json' && config.type !== 'textarea') {
           value = null;
+        }
+        
+        // 添加调试日志
+        if (fieldName === 'attachmentSummary') {
+          console.log('🔍 [db-edit] 保存 attachmentSummary:', {
+            fieldName,
+            rawValue: input.value,
+            processedValue: value,
+            type: config.type,
+            isEmpty: value === '',
+            isNull: value === null
+          });
         }
         
         updateData[fieldName] = value;
