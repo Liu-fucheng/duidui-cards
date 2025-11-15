@@ -480,6 +480,13 @@ async function uploadFileToR2(bucket, file, folder) {
 
       let attachmentSummary = '';
       const rawAttachmentSummary = formData.get("attachmentSummary");
+      console.log('🔍 [upload] 从formData获取attachmentSummary:', {
+        rawValue: rawAttachmentSummary,
+        type: typeof rawAttachmentSummary,
+        isNull: rawAttachmentSummary === null,
+        isEmpty: rawAttachmentSummary === '',
+        length: rawAttachmentSummary ? String(rawAttachmentSummary).length : 0
+      });
       if (rawAttachmentSummary) {
         try {
           if (typeof rawAttachmentSummary === 'string') {
@@ -488,10 +495,15 @@ async function uploadFileToR2(bucket, file, folder) {
             attachmentSummary = await rawAttachmentSummary.text();
           }
         } catch (e) {
-          console.error('解析附件总说明失败:', e);
+          console.error('❌ [upload] 解析附件总说明失败:', e);
         }
       }
       attachmentSummary = (attachmentSummary || '').trim();
+      console.log('🔍 [upload] 处理后的attachmentSummary:', {
+        value: attachmentSummary,
+        length: attachmentSummary.length,
+        isEmpty: attachmentSummary === ''
+      });
   
       // 3.5. 自动收集自定义板块数据（先收集，用于回填性向/背景）
       // 读取配置以识别自定义板块字段
@@ -778,9 +790,14 @@ async function uploadFileToR2(bucket, file, folder) {
       if (hasAttachmentSummary) {
         columns.push('attachmentSummary');
         values.push(attachmentSummary);
-        console.log('🔍 [upload] 保存附件总说明到数据库:', attachmentSummary);
+        console.log('🔍 [upload] 保存附件总说明到数据库:', {
+          value: attachmentSummary,
+          length: attachmentSummary ? attachmentSummary.length : 0,
+          isEmpty: attachmentSummary === '',
+          willSave: true
+        });
       } else {
-        console.log('⚠️ [upload] 数据库表没有 attachmentSummary 字段');
+        console.log('⚠️ [upload] 数据库表没有 attachmentSummary 字段，无法保存附件总说明');
       }
 
       if (hasThreadId) {

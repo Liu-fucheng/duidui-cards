@@ -267,7 +267,7 @@
     <div class="card">
       <h2>搜索角色卡</h2>
       <div class="search-bar">
-        <input type="text" id="searchInput" placeholder="输入卡名或ID搜索...">
+        <input type="text" id="searchInput" placeholder="输入卡名或作者名（支持模糊匹配）...">
         <select id="categoryFilter">
           <option value="">全部分区</option>
           <option value="非边限">非边限</option>
@@ -400,7 +400,7 @@
 
       try {
         const params = new URLSearchParams();
-        if (query) params.append('cardName', query);
+        if (query) params.append('search', query);
         if (category) params.append('category', category);
         params.append('action', 'list');
         params.append('pageSize', '50');
@@ -539,11 +539,11 @@
         attachmentDescriptions: { label: '附件描述', type: 'json', help: 'JSON数组格式' },
         attachmentSummary: { label: '附件总说明', type: 'textarea' },
         
-        // 其他信息
+        // 其她信息
         threadTitle: { label: '帖子标题', type: 'text' },
         threadId: { label: '帖子ID', type: 'text' },
         firstMessageId: { label: '首楼消息ID', type: 'text' },
-        otherInfo: { label: '其他信息', type: 'textarea' },
+        otherInfo: { label: '其她信息', type: 'textarea' },
         nameRelation: { label: '名称关系', type: 'text' },
         
         // 统计信息

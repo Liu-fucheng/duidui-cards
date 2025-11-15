@@ -2068,6 +2068,12 @@
       // 附件说明
       const attachmentSummaryInput = document.getElementById('attachmentSummary');
       const attachmentSummary = attachmentSummaryInput ? attachmentSummaryInput.value.trim() : '';
+      console.log('🔍 [前端] 附件总说明:', {
+        inputElement: !!attachmentSummaryInput,
+        rawValue: attachmentSummaryInput ? attachmentSummaryInput.value : 'N/A',
+        trimmedValue: attachmentSummary,
+        length: attachmentSummary.length
+      });
       const attachmentFiles = fileStorage['attachments'] || [];
       const attachmentDescriptions = attachmentFiles.map(file => {
         if (file && file.__uid && attachmentDescriptionMap[file.__uid] !== undefined) {
@@ -2076,9 +2082,12 @@
         return '';
       });
       const attachmentOriginalNames = attachmentFiles.map(file => file.name);
+      // 先删除可能存在的旧值，再添加新值（避免重复）
+      formData.delete('attachmentSummary');
       formData.append('attachmentSummary', attachmentSummary);
       formData.append('attachmentDescriptions', JSON.stringify(attachmentDescriptions));
       formData.append('attachmentOriginalNames', JSON.stringify(attachmentOriginalNames));
+      console.log('🔍 [前端] 已添加到formData的attachmentSummary:', formData.get('attachmentSummary'));
 
       if (formData.get('cardType') === 'single') {
         const relation = formData.get('nameRelation') || 'same';
