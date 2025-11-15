@@ -262,12 +262,16 @@ export async function onRequestPatch(context) {
     // 获取表结构，确定哪些字段可以更新
     const tableInfo = await env.D1_DB.prepare('PRAGMA table_info(cards_v2)').all();
     const allowedColumns = tableInfo.results ? tableInfo.results.map(col => col.name) : [];
+    console.log('🔍 [card-detail PATCH] 数据库表允许的字段:', allowedColumns);
+    console.log('🔍 [card-detail PATCH] attachmentSummary 是否在允许的字段中:', allowedColumns.includes('attachmentSummary'));
     
     // 不允许更新的字段（主键、自动生成的字段等）
     const restrictedFields = ['id', 'createdAt'];
     
     // 解析请求体
     const body = await request.json();
+    console.log('🔍 [card-detail PATCH] 请求体中的字段:', Object.keys(body));
+    console.log('🔍 [card-detail PATCH] 请求体中的 attachmentSummary:', body.attachmentSummary);
     
     // 构建UPDATE语句
     const updates = [];
@@ -292,7 +296,12 @@ export async function onRequestPatch(context) {
       
       // 检查字段是否存在
       if (!allowedColumns.includes(key)) {
-        console.warn(`字段 ${key} 不存在于表中，跳过`);
+        console.warn(`⚠️ [card-detail PATCH] 字段 ${key} 不存在于表中，跳过`);
+        console.warn(`⚠️ [card-detail PATCH] 允许的字段列表:`, allowedColumns);
+        if (key === 'attachmentSummary') {
+          console.error(`❌ [card-detail PATCH] attachmentSummary 字段不存在于数据库表中！`);
+          console.error(`❌ [card-detail PATCH] 请检查数据库表结构，确保有 attachmentSummary 字段`);
+        }
         continue;
       }
       
@@ -355,7 +364,14 @@ export async function onRequestPatch(context) {
       values.push(processedValue);
     }
     
+    console.log('🔍 [card-detail PATCH] 准备更新的字段数:', updates.length);
+    console.log('🔍 [card-detail PATCH] 准备更新的字段:', updates.map(u => u.split(' = ')[0]));
+    
     if (updates.length === 0) {
+      console.error('❌ [card-detail PATCH] 没有要更新的字段');
+      console.error('❌ [card-detail PATCH] 请求体字段:', Object.keys(body));
+      console.error('❌ [card-detail PATCH] 允许的字段:', allowedColumns);
+      console.error('❌ [card-detail PATCH] 受限的字段:', restrictedFields);
       return new Response(JSON.stringify({ 
         success: false, 
         message: '没有要更新的字段' 
