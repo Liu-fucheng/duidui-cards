@@ -570,6 +570,16 @@
         
         if (config.type === 'textarea') {
           inputHtml = `<textarea id="${fieldId}" ${isReadonly ? 'readonly' : ''} class="${isChanged ? 'changed-field' : ''} ${isReadonly ? 'readonly-field' : ''}">${escapeHtml(displayValue)}</textarea>`;
+          // 添加调试日志（特别是 attachmentSummary）
+          if (key === 'attachmentSummary') {
+            console.log('🔍 [db-edit] 渲染 attachmentSummary textarea:', {
+              fieldId,
+              value,
+              displayValue,
+              isReadonly,
+              isChanged
+            });
+          }
         } else if (config.type === 'select') {
           const options = config.options.map(opt => 
             `<option value="${opt}" ${value === opt ? 'selected' : ''}>${opt}</option>`
@@ -757,12 +767,31 @@
       // 比较值
       const isChanged = JSON.stringify(currentValue) !== JSON.stringify(originalValue);
       
+      // 添加调试日志（特别是 attachmentSummary）
+      if (fieldName === 'attachmentSummary') {
+        console.log('🔍 [db-edit] trackFieldChange - attachmentSummary:', {
+          fieldName,
+          currentValue,
+          originalValue,
+          isChanged,
+          inputElement: !!input,
+          inputValue: input ? input.value : 'N/A',
+          inputId: input ? input.id : 'N/A'
+        });
+      }
+      
       if (isChanged) {
         changedFields.add(fieldName);
         input.classList.add('changed-field');
+        if (fieldName === 'attachmentSummary') {
+          console.log('✅ [db-edit] attachmentSummary 已标记为已更改');
+        }
       } else {
         changedFields.delete(fieldName);
         input.classList.remove('changed-field');
+        if (fieldName === 'attachmentSummary') {
+          console.log('ℹ️ [db-edit] attachmentSummary 未更改');
+        }
       }
       
       updateChangedCount();
@@ -770,15 +799,30 @@
 
     // 获取输入值
     function getInputValue(input, type) {
+      let value;
       if (type === 'boolean') {
-        return input.checked;
-      }
-      if (type === 'multiselect') {
+        value = input.checked;
+      } else if (type === 'multiselect') {
         // 获取多选下拉框的所有选中值，过滤掉空值
-        const values = Array.from(input.selectedOptions).map(option => option.value).filter(v => v !== '');
-        return values;
+        value = Array.from(input.selectedOptions).map(option => option.value).filter(v => v !== '');
+      } else {
+        value = input.value;
       }
-      return input.value;
+      
+      // 添加调试日志（特别是 attachmentSummary）
+      if (input.id === 'field_attachmentSummary') {
+        console.log('🔍 [db-edit] getInputValue - attachmentSummary:', {
+          inputId: input.id,
+          inputTagName: input.tagName,
+          inputType: input.type || 'N/A',
+          rawValue: input.value,
+          processedValue: value,
+          type: type,
+          valueType: typeof value
+        });
+      }
+      
+      return value;
     }
 
     // 获取字段配置
@@ -864,14 +908,43 @@
         return;
       }
 
+      console.log('🔍 [db-edit] 开始保存，已更改的字段:', Array.from(changedFields));
+      console.log('🔍 [db-edit] attachmentSummary 是否在已更改字段中:', changedFields.has('attachmentSummary'));
+      
       const updateData = {};
       
       changedFields.forEach(fieldName => {
-        const input = document.getElementById(`field_${fieldName}`);
-        if (!input) return;
+        const inputId = `field_${fieldName}`;
+        const input = document.getElementById(inputId);
+        
+        if (fieldName === 'attachmentSummary') {
+          console.log('🔍 [db-edit] 处理 attachmentSummary:', {
+            fieldName,
+            inputId,
+            inputElement: !!input,
+            inputValue: input ? input.value : 'N/A',
+            inputType: input ? input.type || input.tagName : 'N/A'
+          });
+        }
+        
+        if (!input) {
+          console.warn(`⚠️ [db-edit] 字段 ${fieldName} 的输入元素不存在 (ID: ${inputId})`);
+          return;
+        }
 
         const config = getFieldConfig(fieldName);
         let value = getInputValue(input, config.type);
+        
+        if (fieldName === 'attachmentSummary') {
+          console.log('🔍 [db-edit] getInputValue 返回的值:', {
+            fieldName,
+            value,
+            valueType: typeof value,
+            configType: config.type,
+            isEmpty: value === '',
+            isNull: value === null
+          });
+        }
         
       // 处理 JSON 字段
       if (config.type === 'json') {
@@ -922,6 +995,15 @@
         updateData[fieldName] = value;
       });
 
+      console.log('🔍 [db-edit] 准备发送的 updateData:', updateData);
+      console.log('🔍 [db-edit] updateData 中的 attachmentSummary:', {
+        hasAttachmentSummary: 'attachmentSummary' in updateData,
+        value: updateData.attachmentSummary,
+        type: typeof updateData.attachmentSummary,
+        isEmpty: updateData.attachmentSummary === '',
+        isNull: updateData.attachmentSummary === null
+      });
+
       try {
         showStatus('保存中...', 'info');
         
@@ -931,6 +1013,12 @@
           throw new Error('无法获取卡片ID');
         }
         
+        console.log('🔍 [db-edit] 发送 PATCH 请求:', {
+          url: `/api/card-detail?id=${cardId}`,
+          updateData,
+          updateDataKeys: Object.keys(updateData)
+        });
+        
         const response = await fetch(`/api/card-detail?id=${cardId}`, {
           method: 'PATCH',
           headers: {
@@ -939,13 +1027,18 @@
           },
           body: JSON.stringify(updateData)
         });
+        
+        console.log('🔍 [db-edit] PATCH 响应状态:', response.status);
 
         const result = await response.json();
+        console.log('🔍 [db-edit] PATCH 响应结果:', result);
         
         if (!result.success) {
+          console.error('❌ [db-edit] 保存失败:', result.message);
           throw new Error(result.message || '保存失败');
         }
 
+        console.log('✅ [db-edit] 保存成功，更新的字段数:', result.updatedFields || changedFields.size);
         showStatus(`✅ 成功保存 ${result.updatedFields || changedFields.size} 个字段的更改`, 'success');
         
         // 重新加载数据
