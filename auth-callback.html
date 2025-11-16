@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>登录中...</title>
+  <script>
+    // 从 URL 参数获取 Token
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const error = urlParams.get('error');
+    
+    if (error) {
+      // 有错误，重定向到搜索页面显示错误
+      window.location.href = `/search.html?error=${encodeURIComponent(error)}`;
+    } else if (token) {
+      // 设置 Cookie
+      const maxAge = 7 * 24 * 60 * 60; // 7天
+      document.cookie = `auth_token=${token}; Path=/; Max-Age=${maxAge}; SameSite=Lax; Secure`;
+      
+      // 重定向到搜索页面
+      setTimeout(() => {
+        window.location.href = '/search.html';
+      }, 100);
+    } else {
+      // 没有 Token，重定向到搜索页面
+      window.location.href = '/search.html?error=' + encodeURIComponent('登录失败：缺少Token');
+    }
+  </script>
+</head>
+<body>
+  <div style="text-align: center; padding: 50px; font-family: sans-serif;">
+    <h1>登录中...</h1>
+    <p>正在设置登录状态，请稍候...</p>
+  </div>
+</body>
+</html>
+

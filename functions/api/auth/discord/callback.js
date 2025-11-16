@@ -112,13 +112,13 @@ export async function onRequestGet(context) {
   
   if (error) {
     console.log('❌ [OAuth] Discord授权失败:', error);
-    const errorUrl = `${frontendUrl}/search.html?error=${encodeURIComponent(`Discord授权失败: ${error}`)}`;
+    const errorUrl = `${frontendUrl}/auth-callback.html?error=${encodeURIComponent(`Discord授权失败: ${error}`)}`;
     return Response.redirect(errorUrl, 302);
   }
   
   if (!code) {
     console.log('❌ [OAuth] 缺少授权码');
-    const errorUrl = `${frontendUrl}/search.html?error=${encodeURIComponent('缺少授权码')}`;
+    const errorUrl = `${frontendUrl}/auth-callback.html?error=${encodeURIComponent('缺少授权码')}`;
     return Response.redirect(errorUrl, 302);
   }
   
@@ -128,7 +128,7 @@ export async function onRequestGet(context) {
   
   if (!clientId || !clientSecret) {
     console.log('❌ [OAuth] Discord OAuth配置不完整');
-    const errorUrl = `${frontendUrl}/search.html?error=${encodeURIComponent('Discord OAuth配置不完整')}`;
+    const errorUrl = `${frontendUrl}/auth-callback.html?error=${encodeURIComponent('Discord OAuth配置不完整')}`;
     return Response.redirect(errorUrl, 302);
   }
   
@@ -151,7 +151,7 @@ export async function onRequestGet(context) {
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text();
       console.error('❌ [OAuth] Discord Token交换失败:', errorText);
-      const errorUrl = `${frontendUrl}/search.html?error=${encodeURIComponent('获取访问令牌失败')}`;
+      const errorUrl = `${frontendUrl}/auth-callback.html?error=${encodeURIComponent('获取访问令牌失败')}`;
       return Response.redirect(errorUrl, 302);
     }
     
@@ -167,7 +167,7 @@ export async function onRequestGet(context) {
     
     if (!userResponse.ok) {
       console.error('❌ [OAuth] 获取用户信息失败:', userResponse.status);
-      const errorUrl = `${frontendUrl}/search.html?error=${encodeURIComponent('获取用户信息失败')}`;
+      const errorUrl = `${frontendUrl}/auth-callback.html?error=${encodeURIComponent('获取用户信息失败')}`;
       return Response.redirect(errorUrl, 302);
     }
     
@@ -183,7 +183,7 @@ export async function onRequestGet(context) {
       // 重定向到错误页面或显示错误信息
       const errorMessage = roleVerification?.error || '您不在服务器中或没有"已审核"身份组';
       console.log('❌ [OAuth] 验证失败:', errorMessage);
-      const errorUrl = `${frontendUrl}/search.html?error=${encodeURIComponent(errorMessage)}`;
+      const errorUrl = `${frontendUrl}/auth-callback.html?error=${encodeURIComponent(errorMessage)}`;
       console.log('🔄 [OAuth] 重定向到错误页面:', errorUrl);
       return Response.redirect(errorUrl, 302);
     }
@@ -193,30 +193,17 @@ export async function onRequestGet(context) {
     const token = await generateToken(user, env);
     console.log('✅ [OAuth] Token生成成功');
     
-    // 5. 重定向到前端，并设置Cookie
-    const redirectUrl = `${frontendUrl}/search.html`;
-    console.log('🔄 [OAuth] 重定向到搜索页面:', redirectUrl);
+    // 5. 重定向到中间页面设置Cookie（因为重定向时Cookie可能不会正确设置）
+    const callbackUrl = `${frontendUrl}/auth-callback.html?token=${encodeURIComponent(token)}`;
+    console.log('🔄 [OAuth] 重定向到回调页面设置Cookie:', callbackUrl);
     
-    // 创建响应并设置Cookie（必须在创建响应时设置，不能之后修改）
-    const isSecure = frontendUrl.includes('https') || frontendUrl.includes('pages.dev');
-    // 同一域名使用 SameSite=Lax，跨站才需要 SameSite=None
-    const cookieValue = `auth_token=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${7 * 24 * 60 * 60}${isSecure ? '; Secure' : ''}`;
-    
-    const response = new Response(null, {
-      status: 302,
-      headers: {
-        'Location': redirectUrl,
-        'Set-Cookie': cookieValue
-      }
-    });
-    console.log('✅ [OAuth] Cookie已设置:', cookieValue.substring(0, 50) + '...');
-    
-    return response;
+    // 直接重定向到中间页面，由前端JavaScript设置Cookie
+    return Response.redirect(callbackUrl, 302);
     
   } catch (error) {
     console.error('❌ [OAuth] 回调处理失败:', error);
-    // 即使出错也重定向到搜索页面，显示错误信息
-    const errorUrl = `${frontendUrl}/search.html?error=${encodeURIComponent('登录处理失败: ' + error.message)}`;
+    // 即使出错也重定向到回调页面，显示错误信息
+    const errorUrl = `${frontendUrl}/auth-callback.html?error=${encodeURIComponent('登录处理失败: ' + error.message)}`;
     console.log('🔄 [OAuth] 错误重定向到:', errorUrl);
     return Response.redirect(errorUrl, 302);
   }

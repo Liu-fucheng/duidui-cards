@@ -80,8 +80,11 @@ async function verifyToken(token, env) {
     );
 
     if (!isValid) {
+      console.log('❌ [verifyToken] 签名验证失败');
       return null;
     }
+    
+    console.log('✅ [verifyToken] 签名验证成功');
 
     // 解析payload
     const payload = JSON.parse(base64UrlDecode(encodedPayload));
@@ -89,8 +92,11 @@ async function verifyToken(token, env) {
     // 检查过期时间
     const now = Math.floor(Date.now() / 1000);
     if (payload.exp && payload.exp < now) {
+      console.log('❌ [verifyToken] Token已过期，当前时间:', now, '过期时间:', payload.exp);
       return null;
     }
+    
+    console.log('✅ [verifyToken] Token未过期，剩余时间:', payload.exp - now, '秒');
 
     return payload;
   } catch (error) {
@@ -155,6 +161,32 @@ export async function onRequestGet(context) {
   const payload = await verifyToken(token, env);
   if (!payload) {
     console.log('❌ [me] Token验证失败');
+    // 尝试解析 Token 看看是什么问题
+    try {
+      const parts = token.split('.');
+      if (parts.length === 3) {
+        const [header, payloadPart, signature] = parts;
+        // Base64URL解码payload看看内容
+        let payloadStr = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
+        while (payloadStr.length % 4) {
+          payloadStr += '=';
+        }
+        const binary = atob(payloadStr);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        const decodedPayload = JSON.parse(new TextDecoder().decode(bytes));
+        console.log('🔍 [me] Token payload内容:', JSON.stringify(decodedPayload));
+        const now = Math.floor(Date.now() / 1000);
+        console.log('🔍 [me] 当前时间:', now, 'Token过期时间:', decodedPayload.exp);
+        if (decodedPayload.exp && decodedPayload.exp < now) {
+          console.log('❌ [me] Token已过期');
+        }
+      }
+    } catch (e) {
+      console.log('🔍 [me] 解析Token失败:', e.message);
+    }
     return new Response(JSON.stringify({
       success: false,
       message: 'Token无效或已过期'
