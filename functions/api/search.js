@@ -257,8 +257,12 @@ async function searchCards(env, params) {
         card.downloadRequirements = [];
       }
       
-      // 生成公开URL
-      const r2PublicUrl = env.R2_PUBLIC_URL || '';
+      // 生成公开URL（确保使用 HTTPS）
+      let r2PublicUrl = env.R2_PUBLIC_URL || '';
+      // 如果 URL 是 http://，自动替换为 https://
+      if (r2PublicUrl.startsWith('http://')) {
+        r2PublicUrl = r2PublicUrl.replace('http://', 'https://');
+      }
       
       // 简介图URL（Discord帖子图片）
       card.introImageUrl = `${r2PublicUrl}/intros/intro_${card.id}.png`;

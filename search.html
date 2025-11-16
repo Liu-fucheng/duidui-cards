@@ -284,6 +284,10 @@
       transition: all 0.2s;
       cursor: pointer;
     }
+    
+    .card-item:not([onclick]) {
+      cursor: default;
+    }
 
     .card-item:hover {
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
@@ -858,7 +862,11 @@
       const grid = document.getElementById('cardsGrid');
       grid.innerHTML = cards.map(card => {
         // 获取图片URL（优先使用introImageUrl，然后是avatarImageUrl）
-        const imageUrl = card.introImageUrl || card.avatarImageUrl || '/默认头像.png';
+        let imageUrl = card.introImageUrl || card.avatarImageUrl || '/默认头像.png';
+        // 确保使用 HTTPS（避免 Mixed Content 警告）
+        if (imageUrl.startsWith('http://')) {
+          imageUrl = imageUrl.replace('http://', 'https://');
+        }
         
         // 获取角色名（从characters数组中提取）
         const characters = Array.isArray(card.characters) ? card.characters : [];
@@ -874,8 +882,14 @@
           return t.label || t.value || '';
         }).filter(Boolean);
         
+        // 构建 Discord 帖子链接
+        const discordGuildId = '1338365085072101416';
+        const discordUrl = card.threadId 
+          ? `https://discord.com/channels/${discordGuildId}/${card.threadId}`
+          : null;
+        
         return `
-          <div class="card-item" onclick="viewCard('${card.id}')">
+          <div class="card-item" ${discordUrl ? `onclick="window.open('${escapeHtml(discordUrl)}', '_blank')"` : ''}>
             <img src="${imageUrl}" alt="${card.cardName}" class="card-image" onerror="this.src='/默认头像.png'">
             <div class="card-name">${escapeHtml(card.cardName || '未命名')}</div>
             <div class="card-characters">${escapeHtml(characterNames)}</div>
