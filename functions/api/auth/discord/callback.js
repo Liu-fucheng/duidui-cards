@@ -199,8 +199,17 @@ export async function onRequestGet(context) {
     console.log('🔍 [OAuth] Token前50个字符:', token.substring(0, 50));
     
     // 5. 重定向到中间页面设置Cookie（因为重定向时Cookie可能不会正确设置）
-    const callbackUrl = `${frontendUrl}/auth-callback.html?token=${encodeURIComponent(token)}`;
-    console.log('🔄 [OAuth] 重定向到回调页面设置Cookie:', callbackUrl.substring(0, 100) + '...');
+    // 注意：URL长度限制，如果Token太长可能需要使用POST或其他方式
+    const encodedToken = encodeURIComponent(token);
+    console.log('🔍 [OAuth] Token原始长度:', token.length);
+    console.log('🔍 [OAuth] Token编码后长度:', encodedToken.length);
+    
+    if (encodedToken.length > 2000) {
+      console.warn('⚠️ [OAuth] Token编码后太长，可能无法通过URL传递');
+    }
+    
+    const callbackUrl = `${frontendUrl}/auth-callback.html?token=${encodedToken}`;
+    console.log('🔄 [OAuth] 重定向到回调页面设置Cookie，URL长度:', callbackUrl.length);
     
     // 直接重定向到中间页面，由前端JavaScript设置Cookie
     return Response.redirect(callbackUrl, 302);

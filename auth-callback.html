@@ -4,18 +4,41 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>登录中...</title>
+</head>
+<body>
+  <div style="text-align: center; padding: 50px; font-family: sans-serif;">
+    <h1>登录中...</h1>
+    <p>正在设置登录状态，请稍候...</p>
+  </div>
   <script>
+    (function() {
+      console.log('🔍 [auth-callback] 页面加载，URL:', window.location.href);
+    
     // 从 URL 参数获取 Token
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
     const error = urlParams.get('error');
     
+    console.log('🔍 [auth-callback] Token参数:', token ? '存在，长度: ' + token.length : '不存在');
+    console.log('🔍 [auth-callback] Error参数:', error || '无');
+    
     if (error) {
       // 有错误，重定向到搜索页面显示错误
+      console.log('❌ [auth-callback] 有错误，重定向到搜索页面');
       window.location.href = `/search.html?error=${encodeURIComponent(error)}`;
     } else if (token) {
       console.log('🔍 [auth-callback] 收到Token，长度:', token.length);
       console.log('🔍 [auth-callback] Token前50个字符:', token.substring(0, 50));
+      console.log('🔍 [auth-callback] Token后50个字符:', token.substring(Math.max(0, token.length - 50)));
+      
+      // 检查Token格式（JWT应该有3部分，用.分隔）
+      const tokenParts = token.split('.');
+      if (tokenParts.length !== 3) {
+        console.error('❌ [auth-callback] Token格式错误，应该有3部分，实际:', tokenParts.length);
+        console.error('🔍 [auth-callback] Token内容:', token);
+        window.location.href = '/search.html?error=' + encodeURIComponent('Token格式错误，可能被截断');
+        return;
+      }
       
       // 检查Token长度（Cookie通常限制4KB，但为了安全我们限制更小）
       if (token.length > 3000) {
@@ -88,23 +111,27 @@
         } else {
           console.error('❌ [auth-callback] Cookie和localStorage都设置失败');
           console.error('🔍 [auth-callback] 所有Cookie键:', Object.keys(cookies));
-          window.location.href = '/search.html?error=' + encodeURIComponent('Cookie设置失败，请检查浏览器设置或禁用广告拦截器');
+          // 即使设置失败，也尝试跳转（可能localStorage已经设置了）
+          setTimeout(() => {
+            window.location.href = '/search.html?error=' + encodeURIComponent('Cookie设置失败，但已使用localStorage');
+          }, 1000);
         }
       } catch (e) {
         console.error('❌ [auth-callback] 设置存储失败:', e);
-        window.location.href = '/search.html?error=' + encodeURIComponent('存储设置失败: ' + e.message);
+        console.error('❌ [auth-callback] 错误详情:', e.stack);
+        // 即使出错，也尝试跳转
+        setTimeout(() => {
+          window.location.href = '/search.html?error=' + encodeURIComponent('存储设置失败: ' + e.message);
+        }, 1000);
       }
     } else {
       // 没有 Token，重定向到搜索页面
+      console.error('❌ [auth-callback] 没有Token参数');
+      console.error('🔍 [auth-callback] URL参数:', window.location.search);
       window.location.href = '/search.html?error=' + encodeURIComponent('登录失败：缺少Token');
     }
+    })();
   </script>
-</head>
-<body>
-  <div style="text-align: center; padding: 50px; font-family: sans-serif;">
-    <h1>登录中...</h1>
-    <p>正在设置登录状态，请稍候...</p>
-  </div>
 </body>
 </html>
 
