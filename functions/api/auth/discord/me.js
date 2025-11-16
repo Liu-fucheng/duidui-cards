@@ -215,6 +215,12 @@ export async function onRequestGet(context) {
     console.log('🔍 [me] 解析Token payload失败:', e.message);
   }
   
+  // 在验证前记录 JWT_SECRET 信息（用于调试）
+  const secret = getJWTSecret(env);
+  console.log('🔍 [me] 验证时使用的JWT_SECRET长度:', secret.length);
+  console.log('🔍 [me] 验证时使用的JWT_SECRET前10个字符:', secret.substring(0, 10));
+  console.log('🔍 [me] 验证时使用的JWT_SECRET是否使用默认值:', secret === 'your-secret-key-change-in-production');
+  
   const payload = await verifyToken(cleanToken, env);
   if (!payload) {
     console.log('❌ [me] Token验证失败');
@@ -234,7 +240,9 @@ export async function onRequestGet(context) {
       debug: decodedPayloadForDebug ? {
         userId: decodedPayloadForDebug.userId,
         exp: decodedPayloadForDebug.exp,
-        now: Math.floor(Date.now() / 1000)
+        now: Math.floor(Date.now() / 1000),
+        secretLength: secret.length,
+        usingDefaultSecret: secret === 'your-secret-key-change-in-production'
       } : null
     }), {
       status: 401,
