@@ -566,8 +566,47 @@
         
         console.log('🔍 [前端] 认证检查响应状态:', response.status);
         
+        const responseText = await response.text();
+        let data;
+        try {
+          data = JSON.parse(responseText);
+        } catch (e) {
+          console.error('❌ [前端] 解析响应失败:', e);
+          console.error('🔍 [前端] 响应内容:', responseText);
+          showLoginPrompt();
+          return;
+        }
+        
+        // 打印后端日志（如果存在）
+        if (data.logs && Array.isArray(data.logs)) {
+          console.group('📋 [后端日志] /api/auth/discord/me');
+          data.logs.forEach(log => {
+            if (log.includes('❌')) {
+              console.error(log);
+            } else if (log.includes('✅')) {
+              console.log('%c' + log, 'color: green');
+            } else {
+              console.log(log);
+            }
+          });
+          console.groupEnd();
+        }
+        
+        // 打印调试信息（如果存在）
+        if (data.debug) {
+          console.group('🔍 [调试信息]');
+          console.log('Token长度:', data.debug.tokenLength);
+          console.log('Token部分数量:', data.debug.tokenParts);
+          console.log('JWT_SECRET长度:', data.debug.secretLength);
+          console.log('JWT_SECRET前缀:', data.debug.secretPrefix);
+          console.log('是否使用默认密钥:', data.debug.usingDefaultSecret);
+          if (data.debug.payload) {
+            console.log('Token Payload:', data.debug.payload);
+          }
+          console.groupEnd();
+        }
+        
         if (response.ok) {
-          const data = await response.json();
           console.log('🔍 [前端] 认证检查响应数据:', data);
           if (data.success && data.user) {
             currentUser = data.user;
@@ -578,8 +617,10 @@
             showLoginPrompt();
           }
         } else {
-          const errorText = await response.text();
-          console.log('❌ [前端] 认证失败:', response.status, errorText);
+          console.log('❌ [前端] 认证失败:', response.status, data);
+          if (data.message) {
+            console.error('❌ [前端] 错误信息:', data.message);
+          }
           showLoginPrompt();
         }
       } catch (error) {

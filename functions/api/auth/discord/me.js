@@ -221,10 +221,31 @@ export async function onRequestGet(context) {
   console.log('🔍 [me] 验证时使用的JWT_SECRET前10个字符:', secret.substring(0, 10));
   console.log('🔍 [me] 验证时使用的JWT_SECRET是否使用默认值:', secret === 'your-secret-key-change-in-production');
   
+  // 准备调试信息（用于前端显示）
+  const debugInfo = {
+    tokenLength: cleanToken.length,
+    tokenParts: cleanToken.split('.').length,
+    secretLength: secret.length,
+    secretPrefix: secret.substring(0, 10) + '...',
+    usingDefaultSecret: secret === 'your-secret-key-change-in-production',
+    timestamp: Math.floor(Date.now() / 1000)
+  };
+  
+  if (decodedPayloadForDebug) {
+    debugInfo.payload = {
+      userId: decodedPayloadForDebug.userId,
+      username: decodedPayloadForDebug.username,
+      exp: decodedPayloadForDebug.exp,
+      iat: decodedPayloadForDebug.iat,
+      now: Math.floor(Date.now() / 1000),
+      isExpired: decodedPayloadForDebug.exp && decodedPayloadForDebug.exp < Math.floor(Date.now() / 1000)
+    };
+  }
+  
   const payload = await verifyToken(cleanToken, env);
   if (!payload) {
     console.log('❌ [me] Token验证失败');
-    // 返回更详细的错误信息
+    // 返回更详细的错误信息（包含所有调试信息）
     let errorMessage = 'Token无效或已过期';
     if (decodedPayloadForDebug) {
       const now = Math.floor(Date.now() / 1000);
@@ -234,16 +255,28 @@ export async function onRequestGet(context) {
         errorMessage = 'Token签名验证失败（可能是JWT_SECRET不匹配）';
       }
     }
+    
+    // 添加验证过程的详细信息
+    debugInfo.verificationFailed = true;
+    debugInfo.errorMessage = errorMessage;
+    
     return new Response(JSON.stringify({
       success: false,
       message: errorMessage,
-      debug: decodedPayloadForDebug ? {
-        userId: decodedPayloadForDebug.userId,
-        exp: decodedPayloadForDebug.exp,
-        now: Math.floor(Date.now() / 1000),
-        secretLength: secret.length,
-        usingDefaultSecret: secret === 'your-secret-key-change-in-production'
-      } : null
+      debug: debugInfo,
+      logs: [
+        '🔍 [me] 收到Token验证请求',
+        `🔍 [me] Token长度: ${cleanToken.length}`,
+        `🔍 [me] Token部分数量: ${cleanToken.split('.').length}`,
+        `🔍 [me] 验证时使用的JWT_SECRET长度: ${secret.length}`,
+        `🔍 [me] 验证时使用的JWT_SECRET前10个字符: ${secret.substring(0, 10)}`,
+        `🔍 [me] 验证时使用的JWT_SECRET是否使用默认值: ${secret === 'your-secret-key-change-in-production'}`,
+        decodedPayloadForDebug ? `🔍 [me] Token payload解析成功，用户ID: ${decodedPayloadForDebug.userId}` : '❌ [me] Token payload解析失败',
+        decodedPayloadForDebug && decodedPayloadForDebug.exp ? `🔍 [me] Token过期时间: ${decodedPayloadForDebug.exp}, 当前时间: ${Math.floor(Date.now() / 1000)}` : '',
+        decodedPayloadForDebug && decodedPayloadForDebug.exp && decodedPayloadForDebug.exp < Math.floor(Date.now() / 1000) ? '❌ [me] Token已过期' : decodedPayloadForDebug ? '✅ [me] Token未过期' : '',
+        '❌ [verifyToken] 签名验证失败',
+        '❌ [me] Token验证失败'
+      ].filter(Boolean)
     }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' }
@@ -255,6 +288,15 @@ export async function onRequestGet(context) {
   // 再次验证用户身份组（可选，用于确保用户仍然有权限）
   const roleVerification = await verifyUserRole(payload.userId, env);
   
+  // 添加成功日志到响应中
+  debugInfo.verificationSuccess = true;
+  debugInfo.payload = {
+    userId: payload.userId,
+    username: payload.username,
+    exp: payload.exp,
+    iat: payload.iat
+  };
+  
   return new Response(JSON.stringify({
     success: true,
     user: {
@@ -264,7 +306,14 @@ export async function onRequestGet(context) {
       avatar: payload.avatar,
       globalName: payload.globalName,
       verified: roleVerification.verified,
-    }
+    },
+    debug: debugInfo,
+    logs: [
+      '✅ [me] Token验证成功',
+      `✅ [me] 用户ID: ${payload.userId}`,
+      `✅ [me] 用户名: ${payload.username}`,
+      `✅ [me] Token未过期，剩余时间: ${payload.exp - Math.floor(Date.now() / 1000)} 秒`
+    ]
   }), {
     status: 200,
     headers: { 'Content-Type': 'application/json' }
