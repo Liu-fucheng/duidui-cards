@@ -536,8 +536,15 @@
     async function checkAuth() {
       try {
         // 检查是否有 localStorage 中的 Token（作为备选）
-        const localToken = localStorage.getItem('auth_token');
-        console.log('🔍 [前端] localStorage中的Token:', localToken ? '存在' : '不存在');
+        let localToken = localStorage.getItem('auth_token');
+        if (localToken) {
+          // 去除可能的引号和空格
+          localToken = localToken.trim().replace(/^["']|["']$/g, '');
+          console.log('🔍 [前端] localStorage中的Token:', localToken ? '存在，长度: ' + localToken.length : '不存在');
+          console.log('🔍 [前端] Token前50个字符:', localToken.substring(0, 50));
+        } else {
+          console.log('🔍 [前端] localStorage中的Token: 不存在');
+        }
         
         // 准备请求头
         const headers = {
@@ -547,7 +554,7 @@
         // 如果 localStorage 有 Token，也通过 Authorization 头发送（双重保障）
         if (localToken) {
           headers['Authorization'] = 'Bearer ' + localToken;
-          console.log('🔍 [前端] 通过Authorization头发送Token');
+          console.log('🔍 [前端] 通过Authorization头发送Token，长度:', localToken.length);
         }
         
         // 确保发送 Cookie
@@ -897,4 +904,6 @@
   </script>
 </body>
 </html>
+
+
 

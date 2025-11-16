@@ -29,3 +29,5 @@ FROM cards_v2;
 
 
 
+
+

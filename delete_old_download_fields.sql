@@ -19,3 +19,5 @@ ALTER TABLE cards_v2 DROP COLUMN requireComment;
 
 
 
+
+

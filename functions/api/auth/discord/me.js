@@ -177,12 +177,18 @@ export async function onRequestGet(context) {
     });
   }
   
-  const payload = await verifyToken(token, env);
+  // 清理 Token（去除可能的引号和空格）
+  const cleanToken = token.trim().replace(/^["']|["']$/g, '');
+  console.log('🔍 [me] 清理后的Token长度:', cleanToken.length);
+  console.log('🔍 [me] 清理后的Token前50个字符:', cleanToken.substring(0, 50));
+  
+  const payload = await verifyToken(cleanToken, env);
   if (!payload) {
     console.log('❌ [me] Token验证失败');
     // 尝试解析 Token 看看是什么问题
     try {
-      const parts = token.split('.');
+      const parts = cleanToken.split('.');
+      console.log('🔍 [me] Token部分数量:', parts.length);
       if (parts.length === 3) {
         const [header, payloadPart, signature] = parts;
         // Base64URL解码payload看看内容
@@ -200,11 +206,20 @@ export async function onRequestGet(context) {
         const now = Math.floor(Date.now() / 1000);
         console.log('🔍 [me] 当前时间:', now, 'Token过期时间:', decodedPayload.exp);
         if (decodedPayload.exp && decodedPayload.exp < now) {
-          console.log('❌ [me] Token已过期');
+          console.log('❌ [me] Token已过期，相差:', now - decodedPayload.exp, '秒');
+        } else if (decodedPayload.exp) {
+          console.log('✅ [me] Token未过期，剩余时间:', decodedPayload.exp - now, '秒');
         }
+        // 检查 JWT_SECRET 是否匹配
+        console.log('🔍 [me] 生成Token时的用户ID:', decodedPayload.userId);
+        console.log('🔍 [me] 生成Token时的用户名:', decodedPayload.username);
+      } else {
+        console.log('❌ [me] Token格式错误，应该有3部分，实际:', parts.length);
+        console.log('🔍 [me] Token内容:', cleanToken);
       }
     } catch (e) {
       console.log('🔍 [me] 解析Token失败:', e.message);
+      console.log('🔍 [me] 错误堆栈:', e.stack);
     }
     return new Response(JSON.stringify({
       success: false,
@@ -235,4 +250,6 @@ export async function onRequestGet(context) {
     headers: { 'Content-Type': 'application/json' }
   });
 }
+
+
 
