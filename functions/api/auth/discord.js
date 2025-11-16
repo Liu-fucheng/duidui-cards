@@ -319,45 +319,51 @@ async function handleCallback(context) {
     }
     
     const user = await userResponse.json();
+    console.log('✅ [OAuth] 获取到用户信息:', user.id, user.username);
     
     // 3. 验证用户是否在服务器且有"已审核"身份组
+    console.log('🔍 [OAuth] 开始验证用户身份组...');
     const roleVerification = await verifyUserRole(user.id, env);
+    console.log('🔍 [OAuth] 验证结果:', roleVerification);
     
-    if (!roleVerification.verified) {
+    // 构建前端URL
+    const frontendUrl = env.CARD_WEBSITE_URL || new URL(request.url).origin;
+    console.log('🌐 [OAuth] 前端URL:', frontendUrl);
+    
+    if (!roleVerification || !roleVerification.verified) {
       // 重定向到错误页面或显示错误信息
-      const errorMessage = roleVerification.error || '您不在服务器中或没有"已审核"身份组';
-      const frontendUrl = env.CARD_WEBSITE_URL || new URL(request.url).origin;
-      return Response.redirect(
-        `${frontendUrl}/search.html?error=${encodeURIComponent(errorMessage)}`,
-        302
-      );
+      const errorMessage = roleVerification?.error || '您不在服务器中或没有"已审核"身份组';
+      console.log('❌ [OAuth] 验证失败:', errorMessage);
+      const errorUrl = `${frontendUrl}/search.html?error=${encodeURIComponent(errorMessage)}`;
+      console.log('🔄 [OAuth] 重定向到错误页面:', errorUrl);
+      return Response.redirect(errorUrl, 302);
     }
     
     // 4. 生成JWT Token
+    console.log('🔑 [OAuth] 生成JWT Token...');
     const token = await generateToken(user, env);
+    console.log('✅ [OAuth] Token生成成功');
     
     // 5. 重定向到前端，并设置Cookie
-    const frontendUrl = env.CARD_WEBSITE_URL || new URL(request.url).origin;
     const redirectUrl = `${frontendUrl}/search.html`;
+    console.log('🔄 [OAuth] 重定向到搜索页面:', redirectUrl);
     
     // 创建响应并设置Cookie
     const response = Response.redirect(redirectUrl, 302);
-    response.headers.set(
-      'Set-Cookie',
-      `auth_token=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${7 * 24 * 60 * 60}; ${env.CARD_WEBSITE_URL?.includes('https') ? 'Secure;' : ''}`
-    );
+    const isSecure = frontendUrl.includes('https') || frontendUrl.includes('pages.dev');
+    const cookieValue = `auth_token=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${7 * 24 * 60 * 60}${isSecure ? '; Secure' : ''}`;
+    response.headers.set('Set-Cookie', cookieValue);
+    console.log('✅ [OAuth] Cookie已设置');
     
     return response;
     
   } catch (error) {
-    console.error('OAuth回调处理失败:', error);
-    return new Response(JSON.stringify({
-      success: false,
-      message: '登录处理失败: ' + error.message
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    console.error('❌ [OAuth] 回调处理失败:', error);
+    // 即使出错也重定向到搜索页面，显示错误信息
+    const frontendUrl = env.CARD_WEBSITE_URL || new URL(request.url).origin;
+    const errorUrl = `${frontendUrl}/search.html?error=${encodeURIComponent('登录处理失败: ' + error.message)}`;
+    console.log('🔄 [OAuth] 错误重定向到:', errorUrl);
+    return Response.redirect(errorUrl, 302);
   }
 }
 

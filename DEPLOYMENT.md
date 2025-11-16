@@ -45,7 +45,14 @@ DISCORD_CLIENT_SECRET=你的Discord应用Client Secret
 # Discord OAuth 回调URL（通常为：https://your-site.pages.dev/api/auth/discord/callback）
 DISCORD_REDIRECT_URI=https://your-cards-site.pages.dev/api/auth/discord/callback
 
-# JWT密钥（用于生成和验证登录Token，建议使用随机字符串，至少32位）
+# JWT密钥（用于生成和验证登录Token）
+# ⚠️ 重要：这个密钥应该固定一个，不要每次随机生成
+# 生成方法（任选一种）：
+#   方法1：openssl rand -hex 32
+#   方法2：node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+#   方法3：在线生成器（https://randomkeygen.com/）
+# 示例：JWT_SECRET=a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6
+# 注意：一旦设置，不要轻易更改，否则所有已登录用户都会失效
 JWT_SECRET=你的JWT密钥（至少32位随机字符串）
 ```
 
