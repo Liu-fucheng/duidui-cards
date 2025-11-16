@@ -197,11 +197,17 @@ export async function onRequestGet(context) {
     const redirectUrl = `${frontendUrl}/search.html`;
     console.log('🔄 [OAuth] 重定向到搜索页面:', redirectUrl);
     
-    // 创建响应并设置Cookie
-    const response = Response.redirect(redirectUrl, 302);
+    // 创建响应并设置Cookie（必须在创建响应时设置，不能之后修改）
     const isSecure = frontendUrl.includes('https') || frontendUrl.includes('pages.dev');
     const cookieValue = `auth_token=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${7 * 24 * 60 * 60}${isSecure ? '; Secure' : ''}`;
-    response.headers.set('Set-Cookie', cookieValue);
+    
+    const response = new Response(null, {
+      status: 302,
+      headers: {
+        'Location': redirectUrl,
+        'Set-Cookie': cookieValue
+      }
+    });
     console.log('✅ [OAuth] Cookie已设置');
     
     return response;
