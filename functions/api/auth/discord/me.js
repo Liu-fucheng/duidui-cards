@@ -87,7 +87,10 @@ async function verifyToken(token, env) {
       signatureStr += '=';
     }
     const signatureBytes = atob(signatureStr);
-    const signature = Uint8Array.from(signatureBytes, c => c.charCodeAt(0));
+    const signature = new Uint8Array(signatureBytes.length);
+    for (let i = 0; i < signatureBytes.length; i++) {
+      signature[i] = signatureBytes.charCodeAt(i);
+    }
 
     const isValid = await crypto.subtle.verify(
       'HMAC',
@@ -182,48 +185,57 @@ export async function onRequestGet(context) {
   console.log('🔍 [me] 清理后的Token长度:', cleanToken.length);
   console.log('🔍 [me] 清理后的Token前50个字符:', cleanToken.substring(0, 50));
   
+  // 先尝试解析 Token 看看内容（用于调试）
+  let decodedPayloadForDebug = null;
+  try {
+    const parts = cleanToken.split('.');
+    if (parts.length === 3) {
+      const [header, payloadPart, signature] = parts;
+      // Base64URL解码payload看看内容
+      let payloadStr = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
+      while (payloadStr.length % 4) {
+        payloadStr += '=';
+      }
+      const binary = atob(payloadStr);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      decodedPayloadForDebug = JSON.parse(new TextDecoder().decode(bytes));
+      console.log('🔍 [me] Token payload内容:', JSON.stringify(decodedPayloadForDebug));
+      const now = Math.floor(Date.now() / 1000);
+      console.log('🔍 [me] 当前时间:', now, 'Token过期时间:', decodedPayloadForDebug.exp);
+      if (decodedPayloadForDebug.exp && decodedPayloadForDebug.exp < now) {
+        console.log('❌ [me] Token已过期，相差:', now - decodedPayloadForDebug.exp, '秒');
+      } else if (decodedPayloadForDebug.exp) {
+        console.log('✅ [me] Token未过期，剩余时间:', decodedPayloadForDebug.exp - now, '秒');
+      }
+    }
+  } catch (e) {
+    console.log('🔍 [me] 解析Token payload失败:', e.message);
+  }
+  
   const payload = await verifyToken(cleanToken, env);
   if (!payload) {
     console.log('❌ [me] Token验证失败');
-    // 尝试解析 Token 看看是什么问题
-    try {
-      const parts = cleanToken.split('.');
-      console.log('🔍 [me] Token部分数量:', parts.length);
-      if (parts.length === 3) {
-        const [header, payloadPart, signature] = parts;
-        // Base64URL解码payload看看内容
-        let payloadStr = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
-        while (payloadStr.length % 4) {
-          payloadStr += '=';
-        }
-        const binary = atob(payloadStr);
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i++) {
-          bytes[i] = binary.charCodeAt(i);
-        }
-        const decodedPayload = JSON.parse(new TextDecoder().decode(bytes));
-        console.log('🔍 [me] Token payload内容:', JSON.stringify(decodedPayload));
-        const now = Math.floor(Date.now() / 1000);
-        console.log('🔍 [me] 当前时间:', now, 'Token过期时间:', decodedPayload.exp);
-        if (decodedPayload.exp && decodedPayload.exp < now) {
-          console.log('❌ [me] Token已过期，相差:', now - decodedPayload.exp, '秒');
-        } else if (decodedPayload.exp) {
-          console.log('✅ [me] Token未过期，剩余时间:', decodedPayload.exp - now, '秒');
-        }
-        // 检查 JWT_SECRET 是否匹配
-        console.log('🔍 [me] 生成Token时的用户ID:', decodedPayload.userId);
-        console.log('🔍 [me] 生成Token时的用户名:', decodedPayload.username);
+    // 返回更详细的错误信息
+    let errorMessage = 'Token无效或已过期';
+    if (decodedPayloadForDebug) {
+      const now = Math.floor(Date.now() / 1000);
+      if (decodedPayloadForDebug.exp && decodedPayloadForDebug.exp < now) {
+        errorMessage = 'Token已过期';
       } else {
-        console.log('❌ [me] Token格式错误，应该有3部分，实际:', parts.length);
-        console.log('🔍 [me] Token内容:', cleanToken);
+        errorMessage = 'Token签名验证失败（可能是JWT_SECRET不匹配）';
       }
-    } catch (e) {
-      console.log('🔍 [me] 解析Token失败:', e.message);
-      console.log('🔍 [me] 错误堆栈:', e.stack);
     }
     return new Response(JSON.stringify({
       success: false,
-      message: 'Token无效或已过期'
+      message: errorMessage,
+      debug: decodedPayloadForDebug ? {
+        userId: decodedPayloadForDebug.userId,
+        exp: decodedPayloadForDebug.exp,
+        now: Math.floor(Date.now() / 1000)
+      } : null
     }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' }

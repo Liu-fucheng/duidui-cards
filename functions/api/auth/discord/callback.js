@@ -60,9 +60,16 @@ async function generateToken(user, env) {
     new TextEncoder().encode(data)
   );
 
-  const encodedSignature = base64UrlEncode(
-    String.fromCharCode(...new Uint8Array(signature))
-  );
+  // 将 ArrayBuffer 转换为 Base64URL 字符串
+  const signatureArray = new Uint8Array(signature);
+  let binary = '';
+  for (let i = 0; i < signatureArray.length; i++) {
+    binary += String.fromCharCode(signatureArray[i]);
+  }
+  const encodedSignature = btoa(binary)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
 
   return `${data}.${encodedSignature}`;
 }
