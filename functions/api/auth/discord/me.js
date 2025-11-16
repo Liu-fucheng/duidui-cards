@@ -1,9 +1,17 @@
 // 获取当前用户信息
 // GET /api/auth/discord/me
 
-// 从请求中获取Token（从Cookie或Authorization头）
+// 从请求中获取Token（从Authorization头或Cookie）
 function getTokenFromRequest(request) {
-  // 优先从Cookie获取
+  // 优先从Authorization头获取（因为它是原始Token，没有被URL编码）
+  const authHeader = request.headers.get('Authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7).trim();
+    console.log('✅ [getTokenFromRequest] 从Authorization头找到Token，长度:', token.length);
+    return token;
+  }
+  
+  // 如果Authorization头没有，再从Cookie获取
   const cookieHeader = request.headers.get('Cookie');
   if (cookieHeader) {
     // 更健壮的Cookie解析（处理URL编码等）
@@ -14,23 +22,23 @@ function getTokenFromRequest(request) {
       if (equalIndex > 0) {
         const key = trimmed.substring(0, equalIndex).trim();
         const value = trimmed.substring(equalIndex + 1).trim();
-        cookies[key] = decodeURIComponent(value);
+        try {
+          // 尝试解码，如果失败则使用原始值
+          cookies[key] = decodeURIComponent(value);
+        } catch (e) {
+          // 如果解码失败，可能是已经被解码过了，直接使用
+          cookies[key] = value;
+        }
       }
     });
     
     console.log('🔍 [getTokenFromRequest] 解析的Cookies:', Object.keys(cookies));
     
     if (cookies['auth_token']) {
-      console.log('✅ [getTokenFromRequest] 从Cookie找到Token');
-      return cookies['auth_token'];
+      const token = cookies['auth_token'].trim();
+      console.log('✅ [getTokenFromRequest] 从Cookie找到Token，长度:', token.length);
+      return token;
     }
-  }
-  
-  // 从Authorization头获取
-  const authHeader = request.headers.get('Authorization');
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    console.log('✅ [getTokenFromRequest] 从Authorization头找到Token');
-    return authHeader.substring(7);
   }
   
   console.log('❌ [getTokenFromRequest] 未找到Token');
@@ -168,6 +176,7 @@ export async function onRequestGet(context) {
   const token = getTokenFromRequest(request);
   console.log('🔍 [me] 提取的Token:', token ? token.substring(0, 50) + '...' : '无');
   console.log('🔍 [me] Token长度:', token ? token.length : 0);
+  console.log('🔍 [me] Token来源:', request.headers.get('Authorization') ? 'Authorization头' : 'Cookie');
   
   if (!token) {
     console.log('❌ [me] 未找到Token');

@@ -1,9 +1,15 @@
 // 搜索API
 // GET /api/search - 搜索已发布的卡片（需要登录）
 
-// 从请求中获取Token（从Cookie或Authorization头）
+// 从请求中获取Token（从Authorization头或Cookie）
 function getTokenFromRequest(request) {
-  // 优先从Cookie获取
+  // 优先从Authorization头获取（因为它是原始Token，没有被URL编码）
+  const authHeader = request.headers.get('Authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.substring(7).trim();
+  }
+  
+  // 如果Authorization头没有，再从Cookie获取
   const cookieHeader = request.headers.get('Cookie');
   if (cookieHeader) {
     // 更健壮的Cookie解析
@@ -23,14 +29,8 @@ function getTokenFromRequest(request) {
     });
     
     if (cookies['auth_token']) {
-      return cookies['auth_token'];
+      return cookies['auth_token'].trim();
     }
-  }
-  
-  // 从Authorization头获取
-  const authHeader = request.headers.get('Authorization');
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    return authHeader.substring(7);
   }
   
   return null;
