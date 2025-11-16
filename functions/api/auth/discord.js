@@ -4,38 +4,124 @@
 // GET /api/auth/me - 获取当前用户信息
 // POST /api/auth/logout - 登出
 
-import { SignJWT, jwtVerify } from 'jose';
-
 // JWT密钥（从环境变量获取，如果没有则使用默认值，生产环境必须设置）
 function getJWTSecret(env) {
   return env.JWT_SECRET || 'your-secret-key-change-in-production';
 }
 
-// 生成JWT Token
+// 使用 Web Crypto API 生成 JWT Token
 async function generateToken(user, env) {
-  const secret = new TextEncoder().encode(getJWTSecret(env));
-  const token = await new SignJWT({
+  const secret = getJWTSecret(env);
+  const secretKey = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+
+  const header = {
+    alg: 'HS256',
+    typ: 'JWT'
+  };
+
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
     userId: user.id,
     username: user.username,
     discriminator: user.discriminator,
     avatar: user.avatar,
     globalName: user.global_name,
-  })
-    .setProtectedHeader({ alg: 'HS256' })
-    .setIssuedAt()
-    .setExpirationTime('7d') // 7天有效期
-    .sign(secret);
-  
-  return token;
+    iat: now,
+    exp: now + (7 * 24 * 60 * 60) // 7天有效期
+  };
+
+  // Base64URL编码
+  const base64UrlEncode = (str) => {
+    return btoa(str)
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=/g, '');
+  };
+
+  const encodedHeader = base64UrlEncode(JSON.stringify(header));
+  const encodedPayload = base64UrlEncode(JSON.stringify(payload));
+
+  const data = `${encodedHeader}.${encodedPayload}`;
+  const signature = await crypto.subtle.sign(
+    'HMAC',
+    secretKey,
+    new TextEncoder().encode(data)
+  );
+
+  const encodedSignature = base64UrlEncode(
+    String.fromCharCode(...new Uint8Array(signature))
+  );
+
+  return `${data}.${encodedSignature}`;
 }
 
-// 验证JWT Token
+// 使用 Web Crypto API 验证 JWT Token
 async function verifyToken(token, env) {
   try {
-    const secret = new TextEncoder().encode(getJWTSecret(env));
-    const { payload } = await jwtVerify(token, secret);
+    const secret = getJWTSecret(env);
+    const secretKey = await crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['verify']
+    );
+
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      return null;
+    }
+
+    const [encodedHeader, encodedPayload, encodedSignature] = parts;
+
+    // Base64URL解码
+    const base64UrlDecode = (str) => {
+      str = str.replace(/-/g, '+').replace(/_/g, '/');
+      while (str.length % 4) {
+        str += '=';
+      }
+      return atob(str);
+    };
+
+    // 验证签名
+    const data = `${encodedHeader}.${encodedPayload}`;
+    // Base64URL解码签名
+    let signatureStr = encodedSignature.replace(/-/g, '+').replace(/_/g, '/');
+    while (signatureStr.length % 4) {
+      signatureStr += '=';
+    }
+    const signatureBytes = atob(signatureStr);
+    const signature = Uint8Array.from(signatureBytes, c => c.charCodeAt(0));
+
+    const isValid = await crypto.subtle.verify(
+      'HMAC',
+      secretKey,
+      signature,
+      new TextEncoder().encode(data)
+    );
+
+    if (!isValid) {
+      return null;
+    }
+
+    // 解析payload
+    const payload = JSON.parse(base64UrlDecode(encodedPayload));
+
+    // 检查过期时间
+    const now = Math.floor(Date.now() / 1000);
+    if (payload.exp && payload.exp < now) {
+      return null;
+    }
+
     return payload;
   } catch (error) {
+    console.error('Token验证失败:', error);
     return null;
   }
 }
@@ -351,4 +437,3 @@ export async function onRequestPost(context) {
     headers: { 'Content-Type': 'application/json' }
   });
 }
-
