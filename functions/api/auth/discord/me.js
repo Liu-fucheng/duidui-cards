@@ -134,8 +134,15 @@ async function verifyUserRole(userId, env) {
 export async function onRequestGet(context) {
   const { request, env } = context;
   
+  // 调试：打印请求头
+  const cookieHeader = request.headers.get('Cookie');
+  console.log('🔍 [me] Cookie头:', cookieHeader ? cookieHeader.substring(0, 100) + '...' : '无');
+  
   const token = getTokenFromRequest(request);
+  console.log('🔍 [me] 提取的Token:', token ? token.substring(0, 50) + '...' : '无');
+  
   if (!token) {
+    console.log('❌ [me] 未找到Token');
     return new Response(JSON.stringify({
       success: false,
       message: '未登录'
@@ -147,6 +154,7 @@ export async function onRequestGet(context) {
   
   const payload = await verifyToken(token, env);
   if (!payload) {
+    console.log('❌ [me] Token验证失败');
     return new Response(JSON.stringify({
       success: false,
       message: 'Token无效或已过期'
@@ -155,6 +163,8 @@ export async function onRequestGet(context) {
       headers: { 'Content-Type': 'application/json' }
     });
   }
+  
+  console.log('✅ [me] Token验证成功，用户ID:', payload.userId);
   
   // 再次验证用户身份组（可选，用于确保用户仍然有权限）
   const roleVerification = await verifyUserRole(payload.userId, env);

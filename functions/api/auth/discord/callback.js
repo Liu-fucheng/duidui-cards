@@ -199,6 +199,7 @@ export async function onRequestGet(context) {
     
     // 创建响应并设置Cookie（必须在创建响应时设置，不能之后修改）
     const isSecure = frontendUrl.includes('https') || frontendUrl.includes('pages.dev');
+    // 同一域名使用 SameSite=Lax，跨站才需要 SameSite=None
     const cookieValue = `auth_token=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${7 * 24 * 60 * 60}${isSecure ? '; Secure' : ''}`;
     
     const response = new Response(null, {
@@ -208,7 +209,7 @@ export async function onRequestGet(context) {
         'Set-Cookie': cookieValue
       }
     });
-    console.log('✅ [OAuth] Cookie已设置');
+    console.log('✅ [OAuth] Cookie已设置:', cookieValue.substring(0, 50) + '...');
     
     return response;
     

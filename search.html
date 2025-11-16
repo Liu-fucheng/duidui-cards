@@ -535,21 +535,35 @@
     // 检查认证状态
     async function checkAuth() {
       try {
-        const response = await fetch('/api/auth/discord/me');
+        // 确保发送 Cookie
+        const response = await fetch('/api/auth/discord/me', {
+          method: 'GET',
+          credentials: 'include', // 重要：确保发送 Cookie
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        console.log('🔍 [前端] 认证检查响应状态:', response.status);
+        
         if (response.ok) {
           const data = await response.json();
+          console.log('🔍 [前端] 认证检查响应数据:', data);
           if (data.success && data.user) {
             currentUser = data.user;
             showSearchSection();
             updateUserDisplay();
           } else {
+            console.log('❌ [前端] 认证失败: 响应数据无效');
             showLoginPrompt();
           }
         } else {
+          const errorText = await response.text();
+          console.log('❌ [前端] 认证失败:', response.status, errorText);
           showLoginPrompt();
         }
       } catch (error) {
-        console.error('检查认证失败:', error);
+        console.error('❌ [前端] 检查认证失败:', error);
         showLoginPrompt();
       }
     }
@@ -711,7 +725,13 @@
           params.append('excludeTags', Array.from(excludedTags).join(','));
         }
 
-        const response = await fetch(`/api/search?${params.toString()}`);
+        const response = await fetch(`/api/search?${params.toString()}`, {
+          method: 'GET',
+          credentials: 'include', // 确保发送 Cookie
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
         
         if (response.status === 401) {
           // 未授权，重新登录
