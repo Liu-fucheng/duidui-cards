@@ -170,6 +170,7 @@
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
+      max-width: 100%;
     }
 
     .tag-item {
@@ -289,9 +290,9 @@
       transform: translateY(-2px);
     }
 
-    .card-avatar {
-      width: 64px;
-      height: 64px;
+    .card-image {
+      width: 100%;
+      aspect-ratio: 1;
       border-radius: 8px;
       background: var(--muted);
       margin-bottom: 12px;
@@ -301,14 +302,16 @@
     .card-name {
       font-size: 16px;
       font-weight: 600;
-      margin-bottom: 8px;
-      color: var(--accent-2);
+      margin-bottom: 6px;
+      color: var(--text);
+      line-height: 1.4;
     }
 
-    .card-meta {
-      font-size: 13px;
+    .card-characters {
+      font-size: 14px;
       color: var(--muted);
       margin-bottom: 8px;
+      line-height: 1.4;
     }
 
     .card-tags {
@@ -319,10 +322,12 @@
     }
 
     .card-tag {
+      font-size: 12px;
       padding: 4px 8px;
       background: var(--pill-bg);
-      border-radius: 12px;
-      font-size: 12px;
+      border-radius: 4px;
+      color: var(--text);
+      white-space: nowrap;
     }
 
     /* 分页 */
@@ -852,19 +857,33 @@
       // 渲染卡片
       const grid = document.getElementById('cardsGrid');
       grid.innerHTML = cards.map(card => {
-        const avatarUrl = card.avatarUrl || '/默认头像.png';
+        // 获取图片URL（优先使用introImageUrl，然后是avatarImageUrl）
+        const imageUrl = card.introImageUrl || card.avatarImageUrl || '/默认头像.png';
+        
+        // 获取角色名（从characters数组中提取）
+        const characters = Array.isArray(card.characters) ? card.characters : [];
+        const characterNames = characters.map(c => {
+          if (typeof c === 'string') return c;
+          return c.name || c.value || '';
+        }).filter(Boolean).join(' / ') || '未命名角色';
+        
+        // 获取标签
         const tags = Array.isArray(card.tags) ? card.tags : [];
-        const tagLabels = tags.map(t => typeof t === 'string' ? t : t.label || t.value).join(', ');
+        const tagLabels = tags.map(t => {
+          if (typeof t === 'string') return t;
+          return t.label || t.value || '';
+        }).filter(Boolean);
         
         return `
           <div class="card-item" onclick="viewCard('${card.id}')">
-            <img src="${avatarUrl}" alt="${card.cardName}" class="card-avatar" onerror="this.src='/默认头像.png'">
+            <img src="${imageUrl}" alt="${card.cardName}" class="card-image" onerror="this.src='/默认头像.png'">
             <div class="card-name">${escapeHtml(card.cardName || '未命名')}</div>
-            <div class="card-meta">
-              ${card.authorName ? `作者: ${escapeHtml(card.authorName)}<br>` : ''}
-              ${card.category ? `分区: ${escapeHtml(card.category)}` : ''}
-            </div>
-            ${tagLabels ? `<div class="card-tags">${tagLabels.split(',').slice(0, 3).map(t => `<span class="card-tag">${escapeHtml(t.trim())}</span>`).join('')}</div>` : ''}
+            <div class="card-characters">${escapeHtml(characterNames)}</div>
+            ${tagLabels.length > 0 ? `
+              <div class="card-tags">
+                ${tagLabels.map(tag => `<span class="card-tag">${escapeHtml(tag)}</span>`).join('')}
+              </div>
+            ` : ''}
           </div>
         `;
       }).join('');

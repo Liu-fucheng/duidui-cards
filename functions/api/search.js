@@ -259,8 +259,14 @@ async function searchCards(env, params) {
       
       // 生成公开URL
       const r2PublicUrl = env.R2_PUBLIC_URL || '';
+      
+      // 简介图URL（Discord帖子图片）
+      card.introImageUrl = `${r2PublicUrl}/intros/intro_${card.id}.png`;
+      
+      // 头像URL
       if (card.avatarImageKey) {
-        card.avatarUrl = `${r2PublicUrl}/${card.avatarImageKey}`;
+        card.avatarImageUrl = `${r2PublicUrl}/${card.avatarImageKey}`;
+        card.avatarUrl = card.avatarImageUrl; // 保持向后兼容
       }
       
       return card;
