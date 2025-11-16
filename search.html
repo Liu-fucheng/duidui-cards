@@ -786,12 +786,26 @@
           params.append('excludeTags', Array.from(excludedTags).join(','));
         }
 
+        // 获取Token（从localStorage或Cookie）
+        let localToken = localStorage.getItem('auth_token');
+        if (localToken) {
+          localToken = localToken.trim().replace(/^["']|["']$/g, '');
+        }
+
+        // 准备请求头
+        const headers = {
+          'Content-Type': 'application/json'
+        };
+        
+        // 通过Authorization头发送Token（优先使用）
+        if (localToken) {
+          headers['Authorization'] = 'Bearer ' + localToken;
+        }
+
         const response = await fetch(`/api/search?${params.toString()}`, {
           method: 'GET',
-          credentials: 'include', // 确保发送 Cookie
-          headers: {
-            'Content-Type': 'application/json'
-          }
+          credentials: 'include', // 确保发送 Cookie（作为备选）
+          headers: headers
         });
         
         if (response.status === 401) {
