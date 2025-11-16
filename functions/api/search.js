@@ -258,11 +258,11 @@ async function searchCards(env, params) {
       }
       
       // 生成公开URL
-      const r2PublicUrl = env.R2_PUBLIC_URL || '';
+      const r2PublicUrl = env.R2_PUBLIC_URL || 'http://r2.liuyaocheng.org';
       if (card.avatarImageKey) {
         card.avatarUrl = `${r2PublicUrl}/${card.avatarImageKey}`;
       }
-      // 生成简介图URL
+      // 生成简介图URL（角色卡PNG图片）
       if (card.id) {
         card.introImageUrl = `${r2PublicUrl}/intros/intro_${card.id}.png`;
       }

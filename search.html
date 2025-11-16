@@ -873,11 +873,24 @@
       const discordGuildId = '1338365085072101416';
       
       grid.innerHTML = cards.map(card => {
-        // 获取图片URL（优先使用introImageUrl，然后是avatarImageUrl）
+        // 获取图片URL（优先使用introImageUrl，这是角色卡PNG图片）
         let imageUrl = card.introImageUrl || card.avatarUrl || card.avatarImageUrl || '/默认头像.png';
+        
+        // 调试：打印图片URL
+        if (card.id) {
+          console.log(`🔍 [卡片 ${card.id}] introImageUrl:`, card.introImageUrl);
+          console.log(`🔍 [卡片 ${card.id}] avatarUrl:`, card.avatarUrl);
+          console.log(`🔍 [卡片 ${card.id}] 最终使用:`, imageUrl);
+        }
+        
         // 确保使用 HTTPS
-        if (imageUrl.startsWith('http://')) {
+        if (imageUrl && imageUrl.startsWith('http://')) {
           imageUrl = imageUrl.replace('http://', 'https://');
+        }
+        
+        // 如果 introImageUrl 不存在，使用默认头像
+        if (!imageUrl || imageUrl === '/intros/intro_undefined.png') {
+          imageUrl = '/默认头像.png';
         }
         
         // 获取角色名（从characters数组中提取）
@@ -914,7 +927,7 @@
               ${card.authorName ? `<div class="card-author">作者: ${escapeHtml(card.authorName)}</div>` : ''}
               <div class="card-thread-title">${escapeHtml(threadTitle)}</div>
             </div>
-            <img src="${imageUrl}" alt="${cardName}" class="card-image" onerror="this.src='/默认头像.png'">
+            <img src="${imageUrl}" alt="${cardName}" class="card-image" onerror="console.error('图片加载失败:', this.src); this.src='/默认头像.png'">
             <div class="card-name">${escapeHtml(cardName)}</div>
             ${showCharacterNames ? `<div class="card-characters">${escapeHtml(characterNames)}</div>` : ''}
             ${tagLabels.length > 0 ? `
