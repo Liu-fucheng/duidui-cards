@@ -535,13 +535,26 @@
     // 检查认证状态
     async function checkAuth() {
       try {
+        // 检查是否有 localStorage 中的 Token（作为备选）
+        const localToken = localStorage.getItem('auth_token');
+        console.log('🔍 [前端] localStorage中的Token:', localToken ? '存在' : '不存在');
+        
+        // 准备请求头
+        const headers = {
+          'Content-Type': 'application/json'
+        };
+        
+        // 如果 localStorage 有 Token，也通过 Authorization 头发送（双重保障）
+        if (localToken) {
+          headers['Authorization'] = 'Bearer ' + localToken;
+          console.log('🔍 [前端] 通过Authorization头发送Token');
+        }
+        
         // 确保发送 Cookie
         const response = await fetch('/api/auth/discord/me', {
           method: 'GET',
           credentials: 'include', // 重要：确保发送 Cookie
-          headers: {
-            'Content-Type': 'application/json'
-          }
+          headers: headers
         });
         
         console.log('🔍 [前端] 认证检查响应状态:', response.status);

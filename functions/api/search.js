@@ -6,9 +6,22 @@ function getTokenFromRequest(request) {
   // 优先从Cookie获取
   const cookieHeader = request.headers.get('Cookie');
   if (cookieHeader) {
-    const cookies = Object.fromEntries(
-      cookieHeader.split('; ').map(c => c.split('='))
-    );
+    // 更健壮的Cookie解析
+    const cookies = {};
+    cookieHeader.split(';').forEach(cookie => {
+      const trimmed = cookie.trim();
+      const equalIndex = trimmed.indexOf('=');
+      if (equalIndex > 0) {
+        const key = trimmed.substring(0, equalIndex).trim();
+        const value = trimmed.substring(equalIndex + 1).trim();
+        try {
+          cookies[key] = decodeURIComponent(value);
+        } catch (e) {
+          cookies[key] = value; // 如果解码失败，使用原始值
+        }
+      }
+    });
+    
     if (cookies['auth_token']) {
       return cookies['auth_token'];
     }

@@ -14,32 +14,86 @@
       // 有错误，重定向到搜索页面显示错误
       window.location.href = `/search.html?error=${encodeURIComponent(error)}`;
     } else if (token) {
-      // 设置 Cookie
-      const maxAge = 7 * 24 * 60 * 60; // 7天
-      const isSecure = window.location.protocol === 'https:';
-      const cookieValue = `auth_token=${token}; Path=/; Max-Age=${maxAge}; SameSite=Lax${isSecure ? '; Secure' : ''}`;
-      document.cookie = cookieValue;
+      console.log('🔍 [auth-callback] 收到Token，长度:', token.length);
+      console.log('🔍 [auth-callback] Token前50个字符:', token.substring(0, 50));
       
-      console.log('✅ [auth-callback] Cookie已设置:', cookieValue.substring(0, 50) + '...');
-      console.log('🔍 [auth-callback] 当前Cookie:', document.cookie.substring(0, 100));
+      // 检查Token长度（Cookie通常限制4KB，但为了安全我们限制更小）
+      if (token.length > 3000) {
+        console.error('❌ [auth-callback] Token太长，无法设置Cookie:', token.length);
+        window.location.href = '/search.html?error=' + encodeURIComponent('Token过长，无法设置Cookie');
+        return;
+      }
       
-      // 等待一下确保Cookie设置完成
-      setTimeout(() => {
-        // 验证Cookie是否设置成功
-        const cookies = document.cookie.split('; ').reduce((acc, cookie) => {
-          const [key, value] = cookie.split('=');
-          acc[key] = value;
-          return acc;
-        }, {});
+      // 同时使用 Cookie 和 localStorage 存储（双重保障）
+      try {
+        // 1. 设置 localStorage（作为备选）
+        localStorage.setItem('auth_token', token);
+        console.log('✅ [auth-callback] localStorage已设置');
         
-        if (cookies['auth_token']) {
-          console.log('✅ [auth-callback] Cookie验证成功');
-          window.location.href = '/search.html';
-        } else {
-          console.error('❌ [auth-callback] Cookie设置失败');
-          window.location.href = '/search.html?error=' + encodeURIComponent('Cookie设置失败');
+        // 2. 设置 Cookie
+        const maxAge = 7 * 24 * 60 * 60; // 7天
+        const isSecure = window.location.protocol === 'https:';
+        
+        // 直接设置Cookie，对Token进行URL编码
+        let cookieValue = 'auth_token=' + encodeURIComponent(token);
+        cookieValue += '; Path=/';
+        cookieValue += '; Max-Age=' + maxAge;
+        cookieValue += '; SameSite=Lax';
+        if (isSecure) {
+          cookieValue += '; Secure';
         }
-      }, 200);
+        
+        document.cookie = cookieValue;
+        console.log('✅ [auth-callback] Cookie已设置，长度:', cookieValue.length);
+        
+        // 立即检查Cookie
+        const allCookies = document.cookie;
+        console.log('🔍 [auth-callback] 当前所有Cookie长度:', allCookies.length);
+        
+        // 解析Cookie
+        const cookies = {};
+        if (allCookies) {
+          allCookies.split(';').forEach(cookie => {
+            const trimmed = cookie.trim();
+            const equalIndex = trimmed.indexOf('=');
+            if (equalIndex > 0) {
+              const key = trimmed.substring(0, equalIndex).trim();
+              const value = trimmed.substring(equalIndex + 1).trim();
+              try {
+                cookies[key] = decodeURIComponent(value);
+              } catch (e) {
+                cookies[key] = value; // 如果解码失败，使用原始值
+              }
+            }
+          });
+        }
+        
+        console.log('🔍 [auth-callback] 解析后的Cookie键:', Object.keys(cookies));
+        
+        // 检查是否设置成功（Cookie或localStorage任一成功即可）
+        const hasCookie = cookies['auth_token'] && cookies['auth_token'].length > 0;
+        const hasLocalStorage = localStorage.getItem('auth_token') === token;
+        
+        if (hasCookie || hasLocalStorage) {
+          if (hasCookie) {
+            console.log('✅ [auth-callback] Cookie验证成功，Token长度:', cookies['auth_token'].length);
+          }
+          if (hasLocalStorage) {
+            console.log('✅ [auth-callback] localStorage验证成功');
+          }
+          // 等待一下确保完全设置
+          setTimeout(() => {
+            window.location.href = '/search.html';
+          }, 300);
+        } else {
+          console.error('❌ [auth-callback] Cookie和localStorage都设置失败');
+          console.error('🔍 [auth-callback] 所有Cookie键:', Object.keys(cookies));
+          window.location.href = '/search.html?error=' + encodeURIComponent('Cookie设置失败，请检查浏览器设置或禁用广告拦截器');
+        }
+      } catch (e) {
+        console.error('❌ [auth-callback] 设置存储失败:', e);
+        window.location.href = '/search.html?error=' + encodeURIComponent('存储设置失败: ' + e.message);
+      }
     } else {
       // 没有 Token，重定向到搜索页面
       window.location.href = '/search.html?error=' + encodeURIComponent('登录失败：缺少Token');
