@@ -36,9 +36,15 @@ async function generateToken(user, env) {
     exp: now + (7 * 24 * 60 * 60) // 7天有效期
   };
 
-  // Base64URL编码
+  // Base64URL编码（支持UTF-8）
   const base64UrlEncode = (str) => {
-    return btoa(str)
+    // 先转换为UTF-8字节数组，再编码
+    const bytes = new TextEncoder().encode(str);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary)
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=/g, '');
@@ -80,13 +86,19 @@ async function verifyToken(token, env) {
 
     const [encodedHeader, encodedPayload, encodedSignature] = parts;
 
-    // Base64URL解码
+    // Base64URL解码（支持UTF-8）
     const base64UrlDecode = (str) => {
       str = str.replace(/-/g, '+').replace(/_/g, '/');
       while (str.length % 4) {
         str += '=';
       }
-      return atob(str);
+      const binary = atob(str);
+      // 转换为UTF-8字符串
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return new TextDecoder().decode(bytes);
     };
 
     // 验证签名

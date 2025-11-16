@@ -42,13 +42,19 @@ async function verifyToken(token, env) {
 
     const [encodedHeader, encodedPayload, encodedSignature] = parts;
 
-    // Base64URL解码
+    // Base64URL解码（支持UTF-8）
     const base64UrlDecode = (str) => {
       str = str.replace(/-/g, '+').replace(/_/g, '/');
       while (str.length % 4) {
         str += '=';
       }
-      return atob(str);
+      const binary = atob(str);
+      // 转换为UTF-8字符串
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return new TextDecoder().decode(bytes);
     };
 
     // 验证签名

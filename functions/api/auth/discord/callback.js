@@ -33,9 +33,15 @@ async function generateToken(user, env) {
     exp: now + (7 * 24 * 60 * 60) // 7天有效期
   };
 
-  // Base64URL编码
+  // Base64URL编码（支持UTF-8）
   const base64UrlEncode = (str) => {
-    return btoa(str)
+    // 先转换为UTF-8字节数组，再编码
+    const bytes = new TextEncoder().encode(str);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary)
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=/g, '');
