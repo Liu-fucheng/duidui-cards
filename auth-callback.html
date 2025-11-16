@@ -16,12 +16,30 @@
     } else if (token) {
       // 设置 Cookie
       const maxAge = 7 * 24 * 60 * 60; // 7天
-      document.cookie = `auth_token=${token}; Path=/; Max-Age=${maxAge}; SameSite=Lax; Secure`;
+      const isSecure = window.location.protocol === 'https:';
+      const cookieValue = `auth_token=${token}; Path=/; Max-Age=${maxAge}; SameSite=Lax${isSecure ? '; Secure' : ''}`;
+      document.cookie = cookieValue;
       
-      // 重定向到搜索页面
+      console.log('✅ [auth-callback] Cookie已设置:', cookieValue.substring(0, 50) + '...');
+      console.log('🔍 [auth-callback] 当前Cookie:', document.cookie.substring(0, 100));
+      
+      // 等待一下确保Cookie设置完成
       setTimeout(() => {
-        window.location.href = '/search.html';
-      }, 100);
+        // 验证Cookie是否设置成功
+        const cookies = document.cookie.split('; ').reduce((acc, cookie) => {
+          const [key, value] = cookie.split('=');
+          acc[key] = value;
+          return acc;
+        }, {});
+        
+        if (cookies['auth_token']) {
+          console.log('✅ [auth-callback] Cookie验证成功');
+          window.location.href = '/search.html';
+        } else {
+          console.error('❌ [auth-callback] Cookie设置失败');
+          window.location.href = '/search.html?error=' + encodeURIComponent('Cookie设置失败');
+        }
+      }, 200);
     } else {
       // 没有 Token，重定向到搜索页面
       window.location.href = '/search.html?error=' + encodeURIComponent('登录失败：缺少Token');

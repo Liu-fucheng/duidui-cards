@@ -6,10 +6,22 @@ function getTokenFromRequest(request) {
   // 优先从Cookie获取
   const cookieHeader = request.headers.get('Cookie');
   if (cookieHeader) {
-    const cookies = Object.fromEntries(
-      cookieHeader.split('; ').map(c => c.split('='))
-    );
+    // 更健壮的Cookie解析（处理URL编码等）
+    const cookies = {};
+    cookieHeader.split(';').forEach(cookie => {
+      const trimmed = cookie.trim();
+      const equalIndex = trimmed.indexOf('=');
+      if (equalIndex > 0) {
+        const key = trimmed.substring(0, equalIndex).trim();
+        const value = trimmed.substring(equalIndex + 1).trim();
+        cookies[key] = decodeURIComponent(value);
+      }
+    });
+    
+    console.log('🔍 [getTokenFromRequest] 解析的Cookies:', Object.keys(cookies));
+    
     if (cookies['auth_token']) {
+      console.log('✅ [getTokenFromRequest] 从Cookie找到Token');
       return cookies['auth_token'];
     }
   }
@@ -17,9 +29,11 @@ function getTokenFromRequest(request) {
   // 从Authorization头获取
   const authHeader = request.headers.get('Authorization');
   if (authHeader && authHeader.startsWith('Bearer ')) {
+    console.log('✅ [getTokenFromRequest] 从Authorization头找到Token');
     return authHeader.substring(7);
   }
   
+  console.log('❌ [getTokenFromRequest] 未找到Token');
   return null;
 }
 
@@ -32,6 +46,9 @@ function getJWTSecret(env) {
 async function verifyToken(token, env) {
   try {
     const secret = getJWTSecret(env);
+    console.log('🔍 [verifyToken] JWT_SECRET长度:', secret.length);
+    console.log('🔍 [verifyToken] JWT_SECRET前10个字符:', secret.substring(0, 10));
+    
     const secretKey = await crypto.subtle.importKey(
       'raw',
       new TextEncoder().encode(secret),
@@ -142,10 +159,12 @@ export async function onRequestGet(context) {
   
   // 调试：打印请求头
   const cookieHeader = request.headers.get('Cookie');
-  console.log('🔍 [me] Cookie头:', cookieHeader ? cookieHeader.substring(0, 100) + '...' : '无');
+  console.log('🔍 [me] Cookie头:', cookieHeader ? cookieHeader.substring(0, 200) + '...' : '无');
+  console.log('🔍 [me] 所有请求头:', JSON.stringify(Object.fromEntries(request.headers.entries())));
   
   const token = getTokenFromRequest(request);
   console.log('🔍 [me] 提取的Token:', token ? token.substring(0, 50) + '...' : '无');
+  console.log('🔍 [me] Token长度:', token ? token.length : 0);
   
   if (!token) {
     console.log('❌ [me] 未找到Token');

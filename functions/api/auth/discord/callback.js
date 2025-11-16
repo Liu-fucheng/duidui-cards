@@ -9,6 +9,9 @@ function getJWTSecret(env) {
 // 使用 Web Crypto API 生成 JWT Token
 async function generateToken(user, env) {
   const secret = getJWTSecret(env);
+  console.log('🔍 [generateToken] JWT_SECRET长度:', secret.length);
+  console.log('🔍 [generateToken] JWT_SECRET前10个字符:', secret.substring(0, 10));
+  
   const secretKey = await crypto.subtle.importKey(
     'raw',
     new TextEncoder().encode(secret),
@@ -192,10 +195,12 @@ export async function onRequestGet(context) {
     console.log('🔑 [OAuth] 生成JWT Token...');
     const token = await generateToken(user, env);
     console.log('✅ [OAuth] Token生成成功');
+    console.log('🔍 [OAuth] Token长度:', token.length);
+    console.log('🔍 [OAuth] Token前50个字符:', token.substring(0, 50));
     
     // 5. 重定向到中间页面设置Cookie（因为重定向时Cookie可能不会正确设置）
     const callbackUrl = `${frontendUrl}/auth-callback.html?token=${encodeURIComponent(token)}`;
-    console.log('🔄 [OAuth] 重定向到回调页面设置Cookie:', callbackUrl);
+    console.log('🔄 [OAuth] 重定向到回调页面设置Cookie:', callbackUrl.substring(0, 100) + '...');
     
     // 直接重定向到中间页面，由前端JavaScript设置Cookie
     return Response.redirect(callbackUrl, 302);
