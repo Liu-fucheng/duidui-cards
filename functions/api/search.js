@@ -175,6 +175,78 @@ function cardExcludesTags(cardTags, excludedTags) {
   }
 }
 
+// 从 Discord API 获取帖子信息（标题和主楼图片）
+async function fetchDiscordThreadInfo(threadId, firstMessageId, env) {
+  try {
+    const botToken = env.DISCORD_BOT_TOKEN;
+    if (!botToken) {
+      console.log('⚠️ [Discord API] DISCORD_BOT_TOKEN 未配置，跳过获取帖子信息');
+      return null;
+    }
+
+    const guildId = '1338365085072101416'; // Discord 服务器 ID
+    
+    // 1. 获取帖子信息（标题）
+    const threadUrl = `https://discord.com/api/v10/channels/${threadId}`;
+    const threadResponse = await fetch(threadUrl, {
+      headers: {
+        'Authorization': `Bot ${botToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    let threadTitle = null;
+    if (threadResponse.ok) {
+      const threadData = await threadResponse.json();
+      threadTitle = threadData.name || null;
+    }
+
+    // 2. 获取主楼消息（图片）
+    let firstImageUrl = null;
+    if (firstMessageId) {
+      const messageUrl = `https://discord.com/api/v10/channels/${threadId}/messages/${firstMessageId}`;
+      const messageResponse = await fetch(messageUrl, {
+        headers: {
+          'Authorization': `Bot ${botToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (messageResponse.ok) {
+        const messageData = await messageResponse.json();
+        // 获取第一个附件（图片）
+        if (messageData.attachments && messageData.attachments.length > 0) {
+          const firstAttachment = messageData.attachments[0];
+          if (firstAttachment.content_type && firstAttachment.content_type.startsWith('image/')) {
+            firstImageUrl = firstAttachment.url || firstAttachment.proxy_url || null;
+          }
+        }
+        // 如果没有附件，检查 embed 中的图片
+        if (!firstImageUrl && messageData.embeds && messageData.embeds.length > 0) {
+          for (const embed of messageData.embeds) {
+            if (embed.image && embed.image.url) {
+              firstImageUrl = embed.image.url;
+              break;
+            }
+            if (embed.thumbnail && embed.thumbnail.url) {
+              firstImageUrl = embed.thumbnail.url;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    return {
+      threadTitle,
+      firstImageUrl
+    };
+  } catch (error) {
+    console.error('❌ [Discord API] 获取帖子信息失败:', error);
+    return null;
+  }
+}
+
 // 搜索卡片
 async function searchCards(env, params) {
   const db = env.D1_DB;
@@ -226,55 +298,95 @@ async function searchCards(env, params) {
   const { includeTags, excludeTags } = parseTags(params);
   
   // 处理结果：解析JSON字段并过滤tags
-  const processedCards = (cards.results || [])
-    .map(card => {
-      // 解析JSON字段
-      if (card.tags) {
-        try {
-          card.tags = JSON.parse(card.tags);
-        } catch (e) {
-          card.tags = [];
-        }
-      } else {
+  const rawCards = cards.results || [];
+  
+  // 先解析所有卡片的JSON字段
+  const parsedCards = rawCards.map(card => {
+    // 解析JSON字段
+    if (card.tags) {
+      try {
+        card.tags = JSON.parse(card.tags);
+      } catch (e) {
         card.tags = [];
       }
-      
-      if (card.characters) {
-        try {
-          card.characters = JSON.parse(card.characters);
-        } catch (e) {
-          // 保持原样
-        }
+    } else {
+      card.tags = [];
+    }
+    
+    if (card.characters) {
+      try {
+        card.characters = JSON.parse(card.characters);
+      } catch (e) {
+        // 保持原样
       }
-      
-      if (card.downloadRequirements) {
-        try {
-          card.downloadRequirements = JSON.parse(card.downloadRequirements);
-        } catch (e) {
-          card.downloadRequirements = [];
-        }
-      } else {
+    }
+    
+    if (card.downloadRequirements) {
+      try {
+        card.downloadRequirements = JSON.parse(card.downloadRequirements);
+      } catch (e) {
         card.downloadRequirements = [];
       }
-      
-      // 生成公开URL（确保使用 HTTPS）
-      let r2PublicUrl = env.R2_PUBLIC_URL || '';
-      // 如果 URL 是 http://，自动替换为 https://
-      if (r2PublicUrl.startsWith('http://')) {
-        r2PublicUrl = r2PublicUrl.replace('http://', 'https://');
+    } else {
+      card.downloadRequirements = [];
+    }
+    
+    return card;
+  });
+  
+  // 批量从 Discord API 获取帖子信息（并行请求，但限制并发数）
+  const botToken = env.DISCORD_BOT_TOKEN;
+  if (botToken) {
+    // 并行获取所有帖子的信息（最多20个，避免速率限制）
+    const discordInfoPromises = parsedCards.slice(0, 20).map(card => 
+      card.threadId 
+        ? fetchDiscordThreadInfo(card.threadId, card.firstMessageId, env)
+        : Promise.resolve(null)
+    );
+    
+    const discordInfos = await Promise.all(discordInfoPromises);
+    
+    // 将获取到的信息应用到对应的卡片
+    parsedCards.forEach((card, index) => {
+      if (index < discordInfos.length && discordInfos[index]) {
+        const discordInfo = discordInfos[index];
+        // 使用 Discord API 获取的标题（如果存在）
+        if (discordInfo.threadTitle) {
+          card.threadTitle = discordInfo.threadTitle;
+        }
+        // 使用 Discord API 获取的主楼图片（如果存在）
+        if (discordInfo.firstImageUrl) {
+          card.discordFirstImageUrl = discordInfo.firstImageUrl;
+        }
       }
-      
+    });
+  }
+  
+  // 生成公开URL并设置图片
+  const processedCards = parsedCards.map(card => {
+    // 生成公开URL（确保使用 HTTPS）
+    let r2PublicUrl = env.R2_PUBLIC_URL || '';
+    // 如果 URL 是 http://，自动替换为 https://
+    if (r2PublicUrl.startsWith('http://')) {
+      r2PublicUrl = r2PublicUrl.replace('http://', 'https://');
+    }
+    
+    // 使用 Discord API 获取的主楼图片（如果存在），否则使用简介图
+    if (card.discordFirstImageUrl) {
+      card.introImageUrl = card.discordFirstImageUrl;
+    } else {
       // 简介图URL（Discord帖子图片）
       card.introImageUrl = `${r2PublicUrl}/intros/intro_${card.id}.png`;
-      
-      // 头像URL
-      if (card.avatarImageKey) {
-        card.avatarImageUrl = `${r2PublicUrl}/${card.avatarImageKey}`;
-        card.avatarUrl = card.avatarImageUrl; // 保持向后兼容
-      }
-      
-      return card;
-    })
+    }
+    
+    // 头像URL
+    if (card.avatarImageKey) {
+      card.avatarImageUrl = `${r2PublicUrl}/${card.avatarImageKey}`;
+      card.avatarUrl = card.avatarImageUrl; // 保持向后兼容
+    }
+    
+    return card;
+  })
     .filter(card => {
       // 应用tags过滤（正选）
       if (includeTags.length > 0 && !cardHasTags(card.tags, includeTags)) {
