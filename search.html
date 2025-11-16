@@ -170,7 +170,6 @@
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      max-width: 100%;
     }
 
     .tag-item {
@@ -284,10 +283,6 @@
       transition: all 0.2s;
       cursor: pointer;
     }
-    
-    .card-item:not([onclick]) {
-      cursor: default;
-    }
 
     .card-item:hover {
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
@@ -303,17 +298,34 @@
       object-fit: cover;
     }
 
-    .card-name {
+    .card-header {
+      margin-bottom: 8px;
+    }
+
+    .card-author {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .card-thread-title {
       font-size: 16px;
       font-weight: 600;
-      margin-bottom: 6px;
-      color: var(--text);
+      margin-bottom: 12px;
+      color: var(--accent-2);
       line-height: 1.4;
     }
 
-    .card-characters {
+    .card-name {
       font-size: 14px;
-      color: var(--muted);
+      font-weight: 500;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+
+    .card-characters {
+      font-size: 13px;
+      color: var(--text);
       margin-bottom: 8px;
       line-height: 1.4;
     }
@@ -326,12 +338,10 @@
     }
 
     .card-tag {
-      font-size: 12px;
       padding: 4px 8px;
       background: var(--pill-bg);
-      border-radius: 4px;
-      color: var(--text);
-      white-space: nowrap;
+      border-radius: 12px;
+      font-size: 12px;
     }
 
     /* 分页 */
@@ -860,10 +870,12 @@
 
       // 渲染卡片
       const grid = document.getElementById('cardsGrid');
+      const discordGuildId = '1338365085072101416';
+      
       grid.innerHTML = cards.map(card => {
         // 获取图片URL（优先使用introImageUrl，然后是avatarImageUrl）
-        let imageUrl = card.introImageUrl || card.avatarImageUrl || '/默认头像.png';
-        // 确保使用 HTTPS（避免 Mixed Content 警告）
+        let imageUrl = card.introImageUrl || card.avatarUrl || card.avatarImageUrl || '/默认头像.png';
+        // 确保使用 HTTPS
         if (imageUrl.startsWith('http://')) {
           imageUrl = imageUrl.replace('http://', 'https://');
         }
@@ -873,9 +885,9 @@
         const characterNames = characters.map(c => {
           if (typeof c === 'string') return c;
           return c.name || c.value || '';
-        }).filter(Boolean).join(' / ') || '未命名角色';
+        }).filter(Boolean).join(' / ') || '';
         
-        // 获取标签
+        // 获取标签（全部显示）
         const tags = Array.isArray(card.tags) ? card.tags : [];
         const tagLabels = tags.map(t => {
           if (typeof t === 'string') return t;
@@ -883,16 +895,28 @@
         }).filter(Boolean);
         
         // 构建 Discord 帖子链接
-        const discordGuildId = '1338365085072101416';
         const discordUrl = card.threadId 
           ? `https://discord.com/channels/${discordGuildId}/${card.threadId}`
           : null;
         
+        // 贴名
+        const threadTitle = card.threadTitle || '未命名帖子';
+        
+        // 卡名（必须显示）
+        const cardName = card.cardName || '未命名';
+        
+        // 角色名（如果和卡名不同才显示）
+        const showCharacterNames = characterNames && characterNames !== cardName;
+        
         return `
           <div class="card-item" ${discordUrl ? `onclick="window.open('${escapeHtml(discordUrl)}', '_blank')"` : ''}>
-            <img src="${imageUrl}" alt="${card.cardName}" class="card-image" onerror="this.src='/默认头像.png'">
-            <div class="card-name">${escapeHtml(card.cardName || '未命名')}</div>
-            <div class="card-characters">${escapeHtml(characterNames)}</div>
+            <div class="card-header">
+              ${card.authorName ? `<div class="card-author">作者: ${escapeHtml(card.authorName)}</div>` : ''}
+              <div class="card-thread-title">${escapeHtml(threadTitle)}</div>
+            </div>
+            <img src="${imageUrl}" alt="${cardName}" class="card-image" onerror="this.src='/默认头像.png'">
+            <div class="card-name">${escapeHtml(cardName)}</div>
+            ${showCharacterNames ? `<div class="card-characters">${escapeHtml(characterNames)}</div>` : ''}
             ${tagLabels.length > 0 ? `
               <div class="card-tags">
                 ${tagLabels.map(tag => `<span class="card-tag">${escapeHtml(tag)}</span>`).join('')}

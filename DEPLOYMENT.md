@@ -54,11 +54,6 @@ DISCORD_REDIRECT_URI=https://your-cards-site.pages.dev/api/auth/discord/callback
 # 示例：JWT_SECRET=a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6
 # 注意：一旦设置，不要轻易更改，否则所有已登录用户都会失效
 JWT_SECRET=你的JWT密钥（至少32位随机字符串）
-
-# Discord Bot Token（用于通过 Discord API 获取帖子信息，可选）
-# 如果设置了此变量，搜索功能会直接从 Discord 获取帖子标题和主楼图片
-# 如果不设置，将使用数据库中存储的信息
-DISCORD_BOT_TOKEN=你的Discord Bot Token
 ```
 
 ### Discord Bot 环境变量
