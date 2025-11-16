@@ -1,0 +1,24 @@
+# Discord OAuth 配置
+DISCORD_CLIENT_ID=your_discord_client_id
+DISCORD_CLIENT_SECRET=your_discord_client_secret
+DISCORD_REDIRECT_URI=http://localhost:3000/auth/discord/callback
+
+# Discord 服务器配置
+DISCORD_GUILD_ID=your_guild_id
+DISCORD_VERIFIED_ROLE_NAME=已审核
+
+# Bot Token（可选，但推荐用于角色验证）
+DISCORD_BOT_TOKEN=your_bot_token
+
+# 会话密钥（随机字符串）
+SESSION_SECRET=your_random_session_secret_here
+
+# 服务器端口
+PORT=3000
+
+# 数据库配置（SQLite文件路径）
+DATABASE_PATH=./database.db
+
+# 前端URL（用于CORS）
+FRONTEND_URL=http://localhost:3000
+

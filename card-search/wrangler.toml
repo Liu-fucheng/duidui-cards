@@ -1,0 +1,19 @@
+name = "card-search"
+compatibility_date = "2024-01-01"
+pages_build_output_dir = "public"
+
+# D1数据库绑定
+[[d1_databases]]
+binding = "D1_DB"
+database_name = "duidui-cards-db"
+database_id = "your-database-id-here"
+
+# 环境变量（在 Cloudflare Dashboard 中设置）
+# DISCORD_CLIENT_ID
+# DISCORD_CLIENT_SECRET
+# DISCORD_REDIRECT_URI
+# DISCORD_GUILD_ID
+# DISCORD_VERIFIED_ROLE_NAME
+# DISCORD_BOT_TOKEN
+# FRONTEND_URL
+
