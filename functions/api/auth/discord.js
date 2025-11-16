@@ -232,28 +232,26 @@ async function handleCallback(context) {
   const { request, env } = context;
   const url = new URL(request.url);
   
+  console.log('🔄 [OAuth] 收到回调请求:', url.toString());
+  
   const code = url.searchParams.get('code');
   const state = url.searchParams.get('state');
   const error = url.searchParams.get('error');
   
+  // 构建前端URL（提前构建，确保所有错误情况都能重定向）
+  const frontendUrl = env.CARD_WEBSITE_URL || new URL(request.url).origin;
+  console.log('🌐 [OAuth] 前端URL:', frontendUrl);
+  
   if (error) {
-    return new Response(JSON.stringify({
-      success: false,
-      message: `Discord授权失败: ${error}`
-    }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    console.log('❌ [OAuth] Discord授权失败:', error);
+    const errorUrl = `${frontendUrl}/search.html?error=${encodeURIComponent(`Discord授权失败: ${error}`)}`;
+    return Response.redirect(errorUrl, 302);
   }
   
   if (!code) {
-    return new Response(JSON.stringify({
-      success: false,
-      message: '缺少授权码'
-    }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    console.log('❌ [OAuth] 缺少授权码');
+    const errorUrl = `${frontendUrl}/search.html?error=${encodeURIComponent('缺少授权码')}`;
+    return Response.redirect(errorUrl, 302);
   }
   
   const clientId = env.DISCORD_CLIENT_ID;
@@ -261,13 +259,9 @@ async function handleCallback(context) {
   const redirectUri = env.DISCORD_REDIRECT_URI || `${new URL(request.url).origin}/api/auth/discord/callback`;
   
   if (!clientId || !clientSecret) {
-    return new Response(JSON.stringify({
-      success: false,
-      message: 'Discord OAuth配置不完整'
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    console.log('❌ [OAuth] Discord OAuth配置不完整');
+    const errorUrl = `${frontendUrl}/search.html?error=${encodeURIComponent('Discord OAuth配置不完整')}`;
+    return Response.redirect(errorUrl, 302);
   }
   
   try {
@@ -288,14 +282,9 @@ async function handleCallback(context) {
     
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text();
-      console.error('Discord Token交换失败:', errorText);
-      return new Response(JSON.stringify({
-        success: false,
-        message: '获取访问令牌失败'
-      }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
+      console.error('❌ [OAuth] Discord Token交换失败:', errorText);
+      const errorUrl = `${frontendUrl}/search.html?error=${encodeURIComponent('获取访问令牌失败')}`;
+      return Response.redirect(errorUrl, 302);
     }
     
     const tokenData = await tokenResponse.json();
@@ -309,13 +298,9 @@ async function handleCallback(context) {
     });
     
     if (!userResponse.ok) {
-      return new Response(JSON.stringify({
-        success: false,
-        message: '获取用户信息失败'
-      }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
+      console.error('❌ [OAuth] 获取用户信息失败:', userResponse.status);
+      const errorUrl = `${frontendUrl}/search.html?error=${encodeURIComponent('获取用户信息失败')}`;
+      return Response.redirect(errorUrl, 302);
     }
     
     const user = await userResponse.json();
@@ -324,11 +309,7 @@ async function handleCallback(context) {
     // 3. 验证用户是否在服务器且有"已审核"身份组
     console.log('🔍 [OAuth] 开始验证用户身份组...');
     const roleVerification = await verifyUserRole(user.id, env);
-    console.log('🔍 [OAuth] 验证结果:', roleVerification);
-    
-    // 构建前端URL
-    const frontendUrl = env.CARD_WEBSITE_URL || new URL(request.url).origin;
-    console.log('🌐 [OAuth] 前端URL:', frontendUrl);
+    console.log('🔍 [OAuth] 验证结果:', JSON.stringify(roleVerification));
     
     if (!roleVerification || !roleVerification.verified) {
       // 重定向到错误页面或显示错误信息
