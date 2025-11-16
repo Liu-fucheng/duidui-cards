@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>角色卡搜索</title>
+  
+  <style>
+    :root {
+      --bg: #F3E9DD;
+      --surface: #FAF4EC;
+      --text: #5C4033;
+      --muted: #D9CBBE;
+      --accent: #8B5E3C;
+      --accent-2: #6D4C3D;
+      --pill-bg: #EADFD2;
+      --success: #4CAF50;
+      --error: #F44336;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, PingFang SC, Hiragino Sans GB, Microsoft YaHei, Helvetica Neue, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      padding: 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .hidden { display: none !important; }
+
+    /* 头部 */
+    .header {
+      background: #F7EFE6;
+      border: 1px solid var(--muted);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 24px;
+      color: var(--accent-2);
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--muted);
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-2);
+    }
+
+    .btn-secondary {
+      background: var(--pill-bg);
+      color: var(--text);
+    }
+
+    .btn-secondary:hover {
+      background: var(--muted);
+    }
+
+    /* 搜索表单 */
+    .search-form {
+      background: var(--surface);
+      border: 1px solid var(--muted);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .form-label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--muted);
+      border-radius: 8px;
+      font-size: 14px;
+      background: white;
+      color: var(--text);
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(139,94,60,0.12);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 768px) {
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Tags选择器 */
+    .tags-section {
+      margin-top: 16px;
+    }
+
+    .tags-group {
+      margin-bottom: 16px;
+    }
+
+    .tags-group-title {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--accent-2);
+    }
+
+    .tags-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tag-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: var(--pill-bg);
+      border: 1px solid var(--muted);
+      border-radius: 16px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tag-item:hover {
+      background: var(--muted);
+    }
+
+    .tag-item.selected {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    .tag-item.excluded {
+      background: #FFE5E5;
+      color: #C62828;
+      border-color: #EF5350;
+    }
+
+    .tag-item.excluded.selected {
+      background: #EF5350;
+      color: white;
+    }
+
+    .tag-checkbox {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+
+    /* 分区选择 */
+    .category-select {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .category-btn {
+      padding: 8px 16px;
+      border: 1px solid var(--muted);
+      border-radius: 8px;
+      background: white;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .category-btn:hover {
+      background: var(--pill-bg);
+    }
+
+    .category-btn.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    /* 搜索按钮 */
+    .search-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    /* 结果区域 */
+    .results {
+      margin-top: 20px;
+    }
+
+    .results-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .results-count {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    @media (max-width: 768px) {
+      .cards-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card-item {
+      background: var(--surface);
+      border: 1px solid var(--muted);
+      border-radius: 12px;
+      padding: 16px;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .card-item:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      transform: translateY(-2px);
+    }
+
+    .card-avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 8px;
+      background: var(--muted);
+      margin-bottom: 12px;
+      object-fit: cover;
+    }
+
+    .card-name {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--accent-2);
+    }
+
+    .card-meta {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .card-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .card-tag {
+      padding: 4px 8px;
+      background: var(--pill-bg);
+      border-radius: 12px;
+      font-size: 12px;
+    }
+
+    /* 分页 */
+    .pagination {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 24px;
+    }
+
+    .pagination-btn {
+      padding: 8px 12px;
+      border: 1px solid var(--muted);
+      border-radius: 8px;
+      background: white;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .pagination-btn:hover:not(:disabled) {
+      background: var(--pill-bg);
+    }
+
+    .pagination-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .pagination-btn.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    /* 加载状态 */
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: var(--muted);
+    }
+
+    .spinner {
+      border: 3px solid var(--pill-bg);
+      border-top: 3px solid var(--accent);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* 错误/空状态 */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    /* 登录提示 */
+    .login-prompt {
+      text-align: center;
+      padding: 60px 20px;
+      background: var(--surface);
+      border: 1px solid var(--muted);
+      border-radius: 12px;
+    }
+
+    .login-prompt h2 {
+      margin-bottom: 16px;
+      color: var(--accent-2);
+    }
+
+    .login-prompt p {
+      color: var(--muted);
+      margin-bottom: 24px;
+    }
+
+    /* 错误提示 */
+    .error-message {
+      background: #FFEBEE;
+      border: 1px solid #EF5350;
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: #C62828;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <!-- 头部 -->
+  <div class="header">
+    <h1>🔍 角色卡搜索</h1>
+    <div class="user-info">
+      <div id="userDisplay" class="hidden">
+        <img id="userAvatar" class="user-avatar" alt="Avatar">
+        <span id="userName"></span>
+        <button class="btn btn-secondary" onclick="logout()">登出</button>
+      </div>
+      <div id="loginPrompt">
+        <a href="/api/auth/discord" class="btn btn-primary">Discord 登录</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 错误提示 -->
+  <div id="errorMessage" class="error-message hidden"></div>
+
+  <!-- 登录提示 -->
+  <div id="loginPromptSection" class="login-prompt hidden">
+    <h2>请先登录</h2>
+    <p>您需要登录并拥有"已审核"身份组才能使用搜索功能</p>
+    <a href="/api/auth/discord" class="btn btn-primary">使用 Discord 登录</a>
+  </div>
+
+  <!-- 搜索表单 -->
+  <div id="searchSection" class="hidden">
+    <div class="search-form">
+      <div class="form-group">
+        <label class="form-label">关键词搜索</label>
+        <input type="text" id="keywordInput" class="form-input" placeholder="搜索卡名、角色名或作者...">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">分区</label>
+          <div class="category-select">
+            <button class="category-btn active" data-category="">全部</button>
+            <button class="category-btn" data-category="非边限">非边限</button>
+            <button class="category-btn" data-category="边限">边限</button>
+            <button class="category-btn" data-category="深渊">深渊</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tags-section">
+        <div class="form-label">标签筛选</div>
+        <div id="tagsContainer"></div>
+        <div style="margin-top: 12px; font-size: 13px; color: var(--muted);">
+          <div>💡 提示：点击标签进行正选（必须包含），再次点击变为反选（排除），第三次点击取消选择</div>
+        </div>
+      </div>
+
+      <div class="search-actions">
+        <button class="btn btn-primary" onclick="performSearch()">搜索</button>
+        <button class="btn btn-secondary" onclick="resetSearch()">重置</button>
+      </div>
+    </div>
+
+    <!-- 结果区域 -->
+    <div class="results">
+      <div class="results-header">
+        <div class="results-count" id="resultsCount"></div>
+      </div>
+
+      <div id="loadingState" class="loading hidden">
+        <div class="spinner"></div>
+        <div>搜索中...</div>
+      </div>
+
+      <div id="emptyState" class="empty-state hidden">
+        <div class="empty-state-icon">🔍</div>
+        <div>没有找到匹配的卡片</div>
+      </div>
+
+      <div id="cardsGrid" class="cards-grid"></div>
+
+      <div id="pagination" class="pagination"></div>
+    </div>
+  </div>
+
+  <script>
+    let currentUser = null;
+    let allTags = [];
+    let selectedTags = new Set(); // 正选
+    let excludedTags = new Set(); // 反选
+    let currentPage = 1;
+    let currentCategory = '';
+
+    // 初始化
+    async function init() {
+      // 检查URL参数中的错误
+      const urlParams = new URLSearchParams(window.location.search);
+      const error = urlParams.get('error');
+      if (error) {
+        showError(decodeURIComponent(error));
+        // 清除URL参数
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+
+      // 检查登录状态
+      await checkAuth();
+      
+      // 如果已登录，加载标签配置
+      if (currentUser) {
+        await loadTagsConfig();
+        renderTags();
+      }
+    }
+
+    // 检查认证状态
+    async function checkAuth() {
+      try {
+        const response = await fetch('/api/auth/discord/me');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.user) {
+            currentUser = data.user;
+            showSearchSection();
+            updateUserDisplay();
+          } else {
+            showLoginPrompt();
+          }
+        } else {
+          showLoginPrompt();
+        }
+      } catch (error) {
+        console.error('检查认证失败:', error);
+        showLoginPrompt();
+      }
+    }
+
+    // 显示搜索区域
+    function showSearchSection() {
+      document.getElementById('loginPromptSection').classList.add('hidden');
+      document.getElementById('searchSection').classList.remove('hidden');
+    }
+
+    // 显示登录提示
+    function showLoginPrompt() {
+      document.getElementById('loginPromptSection').classList.remove('hidden');
+      document.getElementById('searchSection').classList.add('hidden');
+    }
+
+    // 更新用户显示
+    function updateUserDisplay() {
+      if (currentUser) {
+        document.getElementById('userDisplay').classList.remove('hidden');
+        document.getElementById('loginPrompt').classList.add('hidden');
+        
+        const avatarUrl = currentUser.avatar 
+          ? `https://cdn.discordapp.com/avatars/${currentUser.id}/${currentUser.avatar}.png?size=32`
+          : 'https://cdn.discordapp.com/embed/avatars/0.png';
+        document.getElementById('userAvatar').src = avatarUrl;
+        document.getElementById('userName').textContent = currentUser.globalName || currentUser.username;
+      }
+    }
+
+    // 显示错误
+    function showError(message) {
+      const errorEl = document.getElementById('errorMessage');
+      errorEl.textContent = message;
+      errorEl.classList.remove('hidden');
+      setTimeout(() => {
+        errorEl.classList.add('hidden');
+      }, 5000);
+    }
+
+    // 登出
+    async function logout() {
+      try {
+        await fetch('/api/auth/discord/logout', { method: 'POST' });
+        window.location.reload();
+      } catch (error) {
+        console.error('登出失败:', error);
+      }
+    }
+
+    // 加载标签配置
+    async function loadTagsConfig() {
+      try {
+        const response = await fetch('/api/config');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.config && data.config.tagCategories) {
+            // 收集所有标签
+            allTags = [];
+            data.config.tagCategories.forEach(category => {
+              if (category.tags && Array.isArray(category.tags)) {
+                category.tags.forEach(tag => {
+                  allTags.push({
+                    value: tag.value,
+                    label: tag.label,
+                    category: category.category
+                  });
+                });
+              }
+            });
+          }
+        }
+      } catch (error) {
+        console.error('加载标签配置失败:', error);
+      }
+    }
+
+    // 渲染标签
+    function renderTags() {
+      const container = document.getElementById('tagsContainer');
+      if (allTags.length === 0) {
+        container.innerHTML = '<div style="color: var(--muted); font-size: 13px;">暂无标签配置</div>';
+        return;
+      }
+
+      // 按分类分组
+      const tagsByCategory = {};
+      allTags.forEach(tag => {
+        if (!tagsByCategory[tag.category]) {
+          tagsByCategory[tag.category] = [];
+        }
+        tagsByCategory[tag.category].push(tag);
+      });
+
+      let html = '';
+      Object.keys(tagsByCategory).forEach(category => {
+        html += `<div class="tags-group">
+          <div class="tags-group-title">${category}</div>
+          <div class="tags-container">`;
+        
+        tagsByCategory[category].forEach(tag => {
+          const isSelected = selectedTags.has(tag.value);
+          const isExcluded = excludedTags.has(tag.value);
+          const classes = ['tag-item'];
+          if (isSelected) classes.push('selected');
+          if (isExcluded) classes.push('excluded');
+          
+          html += `<div class="${classes.join(' ')}" onclick="toggleTag('${tag.value}')">
+            <span>${tag.label}</span>
+          </div>`;
+        });
+        
+        html += `</div></div>`;
+      });
+
+      container.innerHTML = html;
+    }
+
+    // 切换标签选择
+    function toggleTag(tagValue) {
+      if (selectedTags.has(tagValue)) {
+        // 从正选移除，加入反选
+        selectedTags.delete(tagValue);
+        excludedTags.add(tagValue);
+      } else if (excludedTags.has(tagValue)) {
+        // 从反选移除
+        excludedTags.delete(tagValue);
+      } else {
+        // 加入正选
+        selectedTags.add(tagValue);
+      }
+      renderTags();
+    }
+
+    // 执行搜索
+    async function performSearch() {
+      const keyword = document.getElementById('keywordInput').value.trim();
+      currentPage = 1;
+      
+      await doSearch(keyword, currentCategory, currentPage);
+    }
+
+    // 执行搜索请求
+    async function doSearch(keyword, category, page) {
+      document.getElementById('loadingState').classList.remove('hidden');
+      document.getElementById('emptyState').classList.add('hidden');
+      document.getElementById('cardsGrid').innerHTML = '';
+      document.getElementById('pagination').innerHTML = '';
+
+      try {
+        const params = new URLSearchParams();
+        if (keyword) params.append('q', keyword);
+        if (category) params.append('category', category);
+        if (page) params.append('page', page);
+        if (selectedTags.size > 0) {
+          params.append('tags', Array.from(selectedTags).join(','));
+        }
+        if (excludedTags.size > 0) {
+          params.append('excludeTags', Array.from(excludedTags).join(','));
+        }
+
+        const response = await fetch(`/api/search?${params.toString()}`);
+        
+        if (response.status === 401) {
+          // 未授权，重新登录
+          showLoginPrompt();
+          return;
+        }
+
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.message || '搜索失败');
+        }
+
+        const data = await response.json();
+        
+        if (data.success) {
+          displayResults(data);
+        } else {
+          throw new Error(data.message || '搜索失败');
+        }
+      } catch (error) {
+        console.error('搜索失败:', error);
+        showError('搜索失败: ' + error.message);
+        document.getElementById('loadingState').classList.add('hidden');
+      }
+    }
+
+    // 显示搜索结果
+    function displayResults(data) {
+      document.getElementById('loadingState').classList.add('hidden');
+
+      const cards = data.cards || [];
+      const pagination = data.pagination || {};
+
+      // 更新结果计数
+      document.getElementById('resultsCount').textContent = 
+        `找到 ${pagination.total || cards.length} 张卡片`;
+
+      if (cards.length === 0) {
+        document.getElementById('emptyState').classList.remove('hidden');
+        return;
+      }
+
+      // 渲染卡片
+      const grid = document.getElementById('cardsGrid');
+      grid.innerHTML = cards.map(card => {
+        const avatarUrl = card.avatarUrl || '/默认头像.png';
+        const tags = Array.isArray(card.tags) ? card.tags : [];
+        const tagLabels = tags.map(t => typeof t === 'string' ? t : t.label || t.value).join(', ');
+        
+        return `
+          <div class="card-item" onclick="viewCard('${card.id}')">
+            <img src="${avatarUrl}" alt="${card.cardName}" class="card-avatar" onerror="this.src='/默认头像.png'">
+            <div class="card-name">${escapeHtml(card.cardName || '未命名')}</div>
+            <div class="card-meta">
+              ${card.authorName ? `作者: ${escapeHtml(card.authorName)}<br>` : ''}
+              ${card.category ? `分区: ${escapeHtml(card.category)}` : ''}
+            </div>
+            ${tagLabels ? `<div class="card-tags">${tagLabels.split(',').slice(0, 3).map(t => `<span class="card-tag">${escapeHtml(t.trim())}</span>`).join('')}</div>` : ''}
+          </div>
+        `;
+      }).join('');
+
+      // 渲染分页
+      if (pagination.totalPages > 1) {
+        renderPagination(pagination);
+      }
+    }
+
+    // 渲染分页
+    function renderPagination(pagination) {
+      const container = document.getElementById('pagination');
+      const { currentPage, totalPages } = pagination;
+      
+      let html = '';
+      
+      // 上一页
+      html += `<button class="pagination-btn" ${currentPage <= 1 ? 'disabled' : ''} onclick="goToPage(${currentPage - 1})">上一页</button>`;
+      
+      // 页码
+      for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+          html += `<button class="pagination-btn ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+        } else if (i === currentPage - 3 || i === currentPage + 3) {
+          html += `<span class="pagination-btn" style="border: none; background: transparent;">...</span>`;
+        }
+      }
+      
+      // 下一页
+      html += `<button class="pagination-btn" ${currentPage >= totalPages ? 'disabled' : ''} onclick="goToPage(${currentPage + 1})">下一页</button>`;
+      
+      container.innerHTML = html;
+    }
+
+    // 跳转页面
+    function goToPage(page) {
+      currentPage = page;
+      const keyword = document.getElementById('keywordInput').value.trim();
+      doSearch(keyword, currentCategory, page);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // 重置搜索
+    function resetSearch() {
+      document.getElementById('keywordInput').value = '';
+      selectedTags.clear();
+      excludedTags.clear();
+      currentCategory = '';
+      currentPage = 1;
+      
+      // 重置分区按钮
+      document.querySelectorAll('.category-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.category === '') {
+          btn.classList.add('active');
+        }
+      });
+      
+      renderTags();
+      document.getElementById('cardsGrid').innerHTML = '';
+      document.getElementById('pagination').innerHTML = '';
+      document.getElementById('resultsCount').textContent = '';
+    }
+
+    // 查看卡片详情
+    function viewCard(cardId) {
+      // 可以跳转到卡片详情页，或者打开模态框
+      window.open(`/card-detail.html?id=${cardId}`, '_blank');
+    }
+
+    // HTML转义
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // 分区选择
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.category-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          currentCategory = btn.dataset.category;
+        });
+      });
+    });
+
+    // 初始化
+    init();
+  </script>
+</body>
+</html>
+

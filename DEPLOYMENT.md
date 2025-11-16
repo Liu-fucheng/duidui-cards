@@ -34,6 +34,19 @@ DISCORD_CHANNEL_SHENYUAN=1432350193696641135
 
 # 角色卡网站URL（用于生成token链接）
 CARD_WEBSITE_URL=https://your-cards-site.pages.dev
+
+# === 搜索功能相关配置（新增） ===
+# Discord OAuth Client ID（从Discord开发者门户获取）
+DISCORD_CLIENT_ID=你的Discord应用Client ID
+
+# Discord OAuth Client Secret（从Discord开发者门户获取，必须保密）
+DISCORD_CLIENT_SECRET=你的Discord应用Client Secret
+
+# Discord OAuth 回调URL（通常为：https://your-site.pages.dev/api/auth/discord/callback）
+DISCORD_REDIRECT_URI=https://your-cards-site.pages.dev/api/auth/discord/callback
+
+# JWT密钥（用于生成和验证登录Token，建议使用随机字符串，至少32位）
+JWT_SECRET=你的JWT密钥（至少32位随机字符串）
 ```
 
 ### Discord Bot 环境变量
@@ -49,6 +62,9 @@ WEBHOOK_SECRET=你的随机密钥（至少32位）
 
 # 端口（Render会自动提供）
 PORT=10000
+
+# Discord服务器ID（用于验证用户身份组，可选，代码中有默认值）
+DISCORD_GUILD_ID=1338365085072101416
 ```
 
 ### 绑定配置 (wrangler.toml)

@@ -1,0 +1,270 @@
+// 搜索API
+// GET /api/search - 搜索已发布的卡片（需要登录）
+
+// 从请求中获取Token（从Cookie或Authorization头）
+function getTokenFromRequest(request) {
+  // 优先从Cookie获取
+  const cookieHeader = request.headers.get('Cookie');
+  if (cookieHeader) {
+    const cookies = Object.fromEntries(
+      cookieHeader.split('; ').map(c => c.split('='))
+    );
+    if (cookies['auth_token']) {
+      return cookies['auth_token'];
+    }
+  }
+  
+  // 从Authorization头获取
+  const authHeader = request.headers.get('Authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.substring(7);
+  }
+  
+  return null;
+}
+
+// 验证JWT Token
+async function verifyToken(token, env) {
+  try {
+    const { jwtVerify } = await import('jose');
+    const secret = new TextEncoder().encode(env.JWT_SECRET || 'your-secret-key-change-in-production');
+    const { payload } = await jwtVerify(token, secret);
+    return payload;
+  } catch (error) {
+    return null;
+  }
+}
+
+// 检查用户是否已登录
+async function checkAuth(request, env) {
+  const token = getTokenFromRequest(request);
+  if (!token) {
+    return { authenticated: false, error: '未登录' };
+  }
+  
+  const payload = await verifyToken(token, env);
+  if (!payload) {
+    return { authenticated: false, error: 'Token无效或已过期' };
+  }
+  
+  return { authenticated: true, userId: payload.userId };
+}
+
+// 解析tags参数（支持正选和反选）
+// 格式: tags=tag1,tag2&excludeTags=tag3,tag4
+function parseTags(params) {
+  const includeTags = params.get('tags') 
+    ? params.get('tags').split(',').filter(t => t.trim())
+    : [];
+  const excludeTags = params.get('excludeTags')
+    ? params.get('excludeTags').split(',').filter(t => t.trim())
+    : [];
+  
+  return { includeTags, excludeTags };
+}
+
+// 检查卡片是否包含指定tags（正选）
+function cardHasTags(cardTags, requiredTags) {
+  if (!cardTags || requiredTags.length === 0) return true;
+  
+  try {
+    const tags = typeof cardTags === 'string' ? JSON.parse(cardTags) : cardTags;
+    if (!Array.isArray(tags)) return false;
+    
+    // 检查是否包含所有必需的tags
+    return requiredTags.every(requiredTag => 
+      tags.some(tag => {
+        const tagValue = typeof tag === 'string' ? tag : tag.value;
+        return tagValue === requiredTag || tagValue.includes(requiredTag);
+      })
+    );
+  } catch (e) {
+    return false;
+  }
+}
+
+// 检查卡片是否不包含指定tags（反选）
+function cardExcludesTags(cardTags, excludedTags) {
+  if (!cardTags || excludedTags.length === 0) return true;
+  
+  try {
+    const tags = typeof cardTags === 'string' ? JSON.parse(cardTags) : cardTags;
+    if (!Array.isArray(tags)) return true;
+    
+    // 检查是否不包含任何被排除的tags
+    return !excludedTags.some(excludedTag =>
+      tags.some(tag => {
+        const tagValue = typeof tag === 'string' ? tag : tag.value;
+        return tagValue === excludedTag || tagValue.includes(excludedTag);
+      })
+    );
+  } catch (e) {
+    return true;
+  }
+}
+
+// 搜索卡片
+async function searchCards(env, params) {
+  const db = env.D1_DB;
+  const page = parseInt(params.get('page')) || 1;
+  const pageSize = Math.min(parseInt(params.get('pageSize')) || 20, 100); // 最多100条
+  const offset = (page - 1) * pageSize;
+  
+  // 只搜索已发布的卡片（threadId不为空）
+  let query = 'SELECT * FROM cards_v2 WHERE threadId IS NOT NULL AND threadId != \'\'';
+  let countQuery = 'SELECT COUNT(*) as count FROM cards_v2 WHERE threadId IS NOT NULL AND threadId != \'\'';
+  const conditions = [];
+  const bindings = [];
+  
+  // 搜索关键词（卡名/角色名/作者）
+  const keyword = params.get('q') || params.get('keyword');
+  if (keyword) {
+    conditions.push('(cardName LIKE ? OR authorName LIKE ? OR characters LIKE ?)');
+    const keywordPattern = `%${keyword}%`;
+    bindings.push(keywordPattern);
+    bindings.push(keywordPattern);
+    bindings.push(keywordPattern);
+  }
+  
+  // 按分区筛选
+  const category = params.get('category');
+  if (category) {
+    conditions.push('category = ?');
+    bindings.push(category);
+  }
+  
+  // 构建查询
+  if (conditions.length > 0) {
+    const whereClause = ' AND ' + conditions.join(' AND ');
+    query += whereClause;
+    countQuery += whereClause;
+  }
+  
+  // 排序和分页
+  query += ' ORDER BY createdAt DESC LIMIT ? OFFSET ?';
+  
+  // 获取总数
+  const countResult = await db.prepare(countQuery).bind(...bindings).first();
+  const total = countResult.count || 0;
+  
+  // 获取数据
+  const cards = await db.prepare(query).bind(...bindings, pageSize, offset).all();
+  
+  // 解析tags参数
+  const { includeTags, excludeTags } = parseTags(params);
+  
+  // 处理结果：解析JSON字段并过滤tags
+  const processedCards = (cards.results || [])
+    .map(card => {
+      // 解析JSON字段
+      if (card.tags) {
+        try {
+          card.tags = JSON.parse(card.tags);
+        } catch (e) {
+          card.tags = [];
+        }
+      } else {
+        card.tags = [];
+      }
+      
+      if (card.characters) {
+        try {
+          card.characters = JSON.parse(card.characters);
+        } catch (e) {
+          // 保持原样
+        }
+      }
+      
+      if (card.downloadRequirements) {
+        try {
+          card.downloadRequirements = JSON.parse(card.downloadRequirements);
+        } catch (e) {
+          card.downloadRequirements = [];
+        }
+      } else {
+        card.downloadRequirements = [];
+      }
+      
+      // 生成公开URL
+      const r2PublicUrl = env.R2_PUBLIC_URL || '';
+      if (card.avatarImageKey) {
+        card.avatarUrl = `${r2PublicUrl}/${card.avatarImageKey}`;
+      }
+      
+      return card;
+    })
+    .filter(card => {
+      // 应用tags过滤（正选）
+      if (includeTags.length > 0 && !cardHasTags(card.tags, includeTags)) {
+        return false;
+      }
+      
+      // 应用tags过滤（反选）
+      if (excludeTags.length > 0 && !cardExcludesTags(card.tags, excludeTags)) {
+        return false;
+      }
+      
+      return true;
+    });
+  
+  return {
+    cards: processedCards,
+    pagination: {
+      currentPage: page,
+      pageSize,
+      total: processedCards.length, // 注意：这是过滤后的数量，实际总数可能不同
+      totalPages: Math.ceil(processedCards.length / pageSize),
+    }
+  };
+}
+
+export async function onRequestGet(context) {
+  const { request, env } = context;
+  
+  // 检查数据库绑定
+  if (!env.D1_DB) {
+    return new Response(JSON.stringify({
+      success: false,
+      message: '数据库未绑定'
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+  
+  // 检查认证
+  const auth = await checkAuth(request, env);
+  if (!auth.authenticated) {
+    return new Response(JSON.stringify({
+      success: false,
+      message: auth.error || '未授权'
+    }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+  
+  try {
+    const url = new URL(request.url);
+    const result = await searchCards(env, url.searchParams);
+    
+    return new Response(JSON.stringify({
+      success: true,
+      ...result
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+  } catch (error) {
+    console.error('搜索失败:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      message: '搜索失败: ' + error.message
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
+
