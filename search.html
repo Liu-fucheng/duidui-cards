@@ -873,12 +873,13 @@
       const discordGuildId = '1338365085072101416';
       
       grid.innerHTML = cards.map(card => {
-        // 获取图片URL（优先使用introImageUrl，这是角色卡PNG图片）
-        let imageUrl = card.introImageUrl || card.avatarUrl || card.avatarImageUrl || '/默认头像.png';
+        // 获取图片URL（优先使用cardFileUrl，这是角色卡PNG图片）
+        let imageUrl = card.cardFileUrl || card.avatarUrl || card.avatarImageUrl || '/默认头像.png';
         
         // 调试：打印图片URL
         if (card.id) {
-          console.log(`🔍 [卡片 ${card.id}] introImageUrl:`, card.introImageUrl);
+          console.log(`🔍 [卡片 ${card.id}] cardFileUrl:`, card.cardFileUrl);
+          console.log(`🔍 [卡片 ${card.id}] cardFileKey:`, card.cardFileKey);
           console.log(`🔍 [卡片 ${card.id}] avatarUrl:`, card.avatarUrl);
           console.log(`🔍 [卡片 ${card.id}] 最终使用:`, imageUrl);
         }
@@ -888,8 +889,8 @@
           imageUrl = imageUrl.replace('http://', 'https://');
         }
         
-        // 如果 introImageUrl 不存在，使用默认头像
-        if (!imageUrl || imageUrl === '/intros/intro_undefined.png') {
+        // 如果 cardFileUrl 不存在，使用默认头像
+        if (!imageUrl) {
           imageUrl = '/默认头像.png';
         }
         

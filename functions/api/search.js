@@ -262,9 +262,9 @@ async function searchCards(env, params) {
       if (card.avatarImageKey) {
         card.avatarUrl = `${r2PublicUrl}/${card.avatarImageKey}`;
       }
-      // 生成简介图URL（角色卡PNG图片）
-      if (card.id) {
-        card.introImageUrl = `${r2PublicUrl}/intros/intro_${card.id}.png`;
+      // 生成角色卡文件URL（PNG图片）
+      if (card.cardFileKey) {
+        card.cardFileUrl = `${r2PublicUrl}/${card.cardFileKey}`;
       }
       
       return card;
