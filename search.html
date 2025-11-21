@@ -703,7 +703,9 @@
           if (data.success && data.config && data.config.tagCategories) {
             // 收集所有标签
             allTags = [];
-            data.config.tagCategories.forEach(category => {
+            console.log('🔍 [标签] 加载到的分类数量:', data.config.tagCategories.length);
+            data.config.tagCategories.forEach((category, index) => {
+              console.log(`🔍 [标签] 分类 ${index + 1}: ${category.category}, 标签数量:`, category.tags ? category.tags.length : 0);
               if (category.tags && Array.isArray(category.tags)) {
                 category.tags.forEach(tag => {
                   allTags.push({
@@ -714,6 +716,7 @@
                 });
               }
             });
+            console.log('🔍 [标签] 总共收集到标签数量:', allTags.length);
           }
         }
       } catch (error) {
@@ -738,27 +741,34 @@
         tagsByCategory[tag.category].push(tag);
       });
 
+      console.log('🔍 [标签] 渲染分类数量:', Object.keys(tagsByCategory).length);
+      console.log('🔍 [标签] 分类列表:', Object.keys(tagsByCategory));
+
       let html = '';
-      Object.keys(tagsByCategory).forEach(category => {
+      Object.keys(tagsByCategory).forEach((category, index) => {
+        const tags = tagsByCategory[category];
+        console.log(`🔍 [标签] 渲染分类 ${index + 1}: ${category}, 标签数量:`, tags.length);
+        
         html += `<div class="tags-group">
-          <div class="tags-group-title">${category}</div>
+          <div class="tags-group-title">${escapeHtml(category)}</div>
           <div class="tags-container">`;
         
-        tagsByCategory[category].forEach(tag => {
+        tags.forEach(tag => {
           const isSelected = selectedTags.has(tag.value);
           const isExcluded = excludedTags.has(tag.value);
           const classes = ['tag-item'];
           if (isSelected) classes.push('selected');
           if (isExcluded) classes.push('excluded');
           
-          html += `<div class="${classes.join(' ')}" onclick="toggleTag('${tag.value}')">
-            <span>${tag.label}</span>
+          html += `<div class="${classes.join(' ')}" onclick="toggleTag('${escapeHtml(tag.value)}')">
+            <span>${escapeHtml(tag.label)}</span>
           </div>`;
         });
         
         html += `</div></div>`;
       });
 
+      console.log('🔍 [标签] 生成的HTML长度:', html.length);
       container.innerHTML = html;
     }
 

@@ -147,8 +147,40 @@ export async function onRequestPost(context) {
       
       console.log('✅ 签到记录插入成功:', insertResult);
     } catch (insertError) {
+      // 检查是否是唯一约束错误（并发情况下，另一个请求可能已经插入了）
+      const errorMessage = insertError?.message || String(insertError);
+      if (errorMessage.includes('UNIQUE constraint failed') || 
+          errorMessage.includes('SQLITE_CONSTRAINT') ||
+          errorMessage.includes('UNIQUE')) {
+        console.log('⚠️ 检测到唯一约束错误，可能是并发请求，重新查询签到记录');
+        
+        // 重新查询今天的签到记录（另一个请求可能已经成功插入了）
+        try {
+          const retryQuery = await env.D1_DB.prepare(
+            `SELECT * FROM checkins WHERE user_id = ? AND guild_id = ? AND checkin_date = ?`
+          ).bind(user_id, guild_id, beijing_date).all();
+          
+          if (retryQuery?.results && retryQuery.results.length > 0) {
+            const existingCheckin = retryQuery.results[0];
+            // 返回已签到的响应，而不是错误
+            return new Response(JSON.stringify({ 
+              success: false,
+              message: '今天已经签到过了',
+              checkin_count: existingCheckin.checkin_count || 0
+            }), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' }
+            });
+          }
+        } catch (retryError) {
+          console.error('重新查询签到记录失败:', retryError);
+          // 如果重新查询也失败，继续抛出原始错误
+        }
+      }
+      
+      // 其他类型的插入错误，抛出异常
       console.error('插入签到记录失败:', insertError);
-      throw new Error('插入签到记录失败: ' + (insertError?.message || String(insertError)));
+      throw new Error('插入签到记录失败: ' + errorMessage);
     }
 
     return new Response(JSON.stringify({ 
